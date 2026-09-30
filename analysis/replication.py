@@ -64,8 +64,11 @@ def tape_dynamics(d: Path) -> dict:
     hcols = [c for c in t.columns if re.fullmatch(r"h\d+", c)]
     H = t[hcols].to_numpy()
     changed = (np.diff(H, axis=0) != 0).any(axis=1)
+    cfg = yaml.safe_load((d / "config.yaml").read_text())["market"]
+    cliff = (cfg["v_high"] - cfg["v_low"]) / 2 / cfg["tick"] if "v_high" in cfg else 10.0 / cfg["tick"]
     return {"change_rate": float(changed.mean()), "h_range": int(H.max() - H.min()),
-            "h_min_mean": float(H.min(axis=1).mean())}
+            "h_min_mean": float(H.min(axis=1).mean()),
+            "cliff_share": float((H.min(axis=1) >= cliff).mean())}   # best quote immune to informed flow
 
 
 def summarize(runs: pd.DataFrame) -> pd.DataFrame:
@@ -75,7 +78,8 @@ def summarize(runs: pd.DataFrame) -> pd.DataFrame:
                 profit_mean=("profit", "mean"), profit_std=("profit", "std"),
                 delta_mean=("delta", "mean"), delta_std=("delta", "std"),
                 hC=("hC", "first"), hM=("hM", "first"), piC=("piC", "first"), piM=("piM", "first"),
-                change_rate=("change_rate", "mean"), h_range=("h_range", "mean"))
+                change_rate=("change_rate", "mean"), h_range=("h_range", "mean"),
+                cliff_share=("cliff_share", "mean"))
     out["markup_vs_competitive"] = out.half_spread_mean - out.hC
     return out.reset_index()
 
@@ -114,7 +118,7 @@ def make_figure(summary: pd.DataFrame, imp: pd.DataFrame, out: Path, imp_alpha=0
     ax.text(summary.alpha.min(), 1.02, "monopoly", color=MUTED, fontsize=7, va="bottom")
     ax.text(summary.alpha.min(), 0.02, "competitive", color=MUTED, fontsize=7, va="bottom")
     ax.set_xlabel(r"toxicity $\alpha$"); ax.set_ylabel(r"collusion index $\Delta$")
-    ax.set_title("(a) Learned rent falls with toxicity and N", loc="left", fontsize=9)
+    ax.set_title("(a) Collusion index by toxicity and N", loc="left", fontsize=9)
     ax.grid(axis="y", color=GRID, lw=0.8); ax.set_axisbelow(True); ax.legend(frameon=False, fontsize=8)
 
     # (b) learned half-spread vs benchmarks
@@ -127,8 +131,11 @@ def make_figure(summary: pd.DataFrame, imp: pd.DataFrame, out: Path, imp_alpha=0
         s = summary[summary.n_mm == n].sort_values("alpha")
         ax.errorbar(s.alpha, s.half_spread_mean, yerr=s.half_spread_std, color=C[n], lw=2, marker="o",
                     ms=5, capsize=3, label=f"N = {n}")
+    cliff = 10.0   # ask >= V_H: informed traders never trade above this half-spread (binary-V model)
+    ax.axhline(cliff, color="#e34948", lw=1, ls="-.")
+    ax.text(ref.alpha.iloc[0], cliff + 0.15, "no adverse selection at or above this quote", color="#e34948", fontsize=7, va="bottom")
     ax.set_xlabel(r"toxicity $\alpha$"); ax.set_ylabel("mean half-spread (ticks)")
-    ax.set_title("(b) Learned quotes vs exact benchmarks", loc="left", fontsize=9)
+    ax.set_title("(b) Learned quotes sit on the adverse-selection cliff", loc="left", fontsize=9)
     ax.grid(axis="y", color=GRID, lw=0.8); ax.set_axisbelow(True); ax.legend(frameon=False, fontsize=8)
 
     # (c) impulse response
