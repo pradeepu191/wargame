@@ -1,5 +1,5 @@
 [project]
-name = "wargame-hyperliquid"
+name = "wargame"
 version = "0.1.0"
 description = "Rent or toxicity? Exploiting and defending learning market makers on Hyperliquid (MIT 6.S974)"
 requires-python = ">=3.10"
