@@ -62,13 +62,14 @@ class BenchmarkTable:
         self.hM = np.array([r[2] for r in rows])
         self.piM = np.array([r[3] for r in rows])
 
-    def _idx(self, mu):
-        return np.clip(np.rint(np.asarray(mu) * (len(self.mu_grid) - 1)).astype(int),
-                       0, len(self.mu_grid) - 1)
+    def _idx(self, mu: float) -> int:
+        n = len(self.mu_grid) - 1
+        i = int(round(mu * n))
+        return 0 if i < 0 else n if i > n else i
 
-    def lookup(self, mu):
+    def lookup(self, mu: float):
         i = self._idx(mu)
-        return self.hC[i], self.piC[i], self.hM[i], self.piM[i]
+        return int(self.hC[i]), float(self.piC[i]), int(self.hM[i]), float(self.piM[i])
 
 
 def collusion_index(mean_profit_per_mm: float, piC: float, piM: float) -> float:

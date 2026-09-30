@@ -115,7 +115,7 @@ class GlostenMilgromEnv:
     def reset(self, V: Optional[float] = None) -> dict:
         c = self.cfg
         self.t = 0
-        self.V = float(self.rng.choice([c.v_low, c.v_high])) if V is None else V
+        self.V = (c.v_high if self.rng.random() < 0.5 else c.v_low) if V is None else V
         self.mu = 0.5
         self.inventory[:] = 0
         self.last_half_spreads[:] = c.max_half_spread
@@ -130,15 +130,16 @@ class GlostenMilgromEnv:
             "last_half_spreads": self.last_half_spreads.copy(),
         }
 
-    def step(self, half_spreads: np.ndarray) -> tuple[dict, np.ndarray, bool, dict]:
-        """half_spreads: int array of shape (n_mm,), each in 1..max_half_spread."""
+    def step(self, half_spreads) -> tuple[dict, np.ndarray, bool, dict]:
+        """half_spreads: int sequence of length n_mm, each in 1..max_half_spread."""
         c = self.cfg
-        h = np.asarray(half_spreads, dtype=np.int64)
-        assert h.shape == (c.n_mm,) and h.min() >= 1 and h.max() <= c.max_half_spread
+        n = c.n_mm
+        h = [int(x) for x in half_spreads]
+        assert len(h) == n and min(h) >= 1 and max(h) <= c.max_half_spread
         mid = self.mid
-        asks = mid + h * c.tick
-        bids = mid - h * c.tick
-        best_ask, best_bid = asks.min(), bids.max()
+        hmin = min(h)
+        best_ask = mid + hmin * c.tick
+        best_bid = mid - hmin * c.tick
 
         # ---- taker arrival
         informed = self.rng.random() < c.alpha
@@ -156,32 +157,33 @@ class GlostenMilgromEnv:
                 event = "sell"
 
         # ---- matching: one unit to a random MM among those at the best quote
-        reward = np.zeros(c.n_mm)
+        reward = np.zeros(n)
         filled = -1
-        price = np.nan
-        if event == "buy":
-            cands = np.flatnonzero(asks == best_ask)
-            filled = int(self.rng.choice(cands))
-            price = best_ask
-            reward[filled] += (best_ask - self.V) + c.maker_rebate
-            self.inventory[filled] -= 1
-        elif event == "sell":
-            cands = np.flatnonzero(bids == best_bid)
-            filled = int(self.rng.choice(cands))
-            price = best_bid
-            reward[filled] += (self.V - best_bid) + c.maker_rebate
-            self.inventory[filled] += 1
-        np.clip(self.inventory, -c.inventory_cap, c.inventory_cap, out=self.inventory)
-        reward -= c.inventory_penalty * self.inventory.astype(float) ** 2
+        price = float("nan")
+        if event != "none":
+            cands = [j for j in range(n) if h[j] == hmin]
+            filled = cands[0] if len(cands) == 1 else int(self.rng.choice(cands))
+            if event == "buy":
+                price = best_ask
+                reward[filled] += (best_ask - self.V) + c.maker_rebate
+                self.inventory[filled] -= 1
+            else:
+                price = best_bid
+                reward[filled] += (self.V - best_bid) + c.maker_rebate
+                self.inventory[filled] += 1
+            if abs(self.inventory[filled]) > c.inventory_cap:
+                self.inventory[filled] = c.inventory_cap if self.inventory[filled] > 0 else -c.inventory_cap
+        if c.inventory_penalty:
+            reward -= c.inventory_penalty * self.inventory.astype(float) ** 2
 
         # ---- public belief update and bookkeeping
         mu_prev = self.mu
         if c.redraw_v_each_period:
-            self.V = float(self.rng.choice([c.v_low, c.v_high]))
+            self.V = c.v_high if self.rng.random() < 0.5 else c.v_low
             self.mu = 0.5
         else:
             self.mu = self.posterior(self.mu, best_ask, best_bid, mid, event)
-        self.last_half_spreads = h.copy()
+        self.last_half_spreads = np.array(h, dtype=np.int64)
         self.t += 1
         done = self.t >= c.horizon
         info = {

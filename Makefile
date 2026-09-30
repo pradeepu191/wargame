@@ -1,4 +1,5 @@
 .PHONY: install test smoke replicate refs clean
+JOBS ?= 4
 install:
 	pip install -e ".[dev]"
 	nbstripout --install
@@ -11,6 +12,6 @@ refs:            ## known-competitive and known-collusive references (for calibr
 	python -m sim.runner experiments/configs/grim_reference.yaml
 replicate:       ## Colliard-Foucault-Lovo baseline: alpha x N grid, 10 seeds (long)
 	python experiments/sweep.py experiments/configs/replicate_cfl_2mm.yaml \
-	    --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9
+	    --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9 --jobs $(JOBS)
 clean:
 	rm -rf results/*_seed* results/_configs

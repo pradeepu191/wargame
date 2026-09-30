@@ -5,7 +5,8 @@ Every run writes to results/<run_name>/:
     meta.json         git hash, timestamp, python/numpy versions
     episodes.csv      one row per episode (spread, profit, Delta, ...)
     tape_*.csv        per-period tape for the last `n_tape_episodes` episodes
-    impulse.csv       impulse-response test (if enabled)
+    Q_agent*.npy      learned Q-tables (for re-running tests without retraining)
+    impulse.csv       paired impulse-response test (if enabled)
 """
 from __future__ import annotations
 
@@ -133,6 +134,9 @@ def run(config_path: str, results_root: str = "results") -> Path:
                   f"profit={recent.mean_profit_per_mm.mean():.3f}  "
                   f"delta={recent.delta.mean():.3f}  ({time.time()-t0:.0f}s)")
     pd.DataFrame(rows).to_csv(out / "episodes.csv", index=False)
+    for i, ag in enumerate(agents):                       # save learned policies for re-analysis
+        if hasattr(ag, "Q"):
+            np.save(out / f"Q_agent{i}.npy", ag.Q)
 
     if cfg.get("impulse", {}).get("enabled", False):
         ir = impulse_response(env, agents, **{k: v for k, v in cfg["impulse"].items() if k != "enabled"})

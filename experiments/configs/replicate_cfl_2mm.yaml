@@ -1,9 +1,10 @@
-# Replication target: Colliard, Foucault & Lovo. Two Q-learning MMs.
-# Sweep alpha in {0.1, 0.3, 0.5} with experiments/sweep.py.
+# Replication target: Colliard, Foucault & Lovo. N Q-learning MMs, i.i.d. V.
+# Grid: make replicate  (alpha x N x seeds).  2M steps/agent; eps = exp(-4e-6 t) -> 3e-4 at the end.
+# inventory_buckets: 1 because V is i.i.d. and inventory_penalty=0, so inventory carries no information.
 run_name: cfl_2mm
 seed: 0
 n_episodes: 20000
-n_tape_episodes: 5
+n_tape_episodes: 3
 log_every: 1000
 market:
   n_mm: 2
@@ -14,6 +15,6 @@ market:
   horizon: 100
   redraw_v_each_period: true
 agents:
-  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000002}}
-  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000002}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004, inventory_buckets: 1}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004, inventory_buckets: 1}}
 impulse: {enabled: true, n_episodes: 500, t_shock: 50, pre: 5, post: 15}

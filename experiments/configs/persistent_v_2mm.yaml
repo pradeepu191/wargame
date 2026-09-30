@@ -14,6 +14,6 @@ market:
   horizon: 100
   redraw_v_each_period: false
 agents:
-  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000002}}
-  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000002}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004}}
 impulse: {enabled: true, n_episodes: 500, t_shock: 50, pre: 5, post: 15}

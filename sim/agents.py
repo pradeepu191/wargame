@@ -14,6 +14,7 @@ TODO(v1): skew and displayed-size actions; Hedge (no-regret) agent; PPO agent;
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import exp
 
 import numpy as np
 
@@ -87,7 +88,7 @@ class GrimTriggerAgent(Agent):
         if obs["t"] == 0:
             self.reset()
         hC, _, hM, _ = self.table.lookup(obs["mu"])
-        rivals = np.delete(obs["last_half_spreads"], i)
+        rivals = [int(x) for j, x in enumerate(obs["last_half_spreads"]) if j != i]
         if self.punish_left > 0:
             self.punish_left -= 1
             if self.punish_left == 0:
@@ -95,7 +96,7 @@ class GrimTriggerAgent(Agent):
             return int(hC)
         if self.grace > 0:
             self.grace -= 1
-        elif obs["t"] > 0 and len(rivals) and rivals.min() < hM:
+        elif obs["t"] > 0 and rivals and min(rivals) < hM:
             self.punish_left = self.punish_len - 1
             return int(hC)
         return int(hM)
@@ -133,26 +134,33 @@ class QLearningAgent(Agent):
         self.eval = flag
 
     def _state(self, obs, i):
-        own = int(obs["last_half_spreads"][i])
-        rivals = np.delete(obs["last_half_spreads"], i)
-        riv = int(rivals.min()) if len(rivals) else own
-        inv = int(np.sign(obs["inventory"][i])) + 1 if self.n_inv == 3 else 0
+        hs = obs["last_half_spreads"]
+        own = int(hs[i])
+        riv = own
+        for j in range(len(hs)):
+            if j != i and hs[j] < riv:
+                riv = int(hs[j])
+        if self.n_inv == 3:
+            q = obs["inventory"][i]
+            inv = 0 if q < 0 else 2 if q > 0 else 1
+        else:
+            inv = 0
         return own, riv, inv
 
     @property
     def epsilon(self) -> float:
         if self.eval:
             return 0.0
-        return max(self.cfg.eps_min, float(np.exp(-self.cfg.exploration_decay * self.step_count)))
+        return max(self.cfg.eps_min, exp(-self.cfg.exploration_decay * self.step_count))
 
     def act(self, obs, i):
         s = self._state(obs, i)
         self._last_state = (s, i)
         if self.rng.random() < self.epsilon:
             return int(self.rng.integers(1, self.K + 1))
-        q = self.Q[s][1:]
-        best = np.flatnonzero(q == q.max())
-        return int(self.rng.choice(best)) + 1
+        q = self.Q[s]
+        best = np.flatnonzero(q[1:] == q[1:].max())
+        return int(best[0]) + 1 if len(best) == 1 else int(self.rng.choice(best)) + 1
 
     def update(self, obs, action, reward, obs_next, done):
         if self.eval:
