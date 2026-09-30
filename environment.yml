@@ -1,0 +1,6 @@
+# conda env create -f environment.yml && conda activate wargame && pip install -e ".[dev]"
+name: wargame
+channels: [conda-forge]
+dependencies:
+  - python=3.11
+  - pip

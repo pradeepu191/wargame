@@ -14,7 +14,11 @@ Paper draft: `paper/deliverable1.tex`. From-scratch explainer: `paper/companion.
 
 ## Quick start
 
+Use a dedicated environment. Installing into an existing Anaconda `base` upgrades
+numpy/pandas/scipy and breaks packages compiled against NumPy 1.x (numba, numexpr, bottleneck).
+
 ```bash
+conda create -n wargame python=3.11 -y && conda activate wargame   # or: python -m venv .venv
 pip install -e ".[dev]"
 make test          # 9 unit tests, ~6 s
 make smoke         # 50-episode run, writes results/smoke_seed0/
