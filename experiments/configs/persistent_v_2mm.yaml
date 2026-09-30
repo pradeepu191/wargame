@@ -1,0 +1,19 @@
+# Extension: V persists for the episode, so mu_t evolves and price discovery matters.
+# Compare against replicate_cfl_2mm.yaml (i.i.d. V).
+run_name: persistent_v_2mm
+seed: 0
+n_episodes: 20000
+n_tape_episodes: 5
+log_every: 1000
+market:
+  n_mm: 2
+  alpha: 0.3
+  sigma_L: 6.0
+  tick: 1.0
+  max_half_spread: 15
+  horizon: 100
+  redraw_v_each_period: false
+agents:
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000002}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000002}}
+impulse: {enabled: true, n_episodes: 500, t_shock: 50, pre: 5, post: 15}

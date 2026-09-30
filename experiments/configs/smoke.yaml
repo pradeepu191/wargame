@@ -1,0 +1,18 @@
+# 30-second smoke test used by CI. Not a scientific configuration.
+run_name: smoke
+seed: 0
+n_episodes: 50
+n_tape_episodes: 1
+log_every: 25
+market:
+  n_mm: 2
+  alpha: 0.3
+  sigma_L: 6.0
+  tick: 1.0
+  max_half_spread: 15
+  horizon: 100
+  redraw_v_each_period: true
+agents:
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.001}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.001}}
+impulse: {enabled: true, n_episodes: 20, t_shock: 50, pre: 3, post: 8}

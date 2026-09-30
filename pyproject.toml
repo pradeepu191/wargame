@@ -1,0 +1,17 @@
+[project]
+name = "wargame-hyperliquid"
+version = "0.1.0"
+description = "Rent or toxicity? Exploiting and defending learning market makers on Hyperliquid (MIT 6.S974)"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "scipy>=1.11", "pandas>=2.1", "pyyaml>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "nbstripout", "matplotlib", "pyarrow"]
+data = ["duckdb", "polars", "requests"]
+rl = ["torch"]
+
+[tool.setuptools]
+packages = ["sim", "analysis", "experiments"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

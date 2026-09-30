@@ -1,0 +1,87 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[compact,small]{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\setlist{nosep,leftmargin=1.2em}\usepackage{setspace}\setstretch{0.97}
+\titlespacing*{\section}{0pt}{6pt}{2pt}
+\titlespacing*{\subsection}{0pt}{4pt}{1pt}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\todo}[1]{\textcolor{red}{[#1]}}
+
+\title{\vspace{-1.2em}\large\textbf{Rent or Toxicity? Exploiting and Defending Learning Market Makers\\ on a Fully Transparent Exchange (Hyperliquid)}\vspace{-0.4em}}
+\author{\normalsize Deepu \todo{surname} \quad \todo{Teammate 2} \quad \todo{Teammate 3} \\
+\normalsize 6.S974 Wargame Deliverable 1 --- Example 4 (Algorithmic Market with Adaptive Agents)}
+\date{\normalsize October 6, 2026\vspace{-1.5em}}
+
+\begin{document}
+\maketitle
+
+\section*{Motivation}
+Market makers (MMs) post bids and asks and earn the spread from impatient traders, while losing to \emph{informed} traders whose orders predict the next price move (adverse selection). Increasingly, MMs are learning algorithms. Three facts make this a live problem for trading firms rather than only for regulators. (i)~Independent learning MMs drift to spreads above the competitive level without communicating \cite{contxiong,cfl}. (ii)~A spread above the competitive level is \emph{rent} that a sharper entrant can capture by undercutting, but the same wide spread is also the correct response to toxic flow: the observable is identical, the right action is opposite. (iii)~Optiver reports that current LLM traders can name adverse selection yet still trade at negative expected value and fail to model how other participants react \cite{optiver}. The skill a desk actually wants---read the tape, decide whether competitors are soft or the flow is poisonous, and quote accordingly without becoming the exploited party---has no quantitative benchmark.
+
+We build that benchmark on \textbf{Hyperliquid}, an on-chain central limit order book (CLOB) for perpetual futures with billions of USD in daily turnover. Unlike every venue used in prior algorithmic-collusion work, Hyperliquid publishes \emph{everything}: every order, cancel, rejection, and fill is on-chain with the wallet address of both counterparties and each trader's inventory after every trade \cite{albers}. Its matching rules also contain mechanics that no existing model captures and that create both new attack surfaces and natural experiments for market design (Section~\ref{sec:hl}).
+
+\section{Setting and Model}\label{sec:model}
+\textbf{Operational setting.} One perpetual contract on a Hyperliquid-style CLOB. Time is discrete in blocks $t=1,\dots,T$ (Hyperliquid clears deterministically in sub-second blocks with price--time priority, so a discrete-time game is the exact model, not a simplification \cite{hldocs}). An episode is $T=100$ blocks; learning runs across $10^4$--$10^5$ episodes. We write $m_t$ for the mid-price, $\theta_t$ for tick size, and $V$ for the fundamental (the composite index Hyperliquid marks against).
+
+\textbf{Agents.}
+\begin{enumerate}[label=(\alph*)]
+\item \emph{Incumbent MMs} $i\in\{1,\dots,N\}$, $N\in\{2,3,5\}$. Learners (Q-learning, Hedge/no-regret, PPO). Action $a^i_t=(\delta^{b,i}_t,\delta^{a,i}_t,q^i_t)$: bid/ask offsets from $m_t$ on the tick grid, and displayed size. Objective: $\max \E\!\sum_t \gamma^t\big[\pi^i_t-\phi (I^i_t)^2\big]$ where $\pi^i_t$ is trading PnL net of fees and $I^i_t$ inventory. Resource constraints: inventory cap $|I^i_t|\le \bar I$ and a \emph{request budget} $B^i_t$ (Section~\ref{sec:hl}).
+\item \emph{Strategic entrant (the trader).} One MM who observes the public tape and best-responds: infers whether the spread is rent or toxicity and chooses offsets and sizes. This is the protagonist; the same policy class is later evaluated as the ``robust quoter.''
+\item \emph{Takers.} One arrival per block: informed with probability $\alpha$ (trades in the direction of $V-m_t$; on Hyperliquid this is empirically latency arbitrage against Binance/OKX mid-prices), else a liquidity trader with private valuation $m_t+L$, $L\sim G$. $\alpha$ is the \emph{toxicity} dial.
+\item \emph{Predatory taker.} A strategic informed trader who chooses \emph{timing} and \emph{size} to exploit incumbents' learning dynamics (e.g.\ provoke an undercutting war, then trade into it; time trades to a competitor's rate-limit exhaustion).
+\item \emph{Nonstrategic disruption: liquidation flow.} With hazard $\lambda(\sigma_t)$ a forced market order of size $S\sim F$ arrives, routed to the book first and to a backstop vault if the book cannot absorb it \cite{hldocs}. This reproduces the 10 Oct 2025 cascade in which over \$10B was force-closed on Hyperliquid and spreads widened $\sim30\times$ \cite{oct10}.
+\end{enumerate}
+\textbf{State and dynamics.} $s_t=(\mathcal{B}_t, m_t, \mu_t, \{I^i_t,B^i_t\}_i, \sigma_t)$: the visible book $\mathcal{B}_t$ (with wallet IDs in the transparent regime), public belief $\mu_t=\E[V\mid\text{tape}]$ updated by Bayes' rule after each print, inventories, request budgets, and a volatility state driving $\lambda$. Fills follow price--time priority; the taker hits the best quote; ties resolved by queue position. \textbf{Payoffs.} Per fill $\pi^i_t=(p-V)$ when selling, $(V-p)$ when buying, plus maker rebate $r$ (negative fee at high-volume tiers) minus taker fee $f$ for aggressive orders. We report quoted, effective and realized spread (markout at $\Delta\in\{1,10,60\}$ blocks), taker welfare, price-discovery error $|\mu_t-V|$, MM PnL mean/variance/tail, and an \emph{exploitability} number (bps per unit volume a best-responder extracts). \textbf{Sequence.} MMs quote simultaneously $\to$ taker/liquidation arrives $\to$ match $\to$ print, belief update, budgets decrement $\to$ learners update $\to$ episode end: $V$ revealed, PnL settled. \textbf{Benchmarks (exact).} Competitive Glosten--Milgrom quotes on the grid (ask $=\lceil \E[V\mid \text{buy},s_t]\rceil_\theta$); joint-monopoly quotes; collusion index $\Delta=(\bar\pi-\pi^C)/(\pi^M-\pi^C)$ \cite{calvano}. \textbf{Main simplifying assumptions.} One asset, unit taker size, risk-neutral MMs, exogenous taker mix, no cross-venue hedging, liquidation size distribution calibrated from data rather than endogenous.
+
+\subsection*{Why Hyperliquid, and what is underexplored}\label{sec:hl}
+Prior collusion/RL market-making papers use stylized dealer games or anonymized equity data. Hyperliquid's mechanics differ in ways that are each unstudied and each changes the game:
+\begin{enumerate}
+\item \textbf{Full identity.} Every order carries a wallet address. Cartea, Chang and Graumans found MMs in an \emph{anonymous} equity book spend volume to signal identity and avoid sniping each other, consistent with a collusive equilibrium \cite{ccg}. On Hyperliquid identity is free. We can measure directly whether MMs avoid each other, target punishment at specific deviators (a prerequisite for collusion with $N\ge3$), and whether an entrant is punished on entry. The counterfactual anonymous venue is a design arm of the simulator.
+\item \textbf{Request budgets as a resource constraint.} Address-based rate limits grant one action per USDC traded (plus a starting buffer); a throttled address gets one request per 10\,s; open orders are capped \cite{hldocs}. Quoting capacity is therefore \emph{earned by filling}. This is a resource constraint absent from every model in the literature and it creates an attack: an adversary who flickers quotes forces competitors to cancel/re-quote, draining their budgets until they cannot update, at which point their stale quotes are pickable. We model $B^i_t$ explicitly.
+\item \textbf{Priced latency.} Cancels are sequenced before executable orders, and a priority fee buys roughly 45\,ms per basis point \cite{hldocs}. The latency arms race of Budish et al.\ \cite{budish} has an explicit price tag here; the sniping game becomes an auction we can model and calibrate.
+\item \textbf{Tick-size discontinuities.} Prices carry at most five significant figures, so the effective tick jumps by $10\times$ when a price crosses a power of ten \cite{hldocs}. Cartea, Chang and Penalva show tick size governs learned collusion \cite{ccp}; Hyperliquid gives us a natural experiment across dozens of assets and crossings.
+\item \textbf{A public nonstrategic MM.} The protocol vault (HLP) market-makes, absorbs liquidations, and has fully visible positions on-chain. Its policy is a public, slow-moving object other agents can model. We treat it as the ``fixed policy'' agent the rubric requires and ask how much learners extract from it.
+\item \textbf{Data.} An open Level-4 dataset (Oxford) covers every order lifecycle for BTC/ETH/SOL in Dec 2025 and all trades Oct 2025--Jan 2026, spanning the 10 Oct cascade \cite{albers}. This lets us calibrate $\alpha$, $G$, $F$, $\lambda$, and validate simulated reaction functions against real MM wallets.
+\end{enumerate}
+
+\section{Relevant Literature}
+\begin{itemize}
+\item \textbf{Colliard, Foucault \& Lovo} \cite{cfl} (RFS, forthcoming): Q-learning MMs in Glosten--Milgrom charge markups that fall with $N$ and, counterintuitively, fall as adverse selection rises. \emph{We take} their environment and exact benchmarks as our baseline and replication target. \emph{We differ} by adding a strategic entrant, priced latency, request budgets, liquidation flow, and by asking what a competitor (not a regulator) can infer and extract.
+\item \textbf{Cont \& Xiong} \cite{contxiong} (Math.\ Finance 2024): decentralized deep MARL dealers converge to spreads strictly above Nash. \emph{We take} their competitive/Pareto framing and multi-agent actor-critic setup. \emph{We differ} in measuring \emph{exploitability} of the learned collusive policies rather than only their existence, and in grounding everything on a real transparent venue.
+\item \textbf{Deng, Schneider \& Sivan} \cite{dss} (NeurIPS 2019) and \textbf{Cartea, Chang \& Graumans} \cite{ccg}: the first proves no-regret learners can be steered by a strategic opponent in abstract games; the second documents identity signaling among HFT MMs. \emph{We take} the steering attacker and the signaling hypothesis. \emph{We differ} by instantiating both in a market-making game with adverse selection and testing them on identity-revealing data.
+\item \textbf{How decisions are made today.} Hyperliquid's public documentation specifies matching, rate limits, priority fees and liquidation routing \cite{hldocs}; Optiver's blog describes the reasoning MMs expect of traders and where models fall short \cite{optiver}.
+\end{itemize}
+
+\section{Research Questions}
+\textbf{RQ1 (Rent or toxicity from the tape).} Can an entrant, from public data alone, distinguish incumbent rent from adverse-selection cost, and what is that inference worth? \emph{Compare} three entrant policies: competitive-GM quoting (benchmark), markout-based inference (quote to the realized-spread signal), and a learned opponent model. \emph{Measure} entrant PnL, market share, and rounds-to-identification across $\alpha\in\{0.1,0.3,0.5\}$. \emph{Prediction to test}: rent is highest where toxicity is lowest \cite{cfl}, so a spread-width heuristic enters the wrong markets.
+
+\textbf{RQ2 (Exploitability of learned quoters).} How much can a best-responding adversary extract from each class of learning MM, and does collusion make incumbents \emph{more} exploitable? \emph{Compare} incumbents (Q-learning, no-regret, PPO, HLP-style fixed) against attackers: one-tick undercutter, steering MM \cite{dss}, rate-limit drainer, predatory taker, and held-out attackers from best-response iteration (PSRO). \emph{Measure} exploitability in bps/volume, attacker PnL, and incumbent $\Delta$ before/after attack. \emph{Hypothesis}: price-trigger punishment is predictable, so collusive incumbents leak more than competitive ones.
+
+\textbf{RQ3 (Robust quoter and venue design).} Which quoter design choices and which venue rules shift the profit--exploitability frontier? \emph{Compare} quoter levers (update speed, conditioning set, randomized offsets, opponent modeling, inventory limits) and venue levers (tick regime, rate-limit generosity, anonymity, priority-fee schedule, batch interval). \emph{Measure} nominal profit vs. worst-case loss under nominal, strategic, liquidation-cascade, and unseen-attacker conditions. \emph{Benchmark policies}: random quoting, fixed-spread quoting, competitive GM. Empirical companion: reaction functions and PnL decomposition of real MM wallets in \cite{albers}, including behaviour through 10 Oct 2025.
+
+\section{Plan and Feedback}
+\textbf{By Workshop 1.} (i) Tabular-Q incumbents in Glosten--Milgrom replicating \cite{cfl} qualitatively (markups vs.\ $\alpha$, $N$); (ii) exact benchmarks, $\Delta$, and a Calvano-style impulse-response test (force a deviation, check for punishment); (iii) small instance $N=2$, three $\alpha$ values, entrant with markout inference vs.\ competitive benchmark (first RQ1 result); (iv) data pipeline on one week of BTC L4 data: MM wallet identification, calibrated $\alpha$ and arrival rates. \textbf{Module coverage.} \emph{Learning}: incumbents and the entrant's opponent model vs.\ fixed/equilibrium policies. \emph{Attack/defense}: attacker chooses target, timing and type (undercut, steer, drain, predate); defender allocates limited inventory and request budget. \emph{Resilient design}: venue rules and quoter architecture compared under nominal and contested conditions, explicitly trading efficiency (taker welfare, spread) against resilience (tail loss, recovery after cascade). \textbf{Stress testing.} Train at $\alpha$, test at $\alpha'$; misspecified $G$; unseen attackers; cascade replay; $\approx40$ configurations $\times$ 50--100 seeds. \textbf{Publication target.} Preprint by mid-December (arXiv q-fin.TR / cs.GT), with the Hyperliquid empirical section as the differentiator.
+
+\textbf{Feedback requested.} (1) Should incumbents live in a stylized one-taker-per-block Glosten--Milgrom market (exact benchmarks, fast, replicable) or a queue-based LOB (realistic, but competitive benchmark only approximate)? We lean stylized, with request budgets and priced latency added as the two Hyperliquid-specific mechanics. (2) Is the rate-limit-drain attack in scope, given it is legal on the venue but adversarial in spirit? (3) Is a $K$-asset extension (MMs shared across correlated contracts, i.e.\ multimarket contact) needed to meet the 10--100 node guidance, or optional?
+
+\begin{thebibliography}{99}\small
+\bibitem{cfl} J.-E. Colliard, T. Foucault, S. Lovo. Algorithmic Pricing and Liquidity in Securities Markets. \emph{Review of Financial Studies}, forthcoming. SSRN 4252858.
+\bibitem{contxiong} R. Cont, W. Xiong. Dynamics of Market Making Algorithms in Dealer Markets: Learning and Tacit Collusion. \emph{Mathematical Finance} 34(2):467--521, 2024.
+\bibitem{ccg} \'A. Cartea, P. Chang, R. Graumans. Anonymity, Signaling, and Collusion in Limit Order Books. SSRN 5080700, 2025.
+\bibitem{ccp} \'A. Cartea, P. Chang, J. Penalva. Algorithmic Collusion in Electronic Markets: The Impact of Tick Size. SSRN 4105954, 2022.
+\bibitem{dss} Y. Deng, J. Schneider, B. Sivan. Strategizing against No-Regret Learners. \emph{NeurIPS} 2019.
+\bibitem{calvano} E. Calvano, G. Calzolari, V. Denicol\`o, S. Pastorello. Artificial Intelligence, Algorithmic Pricing, and Collusion. \emph{American Economic Review} 110(10):3267--3297, 2020.
+\bibitem{dgj} W. W. Dou, I. Goldstein, Y. Ji. AI-Powered Trading, Algorithmic Collusion, and Price Efficiency. NBER WP 34054, 2025.
+\bibitem{budish} E. Budish, P. Cramton, J. Shim. The High-Frequency Trading Arms Race: Frequent Batch Auctions as a Market Design Response. \emph{QJE} 130(4):1547--1621, 2015.
+\bibitem{albers} J. Albers, M. Cucuringu, S. Howison, A. Y. Shestopaloff. An Open Book: Level 4 Order Book Data from the Hyperliquid Exchange. SSRN 6465720, 2026. Data: \href{https://doi.org/10.5281/zenodo.18184441}{doi:10.5281/zenodo.18184441}.
+\bibitem{hldocs} Hyperliquid Documentation: Order Book; Tick and Lot Size; Rate Limits and User Limits; Priority Fees; Liquidations. \url{https://hyperliquid.gitbook.io/hyperliquid-docs}, accessed Sept.\ 2026.
+\bibitem{optiver} Optiver. Where AI trading models work (and where they still fall short). Optiver Technology Blog, 27 Apr.\ 2026.
+\bibitem{oct10} Amberdata. How \$3.21B Vanished in 60 Seconds: October 2025 Crypto Crash Explained Through 7 Charts, 2025; Coinglass venue liquidation totals, Oct.\ 2025.
+\end{thebibliography}
+\end{document}

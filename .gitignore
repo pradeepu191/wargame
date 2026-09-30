@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+# data and run outputs are never committed
+data/raw/
+data/processed/
+results/*_seed*/
+results/_configs/
+# LaTeX
+paper/*.aux paper/*.log paper/*.out paper/*.toc paper/*.fls paper/*.fdb_latexmk paper/*.synctex.gz
+# secrets: this repo must never hold exchange keys
+*.env
+*.key
+secrets*
+.ipynb_checkpoints/

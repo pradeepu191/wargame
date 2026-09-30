@@ -1,0 +1,12 @@
+# Known-collusive reference: two hand-coded grim-trigger MMs.
+# The impulse response here shows what genuine punishment looks like.
+run_name: grim_ref
+seed: 0
+n_episodes: 200
+n_tape_episodes: 2
+log_every: 100
+market: {n_mm: 2, alpha: 0.3, sigma_L: 6.0, tick: 1.0, max_half_spread: 15, horizon: 100, redraw_v_each_period: true}
+agents:
+  - {type: grim, punish_len: 5}
+  - {type: grim, punish_len: 5}
+impulse: {enabled: true, n_episodes: 100, t_shock: 50, pre: 5, post: 15}
