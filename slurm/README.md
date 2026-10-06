@@ -42,6 +42,12 @@ sbatch slurm/entry_relearn.sh markout      # one array task per (alpha, seed)
 python slurm/merge_relearn.py              # -> results/cfl_exp2_entry_relearn_markout.csv
 ```
 
+## Identity experiment (RQ1: value of wallet identity), 10 seeds
+```bash
+sbatch slurm/identity.sh                   # -> results/cfl_exp2_identity_10seed.csv (~1 h on 12 cores)
+python analysis/identity_fig.py            # figures (point --run / file name as needed)
+```
+
 ## Watching
 ```bash
 squeue -u $USER                  # queue state

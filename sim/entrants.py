@@ -36,7 +36,7 @@ import numpy as np
 
 from .agents import Agent
 from .benchmarks import BenchmarkTable, competitive_and_monopoly
-from .env import GlostenMilgromEnv, MarketConfig
+from .env import GlostenMilgromEnv, MarketConfig, _norm_sf
 
 
 class CompetitiveEntrant(Agent):
@@ -115,3 +115,173 @@ def hC_function(base_cfg: MarketConfig):
     def f(alpha):
         return int(table[int(round(min(max(alpha, 0.0), 1.0) * 100))])
     return f
+
+
+# ---------------------------------------------------------------- identity treatment (RQ1)
+class WalletEntrant(Agent):
+    """Rent-or-toxicity inference from the PUBLIC post-commitment tape, under three nested
+    information sets.  Requires the heterogeneous-taker environment (MarketConfig.n_wallets > 0);
+    every print is public one period later as (event, price, wallet id, ex-post mark V).
+
+        anon    sees prints and marks but no wallet ids: it estimates the population toxicity
+                from every period (print or not) and can use the LAST print as a one-observation
+                signal about whoever is active (flow autocorrelation), but cannot link a wallet's
+                returns.
+        id      additionally keys prints by wallet id, so each wallet's type is learned from its
+                whole history (the Zhai signal).
+        oracle  knows every wallet's type (upper bound).
+
+    Estimation is exact Bayes on a 101-point grid over alpha (no plug-in bias).  Let
+        e = exp(-x/m)   P(informed arrival trades at half-spread x)
+        u = 2 Phibar(x/sigma)   P(uninformed arrival trades)
+    Population toxicity abar, from every period (the best quote x is public even without a print):
+        no print            : P = (1-a)(1-u) + a(1-e)
+        print, maker PnL > 0: P = (1-a) u (1 - e/2)         (informed fills always lose)
+        print, maker PnL <= 0: P = a e + (1-a) u e/2        (an uninformed fill loses w.p. e/2)
+    Wallet type alpha_j, from wallet j's prints only (its non-arrivals are not attributable),
+    conditional on the print:  q = a e / (a e + (1-a) u),  P(PnL>0) = (1-q)(1-e/2),
+    P(PnL<=0) = q + (1-q) e/2.  Prior Beta(kappa abar_hat, kappa (1-abar_hat)).
+    anon uses the same wallet posterior with exactly one print (the last one).
+    Forecast of the next arrival, k periods after the last print by wallet j:
+        alpha_next = rho^k alpha_j_hat + (1 - rho^k) abar_hat
+    (rho, kappa, m, sigma are treated as known market structure; the types are not.)
+
+    Quote rule, with (h^C, h^M) evaluated at alpha_next and best = best incumbent quote:
+        if best - h^C >= margin:  h = min(best - 1, h^M)     undercut, never past that type's monopoly quote
+        else:                     h = h^C                     do not pay to take this flow
+    Against a toxic active wallet h^C is wide, so the entrant withdraws; against a benign one it
+    undercuts.  Identity's value is fill SELECTION against identity-blind incumbents, which is why
+    identity_monopoly_profit (a sole quoter) barely moves while an entrant's profit can.
+    """
+
+    GRID = np.linspace(0.005, 0.995, 100)
+
+    def __init__(self, cfg: MarketConfig, info_set: str = "id", wallet_alpha=None, alpha_eff=None,
+                 alpha_prior: float = 0.3, prior_strength: float = 20.0, margin: int = 2,
+                 h_min: int = 1):
+        if info_set not in ("anon", "id", "oracle"):
+            raise ValueError(info_set)
+        if cfg.n_wallets <= 0:
+            raise ValueError("WalletEntrant needs MarketConfig.n_wallets > 0")
+        if info_set == "oracle" and wallet_alpha is None:
+            raise ValueError("oracle needs the wallet type vector")
+        from .benchmarks import type_benchmarks
+        self.cfg = cfg
+        self.info_set = info_set
+        self.wallet_alpha = None if wallet_alpha is None else np.asarray(wallet_alpha, dtype=float)
+        self.alpha_eff = alpha_eff
+        self.m, self.sigma, self.tick, self.K = cfg.edge_mean, cfg.sigma_L, cfg.tick, cfg.max_half_spread
+        self.rho, self.kappa = cfg.wallet_persistence, cfg.wallet_concentration
+        self.alpha_prior, self.n0, self.margin, self.h_min = alpha_prior, prior_strength, margin, h_min
+        A = self.GRID
+        self._log_prior_pop = (self.n0 * alpha_prior) * np.log(A) + (self.n0 * (1 - alpha_prior)) * np.log(1 - A)
+        # per-half-spread likelihood pieces, cached by x (ticks)
+        self._e = {h: float(np.exp(-h * self.tick / self.m)) for h in range(1, self.K + 1)}
+        self._u = {h: float(2 * _norm_sf(h * self.tick / self.sigma)) for h in range(1, self.K + 1)}
+        self._hC = np.empty(101, dtype=int); self._hM = np.empty(101, dtype=int)
+        for g, a in enumerate(np.linspace(0.0, 1.0, 101)):
+            hC, _, hM, _ = type_benchmarks(cfg, float(a))
+            self._hC[g], self._hM[g] = hC, hM
+        self.reset_memory()
+
+    def reset_memory(self):
+        self._ll_pop = np.zeros_like(self.GRID)
+        self._ll_w: dict[int, np.ndarray] = {}
+        self.n_w: dict[int, int] = {}
+        self._ll_last = None
+        self.last_wallet = -1; self.k_since = 0
+        self.last_decision = None; self.last_alpha_next = None
+        self.n_prints_seen = 0
+        self._abar_cache = None
+
+    def reset(self):
+        pass                                 # memory persists across episodes
+
+    # -- estimator -------------------------------------------------------------------------
+    @staticmethod
+    def _post_mean(logp: np.ndarray, A: np.ndarray) -> float:
+        w = np.exp(logp - logp.max())
+        return float((w * A).sum() / w.sum())
+
+    @property
+    def abar_hat(self) -> float:
+        if self.info_set == "oracle":
+            return float(self.alpha_eff if self.alpha_eff is not None else self.wallet_alpha.mean())
+        if self._abar_cache is None:
+            self._abar_cache = self._post_mean(self._log_prior_pop + self._ll_pop, self.GRID)
+        return self._abar_cache
+
+    def _print_loglik(self, h: int, pnl: float) -> np.ndarray:
+        """log P(PnL sign | print at h ticks, alpha) over the grid (print-conditional)."""
+        A, e, u = self.GRID, self._e[h], self._u[h]
+        q = A * e / (A * e + (1 - A) * u)
+        return np.log((1 - q) * (1 - e / 2)) if pnl > 0 else np.log(q + (1 - q) * e / 2)
+
+    def _period_loglik(self, h: int, ev: str, pnl: float) -> np.ndarray:
+        """log P(period outcome | alpha): arrival-level, uses no-print periods too."""
+        A, e, u = self.GRID, self._e[h], self._u[h]
+        if ev == "none":
+            return np.log((1 - A) * (1 - u) + A * (1 - e))
+        if pnl > 0:
+            return np.log((1 - A) * u * (1 - e / 2))
+        return np.log(A * e + (1 - A) * u * e / 2)
+
+    def _wallet_logprior(self) -> np.ndarray:
+        a = self.abar_hat
+        return (self.kappa * a) * np.log(self.GRID) + (self.kappa * (1 - a)) * np.log(1 - self.GRID)
+
+    def wallet_alpha_hat(self, j: int) -> float:
+        if self.info_set == "oracle":
+            return float(self.wallet_alpha[j])
+        if self.info_set == "anon":
+            ll = self._ll_last if self._ll_last is not None else 0.0
+        else:
+            ll = self._ll_w.get(j, 0.0)
+        return self._post_mean(self._wallet_logprior() + ll, self.GRID)
+
+    def _ingest(self, obs):
+        ev = obs.get("last_event", "none")
+        hs = obs["last_half_spreads"]
+        h = min(int(v) for v in hs)                                # the print (if any) was at the best quote
+        if h < 1 or h > self.K:                                    # first observation of an episode: no period yet
+            return
+        if ev == "none":
+            if self.info_set != "oracle":
+                self._ll_pop += self._period_loglik(h, ev, 0.0); self._abar_cache = None
+            if self.last_wallet >= 0:
+                self.k_since += 1
+            return
+        p, V = float(obs["last_price"]), float(obs["last_V"])
+        pnl = (p - V) if ev == "buy" else (V - p)                  # maker's one-period markout
+        j = int(obs["last_taker"])
+        self.n_prints_seen += 1
+        if self.info_set != "oracle":
+            self._ll_pop += self._period_loglik(h, ev, pnl); self._abar_cache = None
+            ll = self._print_loglik(h, pnl)
+            self._ll_last = ll
+            if self.info_set == "id":
+                self._ll_w[j] = self._ll_w.get(j, 0.0) + ll
+        self.n_w[j] = self.n_w.get(j, 0) + 1
+        self.last_wallet, self.k_since = j, 1
+
+    def alpha_next(self) -> float:
+        a = self.abar_hat
+        if self.last_wallet < 0 or self.rho <= 0:
+            return a
+        w = self.rho ** self.k_since
+        return w * self.wallet_alpha_hat(self.last_wallet) + (1 - w) * a
+
+    # -- policy ----------------------------------------------------------------------------
+    def act(self, obs, i):
+        self._ingest(obs)
+        a_next = self.alpha_next()
+        self.last_alpha_next = a_next
+        g = int(round(min(max(a_next, 0.0), 1.0) * 100))
+        hC, hM = int(self._hC[g]), int(self._hM[g])
+        hs = obs["last_half_spreads"]
+        best = min(int(hs[j]) for j in range(len(hs)) if j != i)
+        if best - hC >= self.margin:
+            self.last_decision = "undercut"
+            return max(self.h_min, min(best - 1, hM))
+        self.last_decision = "withdraw" if hC > best else "competitive"
+        return min(self.K, hC)

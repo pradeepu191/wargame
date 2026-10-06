@@ -64,3 +64,18 @@ def test_leader_switch_detects_turn_taking():
     # 50-trade blocks at ~200ms spacing = ~10s per turn; a 10s window should switch often
     ls = leader_switch(tape, {"mmA", "mmB"}, window_ms=10_000)
     assert 0.3 < ls < 1.0
+
+
+def test_arrival_persistence_and_baseline():
+    from analysis.wallets import activity_herfindahl, arrival_persistence
+    tape = synthetic_tape()
+    rho = arrival_persistence(tape)
+    base = activity_herfindahl(tape)
+    assert 0 <= rho <= 1 and 0 <= base <= 1
+    # informed taker is 20% of flow, 20 noise takers share the rest: random matching baseline
+    # ~ 0.2^2 + 20 * (0.8/20 * 0.9)^2 ~ 0.07; the synthetic tape has no burstiness, so rho ~ base
+    assert abs(rho - base) < 0.03
+    # a bursty tape: repeat every taker 5 times in a row
+    bursty = tape.loc[np.repeat(tape.index, 5)].reset_index(drop=True)
+    bursty["time_ms"] = np.arange(len(bursty)) * 100
+    assert arrival_persistence(bursty) > 0.75

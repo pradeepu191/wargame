@@ -117,3 +117,34 @@ def leader_switch(trades: pd.DataFrame, mm_wallets: set, window_ms: int = 1000) 
     leader = leader.sort_values(["win", "n"], ascending=[True, False]).drop_duplicates("win")
     L = leader.maker.to_numpy()
     return float((L[1:] != L[:-1]).mean()) if len(L) > 1 else float("nan")
+
+
+def arrival_persistence(trades: pd.DataFrame, by: str = "taker") -> float:
+    """rho_hat: fraction of consecutive prints (time order) whose taker (or maker) wallet is the
+    same.  This is the simulator's wallet_persistence, the dial on which the value of identity
+    turns (results/REPLICATION_NOTES.md, identity experiment).  Under random matching the
+    baseline is sum_j p_j^2 over wallet activity shares; report both."""
+    t = with_roles(trades)
+    w = t[by].to_numpy()
+    if len(w) < 2:
+        return float("nan")
+    return float((w[1:] == w[:-1]).mean())
+
+
+def activity_herfindahl(trades: pd.DataFrame, by: str = "taker") -> float:
+    """sum_j p_j^2: the repeat rate random matching would produce (the rho = 0 baseline)."""
+    t = with_roles(trades)
+    p = t[by].value_counts(normalize=True).to_numpy()
+    return float((p ** 2).sum())
+
+
+def taker_type_dispersion(trades: pd.DataFrame, horizon_s: int = 10, n_min: int = 50) -> pd.DataFrame:
+    """Per-taker mean markout (bps, from the MAKER's side: negative = the taker was informed) and
+    its cross-sectional dispersion.  The spread of per-wallet markouts, relative to the
+    market-wide mean, is the empirical counterpart of the simulator's type dispersion kappa."""
+    t = with_roles(trades)
+    m_fut = mid_proxy(t, horizon_s * 1000)
+    s = np.where(t.maker_sold, 1.0, -1.0)
+    t["maker_markout"] = -s * (m_fut - t.px) / t.px * 1e4
+    g = t.groupby("taker").agg(n=("maker_markout", "size"), markout=("maker_markout", "mean"))
+    return g[g.n >= n_min].sort_values("markout")

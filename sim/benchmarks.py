@@ -33,10 +33,11 @@ def expected_profit_by_half_spread(env: GlostenMilgromEnv, mu: float) -> np.ndar
     """Pi(h; mu) for h = 1..max_half_spread (market-wide, one period)."""
     from scipy.stats import norm
     c = env.cfg
+    alpha = getattr(env, "alpha_eff", c.alpha)      # activity-weighted mean type under heterogeneous takers
     hs = np.arange(1, c.max_half_spread + 1)
     if c.edge_dist == "exponential":
         x = hs * c.tick
-        return (1 - c.alpha) * 2 * x * norm.sf(x / c.sigma_L) - c.alpha * c.edge_mean * np.exp(-x / c.edge_mean)
+        return (1 - alpha) * 2 * x * norm.sf(x / c.sigma_L) - alpha * c.edge_mean * np.exp(-x / c.edge_mean)
     mid = mu * c.v_high + (1 - mu) * c.v_low
     out = np.empty(len(hs))
     for k, h in enumerate(hs):
@@ -82,3 +83,39 @@ class BenchmarkTable:
 def collusion_index(mean_profit_per_mm: float, piC: float, piM: float) -> float:
     denom = piM - piC
     return float("nan") if denom <= 1e-12 else (mean_profit_per_mm - piC) / denom
+
+
+# ---------------------------------------------------------------- heterogeneous takers
+def profit_curve(cfg: MarketConfig, alpha: float) -> np.ndarray:
+    """Market-wide one-period expected profit Pi(h; alpha) for h = 1..K, closed form
+    (exponential edge only).  Linear in alpha, so the curve for a mixture of types is the
+    mixture of curves."""
+    if cfg.edge_dist != "exponential":
+        raise ValueError("profit_curve is closed-form for edge_dist='exponential' only")
+    from scipy.stats import norm
+    x = np.arange(1, cfg.max_half_spread + 1) * cfg.tick
+    return (1 - alpha) * 2 * x * norm.sf(x / cfg.sigma_L) - alpha * cfg.edge_mean * np.exp(-x / cfg.edge_mean)
+
+
+def type_benchmarks(cfg: MarketConfig, alpha: float):
+    """(h^C, Pi^C, h^M, Pi^M) -- market-wide, against a taker of type alpha."""
+    Pi = profit_curve(cfg, alpha)
+    nonneg = np.flatnonzero(Pi >= -1e-9)
+    hC = int(nonneg[0] + 1) if len(nonneg) else cfg.max_half_spread
+    hM = int(np.argmax(Pi) + 1)
+    return hC, float(Pi[hC - 1]), hM, float(Pi[hM - 1])
+
+
+def identity_monopoly_profit(env: GlostenMilgromEnv, rho: float | None = None) -> float:
+    """Upper bound for an identity-aware sole quoter: it knows every wallet's type and the
+    persistence rho, forecasts the next arrival's type as rho*alpha_j + (1-rho)*alpha_eff when
+    wallet j printed last period, and posts that type's monopoly quote.  Market-wide, per
+    period, ignoring the (1-rho)-weighted periods after a no-trade (treated at alpha_eff).
+    Equals Pi^M when rho = 0 or when types are homogeneous."""
+    c = env.cfg
+    if env.wallet_alpha is None:
+        return type_benchmarks(c, c.alpha)[3]
+    rho = c.wallet_persistence if rho is None else rho
+    a_next = rho * env.wallet_alpha + (1 - rho) * env.alpha_eff
+    best = np.array([type_benchmarks(c, float(a))[3] for a in a_next])
+    return float(env.wallet_weights @ best)
