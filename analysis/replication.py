@@ -45,7 +45,7 @@ def load_runs(results: Path, run: str, tail: int):
             "profit": ep.mean_profit_per_mm.mean(),
             "delta": ep.delta.mean(),
             "hC": hC, "hM": hM, "piC": piC, "piM": piM,
-            **tape_dynamics(d),
+            **tape_dynamics(d, hM),
         })
         if (d / "impulse.csv").exists():
             ir = pd.read_csv(d / "impulse.csv")
@@ -54,25 +54,36 @@ def load_runs(results: Path, run: str, tail: int):
     return pd.DataFrame(rows), (pd.concat(impulses) if impulses else pd.DataFrame())
 
 
-def tape_dynamics(d: Path) -> dict:
-    """Is the converged greedy joint policy a fixed point or a cycle?  From the saved tapes:
-    change_rate = fraction of periods where at least one MM changed its quote;
-    h_range     = max - min half-spread over the tape (0 for a fixed point)."""
+def tape_dynamics(d: Path, hM: int) -> dict:
+    """What does the converged greedy joint policy look like?  From the saved tapes:
+    change_rate        fraction of periods where at least one MM changed its quote (1.0 = cycling)
+    best_h_mean/std    the market-relevant quote: min half-spread across MMs
+    near_monopoly      fraction of periods with |best h - h^M| <= 2
+    leader_switch      fraction of periods where the identity of the best quoter changes
+                       (turn-taking / market sharing when high)
+    cliff_share        fixed-edge model only: fraction of periods where the best quote is immune
+                       to informed flow
+    """
     tapes = sorted(d.glob("tape_ep*.csv"))
     if not tapes:
         return {}
     t = pd.concat(pd.read_csv(f) for f in tapes)
     hcols = [c for c in t.columns if re.fullmatch(r"h\d+", c)]
     H = t[hcols].to_numpy()
+    best = H.min(axis=1)
+    leader = H.argmin(axis=1)
     changed = (np.diff(H, axis=0) != 0).any(axis=1)
     cfg = yaml.safe_load((d / "config.yaml").read_text())["market"]
     if cfg.get("edge_dist", "fixed") == "fixed":
         v = (cfg.get("v_high", 110.0) - cfg.get("v_low", 90.0)) / 2
-        cliff_share = float((H.min(axis=1) * cfg["tick"] >= v).mean())   # best quote immune to informed flow
+        cliff_share = float((best * cfg["tick"] >= v).mean())
     else:
-        cliff_share = float("nan")                                        # no immune quote exists
-    return {"change_rate": float(changed.mean()), "h_range": int(H.max() - H.min()),
-            "h_min_mean": float(H.min(axis=1).mean()), "cliff_share": cliff_share}
+        cliff_share = float("nan")
+    return {"change_rate": float(changed.mean()),
+            "best_h_mean": float(best.mean()), "best_h_std": float(best.std()),
+            "near_monopoly": float((np.abs(best - hM) <= 2).mean()),
+            "leader_switch": float((np.diff(leader) != 0).mean()),
+            "cliff_share": cliff_share}
 
 
 def summarize(runs: pd.DataFrame) -> pd.DataFrame:
@@ -82,8 +93,9 @@ def summarize(runs: pd.DataFrame) -> pd.DataFrame:
                 profit_mean=("profit", "mean"), profit_std=("profit", "std"),
                 delta_mean=("delta", "mean"), delta_std=("delta", "std"),
                 hC=("hC", "first"), hM=("hM", "first"), piC=("piC", "first"), piM=("piM", "first"),
-                change_rate=("change_rate", "mean"), h_range=("h_range", "mean"),
-                cliff_share=("cliff_share", "mean"))
+                change_rate=("change_rate", "mean"), best_h_mean=("best_h_mean", "mean"),
+                best_h_std=("best_h_std", "mean"), near_monopoly=("near_monopoly", "mean"),
+                leader_switch=("leader_switch", "mean"), cliff_share=("cliff_share", "mean"))
     out["markup_vs_competitive"] = out.half_spread_mean - out.hC
     return out.reset_index()
 
