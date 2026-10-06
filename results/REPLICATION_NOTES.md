@@ -380,3 +380,78 @@ First window (ε = 0.18), entrant π only: competitive 0.39 / 0.10 / 0.09; under
   Hyperliquid analogue — count the wallets that quote inside the resting spread on a given coin and
   check whether the inside quoter's markout is the least negative (the empirical signature of the
   markout rule).
+
+---
+
+# RQ2 hypothesis test: ∂L_BR/∂C > 0 (`exploitability.csv`, `fig_exploitability.png`)
+
+`experiments/exploitability.py` → `analysis/exploitability.py`. 120 frozen populations: the
+`robust_exp2` grid (α = 0.3; N ∈ {2,3,5} × lr ∈ {0.05, 0.15} × init_q ∈ {0, 2} × 5 seeds) plus
+`cfl_exp2` (α ∈ {0.1, 0.3, 0.5} × N ∈ {2,3} × 10 seeds). Seed-level rent C(π) spans 0.43–0.97
+(cell means 0.70–0.89; the lr = 0.05 cells are the low-C ones). Four attackers, 500 episodes each,
+common random numbers: competitive-GM, one-tick undercut, markout-inference, and **oracle**
+(the markout rule handed the true α — the F^oracle bound for RQ1).
+
+Definitions (market-wide, per period): Π_nominal = frozen incumbents alone; J(π; A) = incumbents'
+profit with attacker A present; L_BR^A = Π_nominal − J; L_BR = max_A L_BR^A (the proposal's
+min_A J); everything divided by Π^M − Π^C. κ = L_BR / (Π_nominal − Π^C) = **fraction of the rent
+lost**.
+
+| slope on C (OLS, bootstrap 95% CI) | pooled | α = 0.3 only | within-cell (seeds) |
+|---|---|---|---|
+| L_BR^norm, max over attackers | 0.99 [0.85, 1.19] | 1.04 [1.00, 1.09] | 1.06 [0.93, 1.27] |
+| L_BR^norm, markout attacker | 0.64 [0.47, 0.87] | 0.89 [0.68, 1.09] | 0.63 [0.48, 0.88] |
+| L_BR^norm, undercut attacker | 0.60 [0.31, 0.95] | 0.91 [0.70, 1.16] | 0.56 [0.21, 1.02] |
+| κ, markout attacker | −0.17 [−0.46, 0.23] | 0.27 [−0.01, 0.54] | −0.24 [−0.49, 0.17] |
+| κ, undercut attacker | −0.37 [−0.97, 0.26] | 0.25 [−0.02, 0.54] | −0.53 [−1.21, 0.29] |
+| κ, max over attackers | −0.32 [−0.59, 0.02] | −0.10 [−0.13, −0.03] | −0.30 [−0.54, 0.05] |
+| entrant profit, markout | 0.27 [0.10, 0.50] | 0.61 [0.37, 0.94] | 0.10 [−0.10, 0.29] |
+| entrant profit, undercut | 0.69 [0.31, 1.00] | 0.72 [0.38, 1.17] | 0.59 [0.03, 0.98] |
+
+Means over populations (α = 0.3): κ = 0.70 markout, 0.71 oracle, 0.72 undercut, **1.11 competitive**;
+entrant profit 0.51 / 0.50 / 0.49 / 0.08 rent units.
+
+## Findings
+* **The literal hypothesis holds, but mostly by construction.** L_BR rises with C for every
+  attacker (slopes 0.6–1.0, every CI excludes 0). With the max-over-attackers definition the slope
+  is 1.0: the maximizer of incumbent loss is the competitive-GM quoter in 119/120 populations, and
+  it leaves the incumbents *below* Π^C (κ = 1.1; J/Π^C = −0.05 — frozen incumbents sometimes
+  respond to a quote at h^C by undercutting it and lose money). So L_BR ≈ Π_nominal − 0, and
+  ∂L_BR/∂C = 1 says only "more rent, more to lose".
+* **The substantive version is not supported.** κ, the fraction of rent a profit-maximizing
+  attacker destroys, is flat in C: ≈ 0.7–0.8 across the whole range for undercut, markout and
+  oracle, with slopes whose CIs include 0 (pooled and within-cell; weakly positive at α = 0.3
+  only). Higher-C populations are *not* more regular/exploitable per unit of rent in this
+  attacker set; they are exploitable in proportion to the rent. The proposal's phrase "the
+  regularity required to sustain rents makes the policy easier to manipulate" is **not** what the
+  data say for one-shot public-information attackers; it may still hold for attackers that target
+  the reaction function itself (steering a la Deng–Schneider–Sivan), which is untested.
+* **Damage and profit are different objectives.** The attacker that hurts the incumbents most
+  (competitive) earns the least (0.08 rent units); the attackers that earn the most (markout /
+  oracle, 0.50) leave the incumbents 30% of their rent. The proposal's L_BR = Π_nominal − min_A J
+  is the damage number; the trader-relevant number is the loss under the attacker's *own* best
+  response, which is the markout rule in 68/120 populations, the oracle in 36, the undercutter
+  in 16.
+* **Oracle ≈ markout.** Knowing the true α adds nothing over estimating it from own fills
+  (0.50 vs 0.51 rent units; the markout rule wins more populations than the oracle). In a
+  stationary market the public tape already carries the full value of the toxicity *level*. For
+  the identity arm F^id to have value, toxicity must be *heterogeneous and persistent across
+  takers* (wallet-level α_j), which is exactly what Zhai measures and what this simulator does
+  not yet model. That is the required next model change, not more entrants.
+* **Entrant profit rises with C** (markout: 0.61 per unit C at α = 0.3; undercut 0.69 pooled):
+  the trader does earn more from more collusive incumbents, even though the fraction destroyed
+  is constant. Within-cell (seed-only variation) the markout slope is ≈ 0: the across-cell
+  effect is partly hyper-parameters (lr = 0.05 cartels are both lower-C and leave the entrant
+  less), so the causal reading is "populations that learned higher rents also leave more for an
+  entrant", not that C alone is the driver.
+
+## What this means for the paper
+* RQ2's hypothesis should be restated. Candidate: "L_BR under a profit-maximizing attacker grows
+  with C, and the fraction of rent destroyed, κ, is roughly constant (≈ 0.7); the attacker captures
+  about two thirds of what it destroys, the rest is passed to takers as tighter quotes." That is
+  a quantitative, falsifiable statement that the data support.
+* Define the attacker set to exclude policies that would not be chosen by a profit-maximizer, or
+  report both L_BR^damage and L_BR^BR explicitly. The competitive quoter is a useful *bound*
+  (what a price war costs the cartel), not an attacker anyone would run.
+* RQ1's nested information: π^anon ≈ π^oracle here, so the simulator must add persistent taker
+  heterogeneity before the F^id arm is meaningful. Priority for the next model revision.
