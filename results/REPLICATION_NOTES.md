@@ -276,7 +276,8 @@ Entrant policies (all see only public quotes and their own fills):
 
 Same trained incumbents, but they resume Q-learning after entry with a fresh exploration schedule
 (ε₀ = 0.3, decay 1e-5 → ε ≈ 0 by episode 8000). 5 seeds × 3 α, 500-episode windows.
-Undercut and competitive passes pending.
+All three entrant policies run (SuperCloud, `slurm/entry_relearn.sh`); the three-way comparison
+is at the end of this file.
 
 | α | window | entrant π | incumbents π | Δ (3-MM market) | best quote |
 |---|---|---|---|---|---|
@@ -318,4 +319,64 @@ Same qualitative story (cartel re-forms, entrant keeps rent), but the markout en
 blind undercutter at every α and every stage, and the gap is widest while the incumbents are still
 exploring: at α = 0.5 in the first window the undercutter earns ≈ 0 (it chases exploring incumbents
 into toxic territory) while the markout entrant earns 0.25. Inference matters most when the
-competitors are unpredictable. Competitive-entrant pass pending.
+competitors are unpredictable.
+
+---
+
+# Three-way comparison under re-learning incumbents (`fig_cfl_exp2_entry_relearn.png`)
+
+`analysis/relearn_fig.py`. 5 seeds × 3 α × 3 policies, 8000 episodes, 500-episode windows.
+Cluster runs reproduce the container's markout and undercut runs bit-for-bit on the shared seeds
+(same `episodes.csv` rows), so the three CSVs are directly comparable.
+
+Last window (ε = 0), mean over 5 seeds. π^C, π^M are per-incumbent benchmarks of the 2-MM
+market (so 2π^C = total competitive profit Π(h^C), which is what a sole quoter at h^C earns).
+
+| α | policy | entrant π | incumbents π (each) | Δ (3-MM market) | best quote | entrant fill share |
+|---|---|---|---|---|---|---|
+| 0.1 | competitive-GM | 0.39 | 0.00 | 0.00 | 2.0 (= h^C) | 1.00 |
+| 0.1 | one-tick undercut | 0.91 | 0.42 | 0.71 | 8.4 | 0.55 |
+| 0.1 | markout-inference | **0.95** | 0.44 | 0.75 | 8.7 | 0.53 |
+| 0.3 | competitive-GM | 0.12 | 0.00 | 0.00 | 4.0 (= h^C) | 1.00 |
+| 0.3 | one-tick undercut | 0.58 | 0.23 | 0.67 | 10.9 | 0.57 |
+| 0.3 | markout-inference | **0.67** | 0.23 | 0.74 | 11.2 | 0.56 |
+| 0.5 | competitive-GM | 0.11 | 0.00 | 0.00 | 8.0 (= h^C) | 1.00 |
+| 0.5 | one-tick undercut | 0.30 | 0.06 | 0.47 | 14.1 | 0.63 |
+| 0.5 | markout-inference | **0.39** | 0.07 | 0.62 | 14.8 | 0.61 |
+| | π^C / π^M per incumbent | 0.20/1.15 · 0.06/0.75 · 0.06/0.38 | | | | |
+
+First window (ε = 0.18), entrant π only: competitive 0.39 / 0.10 / 0.09; undercut 0.75 / 0.45 /
+**0.03**; markout 0.87 / 0.56 / **0.25**.
+
+## Findings
+* **Three distinct outcomes, one per policy.** The competitive entrant *collapses* the cartel:
+  Δ → 0 exactly, the best quote sits at h^C, the entrant wins every fill and earns Π(h^C) = 2π^C
+  (0.39 / 0.12 / 0.11), and the re-learning incumbents converge to zero profit (they learn that
+  every quote at or inside h^C loses money and quote wide, where they are never hit). The undercut
+  and markout entrants both let the cartel *re-form around them* (Δ 0.47–0.75) and take the largest
+  share of it.
+* **Collapsing the cartel is the worst thing an entrant can do to itself.** Quoting at h^C leaves
+  59% (α = 0.1), 82% (α = 0.3) and 72% (α = 0.5) of the markout entrant's profit on the table. The
+  rent exists only while someone else is quoting wide; the entrant's job is to stay one tick inside
+  the convention, not to end it. This is the "value of the rent to the entrant" number RQ1 asks for.
+* **Inference beats blind undercutting at every α and every stage**, by 4% (α = 0.1) to 30%
+  (α = 0.5) in the final window, and by far more while the incumbents are still exploring
+  (α = 0.5 first window: 0.25 vs 0.03). The gap grows with toxicity because the undercutter follows
+  exploring incumbents into loss-making quotes; the markout rule stops at its estimated h^C(α̂).
+* **The competitive entrant is the only one that makes the incumbents lose money**, and only
+  while they explore (incumbents' π = −0.065 at α = 0.5 in the first window; Δ = −0.23). If the
+  objective were to damage incumbents rather than to earn, h^C is the tool; for a profit-maximizer
+  it is the wrong one.
+* The incumbents end up roughly indifferent between the undercut and markout entrants
+  (0.42 vs 0.44 at α = 0.1); the entrant's inference pays the entrant, not the cartel.
+
+## What this means for the paper
+* The RQ1/RQ2 deliverable now has the full 3 × 3 table: three readings of the same public
+  information (ignore it; mimic the best quote; infer toxicity from it) × three toxicity regimes,
+  against incumbents that are allowed to respond. Exploitability is persistent across all of them.
+* The ordering competitive < undercut < markout is the paper's central empirical claim and should be
+  stated as a loss ranking: L_BR(competitive) ≫ L_BR(undercut) > L_BR(markout).
+* Next: a *second* markout entrant (does the first entrant's rent survive a cascade?), and the
+  Hyperliquid analogue — count the wallets that quote inside the resting spread on a given coin and
+  check whether the inside quoter's markout is the least negative (the empirical signature of the
+  markout rule).
