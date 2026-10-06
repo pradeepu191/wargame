@@ -108,3 +108,49 @@ showed half the tape-visited (own, rival) states had never been updated. Fixed i
 corrected replication is `cfl_exp2_*` / `robust_exp2_*` below. A quick A/B (4k episodes, 3 seeds,
 α = 0.3, N = 2) gave Δ ≈ 0.71 with the fix, so the qualitative finding (strong learned
 collusion under the continuous edge) survives; magnitudes and cycle structure may change.
+
+---
+
+# Corrected replication (`cfl_exp2`): exponential edge, fixed state encoding
+
+Same grid as `cfl_exp` (α ∈ {0.1, 0.3, 0.5} × N ∈ {2, 3} × 10 seeds, 2M steps/agent), with the
+rival-state bug fixed. Files: `cfl_exp2_summary.csv`, `cfl_exp2_runs.csv`, `cfl_exp2_impulse.csv`,
+`cfl_exp2_mechanism.csv`, `fig_cfl_exp2.{png,pdf}`.
+
+| α | N | learned h | h^C | h^M | Δ | best-quote | leader-switch | contested | restraint│contested | forgone r | Q-gap |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.1 | 2 | 10.6 ± 0.1 | 2 | 13 | 0.83 ± 0.01 | 10.9 ± 4.3 | 0.53 | 0.53 | 0.99 | 1.20 | 5.1 |
+| 0.1 | 3 | 10.3 ± 0.1 | 2 | 13 | 0.82 ± 0.01 | 10.7 ± 4.2 | 0.62 | 0.67 | 0.99 | 1.42 | 4.4 |
+| 0.3 | 2 | 14.4 ± 0.2 | 4 | 14 | 0.86 ± 0.01 | 14.9 ± 4.5 | 0.45 | 0.55 | 0.99 | 0.84 | 3.7 |
+| 0.3 | 3 | 14.9 ± 0.2 | 4 | 14 | 0.86 ± 0.01 | 14.9 ± 4.7 | 0.58 | 0.70 | 0.99 | 1.02 | 3.5 |
+| 0.5 | 2 | 17.4 ± 0.3 | 8 | 17 | 0.77 ± 0.02 | 17.5 ± 4.2 | 0.50 | 0.58 | 0.96 | 0.44 | 3.5 |
+| 0.5 | 3 | 17.5 ± 0.1 | 8 | 17 | 0.78 ± 0.02 | 17.3 ± 4.5 | 0.68 | 0.74 | 0.96 | 0.55 | 3.2 |
+
+Mechanism-test columns (`analysis/mechanism.py`): *contested* = visit-weighted share of states where
+the rival is at or below the agent's greedy quote (undercutting is on the table); *restraint│contested*
+= share of those where the greedy action is NOT the myopic best response although the myopic one pays
+more now; *forgone r* = immediate expected reward given up per period in restrained states; *Q-gap* =
+Q(greedy) − Q(myopic).
+
+## Findings
+1. **Learned collusion is strong and the encoding fix did not remove it.** Δ = 0.77–0.86, seed std
+   ≤ 0.02, learned quotes track h^M (10.6 / 14.4 / 17.4 vs 13 / 14 / 17). Below h^M at α = 0.1, at or
+   slightly above it for α ≥ 0.3.
+2. **Δ falls with α** (0.83 → 0.86 → 0.77: flat-then-down). **N = 3 vs 2 still makes no difference.**
+3. **Restraint is encoded in the value function.** In roughly half to three-quarters of visited states
+   the agent could profitably undercut now; in 96–99% of those it does not, giving up 0.4–1.4 per
+   period, and its Q-table ranks the cooperative action 3–5 above the myopic one. This is the
+   reward–punishment structure (Harrington 2018) read directly from the learned values, with no
+   perturbation. It replaces the impulse-response test as our collusion certificate for cycling
+   policies.
+4. **Turn-taking persists.** Best-quoter identity changes in 45–68% of periods; per-quote std ≈ 4.3
+   ticks while the market-relevant best quote tracks h^M. Under the corrected encoding the parked
+   agent sees the rival's actual quote, so the alternation is a learned convention, not a blind spot.
+5. **Impulse response under the fix** (α = 0.3, N = 2): rivals tighten ≈ 5 ticks at t+1 and stay
+   1–2 ticks tighter for ~10 periods before cycle noise takes over. Weak but now visible.
+
+## Open
+* Why no N effect? Candidate: with ε-greedy exploration all agents visit the same joint cycle; the
+  payoff per agent falls with N but the quote does not. Needs N = 5 (robustness grid) and possibly
+  asymmetric learning rates.
+* Robustness to Q-init and learning rate: `robust_exp2` (running).
