@@ -130,6 +130,7 @@ def main():
     ap.add_argument("--window", type=int, default=250)
     ap.add_argument("--eps0", type=float, default=0.3)
     ap.add_argument("--decay", type=float, default=1e-5)
+    ap.add_argument("--out", default=None, help="output CSV path (default results/<run>_entry_relearn_<policy>.csv)")
     args = ap.parse_args()
     results = Path(args.results)
     a_, b_ = map(int, args.seeds.split("-"))
@@ -147,7 +148,9 @@ def main():
         raise SystemExit(f"no trained incumbents found under {results}/{args.run}_alpha*_n_mm{args.n_mm}_seed*/ "
                          f"-- run the replication grid first (experiments/configs/replicate_cfl_exp.yaml)")
     res = pd.concat(out)
-    res.to_csv(results / f"{args.run}_entry_relearn_{args.policy}.csv", index=False)
+    out_path = Path(args.out) if args.out else results / f"{args.run}_entry_relearn_{args.policy}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    res.to_csv(out_path, index=False)
     pd.set_option("display.width", 220)
     # summary: first window vs last window, mean over seeds
     first = res[res.episode == res.episode.min()].groupby("alpha")[["entrant_pnl", "incumbent_pnl", "delta_market", "best_h", "entrant_fill_share"]].mean()

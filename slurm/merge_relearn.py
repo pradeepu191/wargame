@@ -16,9 +16,12 @@ for f in sorted(glob.glob(str(root / "results/relearn_parts/*.csv"))):
     m = re.match(r"(\w+)_a[0-9.]+_s\d+\.csv$", Path(f).name)
     if m:
         parts[m.group(1)].append(f)
+EXPECTED = {(a, s) for a in (0.1, 0.3, 0.5) for s in range(5)}
 for policy, files in parts.items():
     df = pd.concat(pd.read_csv(f) for f in files)
     out = root / f"results/cfl_exp2_entry_relearn_{policy}.csv"
     df.to_csv(out, index=False)
-    n_alpha = df.alpha.nunique(); n_seed = df.seed.nunique()
-    print(f"{policy}: {len(files)} parts -> {out.name}  ({n_alpha} alphas x {n_seed} seeds)")
+    have = {(round(float(a), 2), int(s)) for a, s in df[["alpha", "seed"]].drop_duplicates().itertuples(index=False)}
+    missing = sorted(EXPECTED - have)
+    status = "complete" if not missing else f"MISSING {missing}"
+    print(f"{policy}: {len(files)} parts -> {out.name}  [{status}]")
