@@ -34,6 +34,8 @@ sbatch slurm/sweep.sh experiments/configs/robustness_exp.yaml \
 ```
 
 ## Run the entry experiments (sequential scripts, parallel over seeds via a job array)
+**Prerequisite:** the replication grid (`replicate_cfl_exp.yaml`) must have run on this machine;
+the entry experiments load its trained Q-tables from `results/cfl_exp2_*/`.
 ```bash
 sbatch slurm/entry_relearn.sh markout      # one array task per (alpha, seed)
 # when the array is done:

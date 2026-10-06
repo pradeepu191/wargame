@@ -17,6 +17,12 @@ source .venv/bin/activate
 export TMPDIR="$PWD/.tmp"; mkdir -p "$TMPDIR"
 export OMP_NUM_THREADS=1
 POLICY="${1:-markout}"
+# Prerequisite: trained incumbents from the replication grid.
+if ! ls results/cfl_exp2_alpha*_n_mm2_seed0/Q_agent0.npy >/dev/null 2>&1; then
+    echo "ERROR: no trained incumbents in results/cfl_exp2_*. Run first:"
+    echo "  sbatch slurm/sweep.sh experiments/configs/replicate_cfl_exp.yaml --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9"
+    exit 1
+fi
 ALPHAS=(0.1 0.3 0.5)
 A=${ALPHAS[$((SLURM_ARRAY_TASK_ID / 5))]}
 S=$((SLURM_ARRAY_TASK_ID % 5))
