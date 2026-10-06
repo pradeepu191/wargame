@@ -302,3 +302,17 @@ transient that the incumbents learn away. An entrant with the markout rule is ab
 three-way convention on terms it set. Whether a *second* entrant can do the same to the first
 (entry cascades until rent is gone) is the natural next question, and it is the sim analogue of
 "how many market makers does Hyperliquid's book support before rent disappears?"
+
+### Undercut entrant under re-learning incumbents (`cfl_exp2_entry_relearn_undercut`)
+
+| α | window | undercut entrant π | markout entrant π (above) |
+|---|---|---|---|
+| 0.1 | first / last | 0.75 / 0.91 | 0.87 / 0.95 |
+| 0.3 | first / last | 0.45 / 0.58 | 0.56 / 0.67 |
+| 0.5 | first / last | **0.03** / 0.30 | 0.25 / 0.39 |
+
+Same qualitative story (cartel re-forms, entrant keeps rent), but the markout entrant beats the
+blind undercutter at every α and every stage, and the gap is widest while the incumbents are still
+exploring: at α = 0.5 in the first window the undercutter earns ≈ 0 (it chases exploring incumbents
+into toxic territory) while the markout entrant earns 0.25. Inference matters most when the
+competitors are unpredictable. Competitive-entrant pass pending.
