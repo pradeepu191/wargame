@@ -13,6 +13,11 @@ agent gives up immediate profit for continuation value: the learned value functi
 undercutting leads somewhere worse.  That is the reward-punishment structure that defines
 collusion (Harrington 2018), read directly off the Q-table instead of inferred from a perturbation.
 
+Only states where undercutting would pay can show restraint: if the rival quotes above the
+monopoly level the myopic best response IS the monopoly quote and a* = b trivially.  We
+therefore also report `contested_share`, the visit-weighted fraction of states where
+b(s) < a*(s) is even possible (rival at or below a*), and `restraint_given_contested`.
+
 We report, over visited states weighted by visit frequency:
     restraint_share     fraction of visited states where a* != b and r(s,b) > r(s,a*)
     forgone_reward      mean  r(s,b) - r(s,a*)   over restrained states (immediate profit given up)
@@ -86,8 +91,12 @@ def analyse_agent(Q: np.ndarray, r: np.ndarray, states: dict, K: int) -> dict:
     W = df.w.sum()
     rs = df[df.restrained]
     wr = rs.w.sum()
+    contested = df[df.riv <= df.a_star]          # rival at/below my greedy quote: undercutting is on the table
+    wc = contested.w.sum()
     return {
         "n_states": len(df),
+        "contested_share": float(wc / W),
+        "restraint_given_contested": float(contested.restrained.mul(contested.w).sum() / wc) if wc else float("nan"),
         "restraint_share": float(wr / W),
         "forgone_reward": float(((rs.r_b - rs.r_astar) * rs.w).sum() / wr) if wr else 0.0,
         "q_gap": float(((rs.q_astar - rs.q_b) * rs.w).sum() / wr) if wr else 0.0,
@@ -127,6 +136,7 @@ def main():
     pd.set_option("display.width", 200)
     g = out.groupby(["alpha", "n_mm", "extra"]).agg(
         runs=("seed", "nunique"),
+        contested=("contested_share", "mean"), restraint_c=("restraint_given_contested", "mean"),
         restraint_share=("restraint_share", "mean"), restraint_std=("restraint_share", "std"),
         forgone_reward=("forgone_reward", "mean"), q_gap=("q_gap", "mean"),
         undercut_depth=("undercut_depth", "mean"), mean_astar=("mean_astar", "mean"), mean_b=("mean_b", "mean"))
