@@ -116,6 +116,8 @@ class QLearningAgent(Agent):
     """Tabular Q-learning.
 
     State = (own last half-spread, min rival last half-spread, inventory bucket).
+    NOTE: before commit <fix>, riv was min(own, rivals) -- the agent could not see a rival
+    quoting wider than itself.  Results in results/cfl_* were produced with that encoding.
     Action = half-spread in 1..K.
     Exploration: eps-greedy with exponential decay (Calvano et al. 2020).
     """
@@ -136,10 +138,12 @@ class QLearningAgent(Agent):
     def _state(self, obs, i):
         hs = obs["last_half_spreads"]
         own = int(hs[i])
-        riv = own
+        riv = self.K + 1                       # sentinel: no rival (n_mm == 1)
         for j in range(len(hs)):
             if j != i and hs[j] < riv:
                 riv = int(hs[j])
+        if riv > self.K:
+            riv = own
         if self.n_inv == 3:
             q = obs["inventory"][i]
             inv = 0 if q < 0 else 2 if q > 0 else 1

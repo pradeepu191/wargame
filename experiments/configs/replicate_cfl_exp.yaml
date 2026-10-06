@@ -3,7 +3,7 @@
 #   h^C = 2 / 4 / 8,  h^M = 13 / 14 / 17 (ticks of 0.5).  Informed trade w.p. exp(-x/5) at half-spread x.
 # Grid: python experiments/sweep.py experiments/configs/replicate_cfl_exp.yaml \
 #         --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9 --jobs 8
-run_name: cfl_exp
+run_name: cfl_exp2
 seed: 0
 n_episodes: 20000
 n_tape_episodes: 3

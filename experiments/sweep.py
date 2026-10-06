@@ -34,7 +34,9 @@ def parse_val(v):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
-    ap.add_argument("--set", action="append", default=[], help="key=v1,v2,...")
+    ap.add_argument("--set", action="append", default=[], help="key=v1,v2,...  (dotted path into the config)")
+    ap.add_argument("--agent-set", action="append", default=[],
+                    help="param=v1,v2,...  applied to every agent's params (e.g. learning_rate=0.05,0.15)")
     ap.add_argument("--seeds", default="0", help="e.g. 0-9 or 0,3,7")
     ap.add_argument("--out", default="results")
     ap.add_argument("--jobs", type=int, default=1, help="parallel processes")
@@ -44,6 +46,9 @@ def main():
     for s in args.set:
         k, vs = s.split("=")
         grid.append([(k, parse_val(v)) for v in vs.split(",")])
+    for s in args.agent_set:
+        k, vs = s.split("=")
+        grid.append([("agents.*." + k, parse_val(v)) for v in vs.split(",")])
     if "-" in args.seeds:
         a, b = map(int, args.seeds.split("-")); seeds = range(a, b + 1)
     else:
@@ -55,10 +60,16 @@ def main():
             cfg = copy.deepcopy(base)
             tag = "_".join(f"{k.split('.')[-1]}{v}" for k, v in combo)
             for k, v in combo:
+                if k.startswith("agents.*."):
+                    continue
                 set_path(cfg, k, v)
             if "n_mm" in [k.split(".")[-1] for k, _ in combo]:
                 # keep agents list in sync with n_mm: replicate the first agent spec
                 cfg["agents"] = [copy.deepcopy(cfg["agents"][0]) for _ in range(cfg["market"]["n_mm"])]
+            for k, v in combo:                       # agent-param overrides, after the list is sized
+                if k.startswith("agents.*."):
+                    for ag in cfg["agents"]:
+                        ag.setdefault("params", {})[k[len("agents.*."):]] = v
             cfg["seed"] = seed
             cfg["run_name"] = f"{base['run_name']}_{tag}" if tag else base["run_name"]
             p = tmp / f"{cfg['run_name']}_seed{seed}.yaml"

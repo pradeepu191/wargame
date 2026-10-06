@@ -1,0 +1,24 @@
+# Robustness grid for the exponential-edge replication (alpha = 0.3 fixed).
+# Varies: N in {2, 3, 5}; learning_rate in {0.05, 0.15}; init_q in {0.0 (pessimistic), 2.0 (optimistic)}.
+# 12 cells x 5 seeds = 60 runs.  The (N=2, lr=0.15, init_q=0) cell duplicates the main grid as a check.
+#   python experiments/sweep.py experiments/configs/robustness_exp.yaml \
+#       --set market.n_mm=2,3,5 --agent-set learning_rate=0.05,0.15 --agent-set init_q=0.0,2.0 --seeds 0-4 --jobs 8
+run_name: robust_exp2
+seed: 0
+n_episodes: 20000
+n_tape_episodes: 3
+log_every: 2000
+market:
+  n_mm: 2
+  alpha: 0.3
+  sigma_L: 8.0
+  tick: 0.5
+  max_half_spread: 24
+  horizon: 100
+  redraw_v_each_period: true
+  edge_dist: exponential
+  edge_mean: 5.0
+agents:
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004, inventory_buckets: 1, init_q: 0.0}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004, inventory_buckets: 1, init_q: 0.0}}
+impulse: {enabled: false}

@@ -94,3 +94,17 @@ identity of the best quoter changes; near-monopoly = share of periods with |best
   immediate reward but the lower Q, the punishment is encoded in the value function; if Q also
   favours cooperating only because the immediate reward does, there is no punishment.
 * Robustness grid still pending: Q initialization, learning rate, N = 5.
+
+
+---
+
+# NOTE: state-encoding bug in all `cfl_2mm_*` and `cfl_exp_*` results above
+
+`QLearningAgent._state` computed the rival component as `min(own, rivals)` rather than
+`min(rivals)`: the agent could not distinguish a rival quoting *wider* than itself from one
+quoting at the same level. Found by the Q-value mechanism test (`analysis/mechanism.py`), which
+showed half the tape-visited (own, rival) states had never been updated. Fixed in commit
+"Fix rival-state encoding". The tables above are retained as the record of that encoding; the
+corrected replication is `cfl_exp2_*` / `robust_exp2_*` below. A quick A/B (4k episodes, 3 seeds,
+α = 0.3, N = 2) gave Δ ≈ 0.71 with the fix, so the qualitative finding (strong learned
+collusion under the continuous edge) survives; magnitudes and cycle structure may change.
