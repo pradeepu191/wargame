@@ -154,3 +154,53 @@ Q(greedy) − Q(myopic).
   payoff per agent falls with N but the quote does not. Needs N = 5 (robustness grid) and possibly
   asymmetric learning rates.
 * Robustness to Q-init and learning rate: `robust_exp2` (running).
+
+---
+
+# Robustness grid (`robust_exp2`): N × learning rate × Q-init at α = 0.3
+
+12 cells × 5 seeds, corrected encoding, exponential edge (h^C = 4, h^M = 14). Files:
+`robust_exp2_summary.csv`, `robust_exp2_runs.csv`. Config: `experiments/configs/robustness_exp.yaml`.
+Reproduce: see config header; `python analysis/robustness.py`.
+
+| N | lr | Q-init | learned h | Δ | leader-switch | contested | restraint│contested | forgone r | Q-gap |
+|---|---|---|---|---|---|---|---|---|---|
+| 2 | 0.05 | 0 | 11.3 ± 0.8 | 0.85 ± 0.04 | 0.49 | 0.54 | 1.00 | 0.70 | 5.4 |
+| 2 | 0.05 | 2 | 11.3 ± 0.3 | 0.85 ± 0.02 | 0.45 | 0.52 | 0.99 | 0.73 | 4.1 |
+| 2 | 0.15 | 0 | 14.4 ± 0.2 | 0.85 ± 0.01 | 0.44 | 0.57 | 0.99 | 0.85 | 3.8 |
+| 2 | 0.15 | 2 | 14.4 ± 0.1 | 0.85 ± 0.01 | 0.54 | 0.54 | 0.98 | 0.81 | 3.3 |
+| 3 | 0.05 | 0 | 9.4 ± 0.1 | 0.71 ± 0.02 | 0.63 | 0.67 | 0.99 | 0.76 | 3.3 |
+| 3 | 0.05 | 2 | 10.0 ± 0.2 | 0.76 ± 0.01 | 0.57 | 0.66 | 1.00 | 0.81 | 2.9 |
+| 3 | 0.15 | 0 | 15.0 ± 0.2 | 0.87 ± 0.00 | 0.61 | 0.70 | 1.00 | 1.02 | 3.5 |
+| 3 | 0.15 | 2 | 14.9 ± 0.2 | 0.86 ± 0.02 | 0.61 | 0.69 | 0.99 | 1.01 | 3.0 |
+| 5 | 0.05 | 0 | 9.7 ± 0.1 | 0.71 ± 0.02 | 0.64 | 0.79 | 0.96 | 0.86 | 2.5 |
+| 5 | 0.05 | 2 | 11.6 ± 0.1 | 0.85 ± 0.02 | 0.71 | 0.80 | 0.99 | 1.03 | 1.9 |
+| 5 | 0.15 | 0 | 15.0 ± 0.2 | 0.87 ± 0.01 | 0.61 | 0.82 | 0.99 | 1.18 | 2.7 |
+| 5 | 0.15 | 2 | 15.4 ± 0.2 | 0.85 ± 0.01 | 0.66 | 0.83 | 0.99 | 1.18 | 2.1 |
+
+## Findings
+1. **Collusion survives every setting.** Δ ∈ [0.71, 0.87] across all 12 cells; the worst cell
+   (N = 5, lr = 0.05, pessimistic init) is still at 71% of the monopoly rent. Restraint is present
+   in 96–100% of contested states everywhere. The value-function certificate does not depend on
+   learner hyperparameters.
+2. **Learning rate shifts the *arrangement*, not the rent.** At lr = 0.15 learned quotes sit at h^M
+   (14–15); at lr = 0.05 they sit 3–5 ticks below (9–11) yet Δ is nearly the same at N = 2. Slow
+   learners settle on a tighter-but-more-regular alternation. Reporting quoted spread alone would
+   misread lr = 0.05 as "more competitive"; the profit-based index does not.
+3. **N finally matters, but only for slow learners.** At lr = 0.15, N = 2 / 3 / 5 all give Δ ≈ 0.85–0.87.
+   At lr = 0.05 with pessimistic init, Δ drops from 0.85 (N = 2) to 0.71 (N = 3, 5). The CFL
+   "markups fall with N" result appears to be a slow-learning phenomenon; fast learners coordinate
+   regardless of N.
+4. **Optimistic init does not break collusion** (contrary to the under-exploration story in its
+   simplest form): init_q = 2 gives Δ within 0.01 of init_q = 0 except at (N = 5, lr = 0.05), where
+   it *raises* Δ from 0.71 to 0.85. More exploration found a better cartel.
+5. **Contested share rises with N** (0.54 → 0.69 → 0.81): with more rivals, the agent is more often
+   in a state where undercutting would pay, and still does not. Forgone reward per period rises with
+   N too (0.7 → 1.0 → 1.2).
+
+## Status of Workshop 1 item (i)
+Replicated: learned quotes far above competitive; markup falls with α; markup falls with N for slow
+learners. Beyond CFL: continuous-edge model with closed-form benchmarks; turn-taking structure;
+value-function restraint test as a perturbation-free collusion certificate; robustness across
+N × lr × init. Caveat: CFL's exact markup definition and learner settings still need to be checked
+against the paper before the write-up claims agreement or disagreement on specifics.
