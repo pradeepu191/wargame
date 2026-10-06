@@ -143,6 +143,9 @@ def main():
             df["alpha"] = alpha
             out.append(df)
             print(f"alpha={alpha} seed={seed} done", flush=True)
+    if not out:
+        raise SystemExit(f"no trained incumbents found under {results}/{args.run}_alpha*_n_mm{args.n_mm}_seed*/ "
+                         f"-- run the replication grid first (experiments/configs/replicate_cfl_exp.yaml)")
     res = pd.concat(out)
     res.to_csv(results / f"{args.run}_entry_relearn_{args.policy}.csv", index=False)
     pd.set_option("display.width", 220)

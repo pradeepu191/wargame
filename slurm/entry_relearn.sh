@@ -9,7 +9,7 @@
 #SBATCH --output=slurm-%A_%a.out
 # Usage: sbatch slurm/entry_relearn.sh <policy>      (policy = markout | undercut | competitive)
 # Array index -> (alpha, seed): 3 alphas x 5 seeds = 15 tasks.  Each task writes its own CSV;
-# merge afterwards with:  python -c "import pandas as pd,glob; pd.concat(map(pd.read_csv, glob.glob('results/relearn_parts/*.csv'))).to_csv('results/cfl_exp2_entry_relearn_<policy>.csv', index=False)"
+# merge afterwards with:  python slurm/merge_relearn.py
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")/..}"
 module load anaconda/Python-ML-2025a
@@ -17,6 +17,12 @@ source .venv/bin/activate
 export TMPDIR="$PWD/.tmp"; mkdir -p "$TMPDIR"
 export OMP_NUM_THREADS=1
 POLICY="${1:-markout}"
+# Prerequisite: trained incumbents from the replication grid.
+if ! ls results/cfl_exp2_alpha*_n_mm2_seed0/Q_agent0.npy >/dev/null 2>&1; then
+    echo "ERROR: no trained incumbents in results/cfl_exp2_*. Run first:"
+    echo "  sbatch slurm/sweep.sh experiments/configs/replicate_cfl_exp.yaml --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9"
+    exit 1
+fi
 ALPHAS=(0.1 0.3 0.5)
 A=${ALPHAS[$((SLURM_ARRAY_TASK_ID / 5))]}
 S=$((SLURM_ARRAY_TASK_ID % 5))
