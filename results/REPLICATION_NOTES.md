@@ -266,3 +266,39 @@ Entrant policies (all see only public quotes and their own fills):
 * Next: (a) let the incumbents re-learn during entry — does the cartel re-form around the entrant
   or collapse? (b) entrant with a less biased toxicity estimator (markout against a public mark
   rather than own-fill sign); (c) exploitability of the lr = 0.05 cartel, which quotes tighter.
+
+---
+
+# Entry with re-learning incumbents, markout entrant (`cfl_exp2_entry_relearn_markout`)
+
+Same trained incumbents, but they resume Q-learning after entry with a fresh exploration schedule
+(ε₀ = 0.3, decay 1e-5 → ε ≈ 0 by episode 8000). 5 seeds × 3 α, 500-episode windows.
+Undercut and competitive passes pending.
+
+| α | window | entrant π | incumbents π | Δ (3-MM market) | best quote |
+|---|---|---|---|---|---|
+| 0.1 | first (ε=0.18) | 0.87 | 0.39 | 0.65 | 7.3 |
+| 0.1 | last (ε=0) | **0.95** | 0.44 | 0.75 | 8.7 |
+| 0.3 | first | 0.56 | 0.21 | 0.63 | 9.3 |
+| 0.3 | last | **0.67** | 0.23 | 0.74 | 11.2 |
+| 0.5 | first | 0.25 | 0.03 | 0.28 | 11.0 |
+| 0.5 | last | **0.39** | 0.07 | 0.62 | 14.8 |
+| | frozen incumbents (for comparison) | 0.95 / 0.72 / 0.36 | 0.36 / 0.25 / 0.12 | | |
+
+## Finding: the cartel re-forms *around* the entrant, and the entrant keeps its rent
+* As the incumbents' exploration decays, the market-wide Δ **rises** (0.65 → 0.75 at α = 0.1;
+  0.28 → 0.62 at α = 0.5): the 3-MM market re-collusifies. The best quote drifts wider over the run.
+* The entrant's profit at the end is the same as against frozen incumbents (0.95 / 0.67 / 0.39 vs
+  0.95 / 0.72 / 0.36). Re-learning did not squeeze it out; the incumbents learned to live with a
+  rival who undercuts whenever they quote wide, and the new equilibrium has the entrant on the
+  inside of a wider cartel.
+* The incumbents' profit roughly matches the frozen case (0.44 / 0.23 / 0.07 vs 0.36 / 0.25 / 0.12):
+  at α = 0.1 they recovered a little by widening; at α = 0.5 they are close to zero either way.
+* Fill share stays near 50–60%: the entrant does not win every fill, it wins the ones at
+  profitable prices.
+
+Interpretation for RQ2: the exploitability of this learned collusion is **persistent**, not a
+transient that the incumbents learn away. An entrant with the markout rule is absorbed into a
+three-way convention on terms it set. Whether a *second* entrant can do the same to the first
+(entry cascades until rent is gone) is the natural next question, and it is the sim analogue of
+"how many market makers does Hyperliquid's book support before rent disappears?"
