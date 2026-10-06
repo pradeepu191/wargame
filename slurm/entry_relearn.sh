@@ -27,6 +27,8 @@ ALPHAS=(0.1 0.3 0.5)
 A=${ALPHAS[$((SLURM_ARRAY_TASK_ID / 5))]}
 S=$((SLURM_ARRAY_TASK_ID % 5))
 mkdir -p results/relearn_parts
+# Each task writes directly to its own file: tasks of one policy finishing together must not
+# share a path (an earlier version wrote a common file then mv'd it, and lost ~25% of tasks).
 python experiments/entry_relearn.py --policy "$POLICY" --alphas "$A" --seeds "$S-$S" \
-    --n-episodes 8000 --window 500 --eps0 0.3 --decay 0.00001
-mv "results/cfl_exp2_entry_relearn_${POLICY}.csv" "results/relearn_parts/${POLICY}_a${A}_s${S}.csv"
+    --n-episodes 8000 --window 500 --eps0 0.3 --decay 0.00001 \
+    --out "results/relearn_parts/${POLICY}_a${A}_s${S}.csv"

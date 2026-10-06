@@ -337,12 +337,16 @@ A \textbf{perpetual future} (``perp'') is a contract whose price tracks an under
 \subsection{Hyperliquid in plain words}
 Hyperliquid is an exchange for perps that runs its order book \emph{on a blockchain}: every order, every cancel, every fill is a transaction that everyone can see, tagged with the wallet address of the sender. Blocks are produced continuously at sub-second intervals, and inside each block orders are matched deterministically by price--time priority. This gives us six mechanics that are new relative to every model in the literature.
 
-\subsubsection{Mechanic 1: full identity}
-On stock exchanges, orders are anonymous: you see a bid for 500 shares but not who posted it. On Hyperliquid you see the wallet. This matters because \textbf{targeted punishment requires knowing who defected}. With two colluders, anonymity doesn't matter (if I didn't undercut, it must have been you). With three or more, an anonymous book makes it hard to know whom to punish, which is why economists expect collusion to be harder. Cartea, Chang and Graumans found that on an anonymous equity venue, high-frequency market makers \emph{pay} for identity: they post unusually large orders as a recognizable signature so that other MMs can avoid trading against them. On Hyperliquid identity is free, so we can check directly whether MMs avoid each other.
+\subsubsection{Mechanic 1: persistent wallet identity}
+On stock exchanges, orders are anonymous: you see a bid for 500 shares but not who posted it. On Hyperliquid you see the \emph{wallet address}: a persistent pseudonym, not a legal identity (one firm can run several wallets, so say ``wallet identity,'' never ``trader identity''). This matters because \textbf{targeted punishment requires knowing who defected}. With two colluders, anonymity doesn't matter (if I didn't undercut, it must have been you). With three or more, an anonymous book makes it hard to know whom to punish, which is why economists expect collusion to be harder. Cartea, Chang and Graumans found that on an anonymous equity venue, high-frequency market makers \emph{pay} for identity: they post unusually large orders as a recognizable signature so that other MMs can avoid trading against them. On Hyperliquid identity is free, so we can check directly whether MMs avoid each other.
 
 \begin{example}[{: the wallet-pair test}]
 Take all trades in December. Build a matrix whose $(i,j)$ entry is how many times wallet $i$ traded against wallet $j$. If MMs were matching at random, the entry for two MMs would be proportional to their volumes. If it is far \emph{below} that, they are avoiding each other---consistent with the collusive equilibrium in the paper above.
 \end{example}
+
+\begin{warning}
+\textbf{``Public'' means public \emph{after} the block commits.} A market maker cannot see who is about to hit its quote and refuse the trade. What it can do is use each wallet's \emph{past} fills (public after commitment) to predict how toxic that wallet's future orders are likely to be, and shade its quotes accordingly. Zhai (2026) shows on 17 billion Hyperliquid messages that this works: a wallet's toxicity is persistent from one ten-day window to the next (rank correlation 0.52), and adding wallet-history features improves short-horizon return forecasts out of sample. Zhai stops there and says explicitly that turning the forecast into trading profit would need a dynamic market-making model with latency, queue position, fills, fees and inventory---which is what our simulator is.
+\end{warning}
 
 \subsubsection{Mechanic 2: request budgets (rate limits)}\label{sec:ratelimit}
 To stop spam, Hyperliquid limits how many \emph{actions} (order placements, cancels) an address can send. The rule is unusual: an address earns \textbf{one action per USDC of cumulative traded volume}, starting from a buffer of 10{,}000. When the budget is exhausted, the address may send only one action every 10 seconds (cancels get extra headroom so you can always exit). There is also a cap on open orders.
@@ -351,15 +355,15 @@ To stop spam, Hyperliquid limits how many \emph{actions} (order placements, canc
 A new market maker starts with 10{,}000 actions. Each block it updates both its bid and its ask: 2 cancels $+$ 2 new orders $=4$ actions. If a block is $0.1$ s, that is 40 actions per second and the buffer lasts $250$ seconds---about four minutes. To keep quoting at that rate it must \emph{fill} 40 USDC of volume per second. A market maker that quotes aggressively but doesn't get filled runs out of budget and freezes. In the proposal this is the state variable $B^i_t$, and the constraint that quoting must be ``earned by filling'' is unlike anything in prior models.
 \end{example}
 
-\begin{example}[{: the rate-limit drain attack}]
-Suppose MM $A$ follows a rule ``always match the best quote.'' An adversary $Z$ posts a bid one tick better, waits for $A$ to cancel-and-match (2 actions spent by $A$), then cancels its own bid; $A$ cancels-and-reverts (2 more actions). $Z$ spent 2 actions and forced $A$ to spend 4. Repeat. $A$'s budget drains faster than $Z$'s. Once $A$ is throttled, its quotes are stale: it cannot update for 10 seconds at a time. If the fundamental moves in those 10 seconds, $Z$ (or anyone) trades against $A$'s stale quote at a profit. This is a resource-exhaustion attack that is legal on the venue and exists only because of this rate-limit rule. Whether to include it is Feedback question 2.
+\begin{example}[{: induced self-exhaustion}]
+Nobody can spend another wallet's budget; the limit is per user. But a reactive policy spends its \emph{own} budget whenever it chooses to respond. Suppose MM $A$ follows a rule ``always match the best quote.'' An adversary $Z$ posts a bid one tick better; $A$ cancels-and-matches (2 of $A$'s actions). $Z$ cancels; $A$ cancels-and-reverts (2 more). $Z$ spent 2 actions, $A$ spent 4. Repeat, and $A$'s own policy drains $A$'s budget until $A$ is throttled to one request per 10 seconds and its quotes go stale. The attack is a \emph{stimulus}; the damage is done by the victim's reaction rule. That makes it a real attack-and-defence game: the defence is a policy that does not react to every flicker (hysteresis, a minimum quote lifetime, a reserve budget). Identified-trader data show flickering quotes do elicit responses from other participants (Brogaard, Cartea, Chang and Graumans 2026), so the stimulus cannot be assumed harmless either. Whether to include it is Feedback question 2.
 \end{example}
 
 \subsubsection{Mechanic 3: priced latency}
 In traditional markets, being faster than competitors requires expensive hardware, and the race to be fastest (the ``arms race,'' Budish et al.) has no explicit price. On Hyperliquid, two rules make speed a purchasable good:
 \begin{itemize}
 \item within a block, \textbf{all cancels are processed before any order that would execute immediately}, so a market maker who sees danger and cancels always beats a sniper who tries to hit its stale quote in the same block;
-\item a trader can attach a \textbf{priority fee} to an order; empirically each basis point of fee cuts end-to-end latency by roughly 45 ms (up to a cap).
+\item a trader can attach a \textbf{priority fee} to an order. For an \emph{aggressive} order (one that executes immediately) each basis point of fee cuts end-to-end latency by roughly 45 ms, up to 8 bp. For a \emph{resting} order the fee works differently: it buys a better position in the queue within a short window. So for a market maker, whose orders rest, priority is a way to buy queue position, not raw speed.
 \end{itemize}
 This turns the sniping game into an \emph{auction} with a known price schedule, which we can put in the simulator and calibrate.
 
@@ -373,15 +377,15 @@ Hyperliquid prices may have at most \textbf{five significant figures}. So:
 \item at a price of $9{,}999$, the finest legal step is $0.1$ (five significant figures: $9999.9$);
 \item at $10{,}000$, the finest legal step is $1$ (five significant figures: $10000$; $10000.1$ has six).
 \end{itemize}
-The effective tick size $\theta$ jumps by a factor of $10$ the instant the price crosses a power of ten (integers are always legal, which is why BTC above \$100{,}000 has an effective tick of \$1).
+So the effective tick size $\theta$ changes by a factor of $10$ when the price crosses a power of ten. The full venue rule also caps the number of decimal places per asset, and integer prices are always legal (which is why BTC above \$100{,}000 has an effective tick of \$1), so the simulator computes the legal price grid from the rule for each asset and price range rather than assuming a clean $10\times$ jump everywhere.
 
 Why does tick size matter for collusion? In the Bertrand argument, undercutting works because I can shave a little off your price. If the tick is large relative to the competitive spread, ``a little'' is not available: with a tick of $1$ and a competitive spread of $0.6$, the narrowest legal spread is $1$ and every MM sits at it, splitting the flow, with no way to compete. Cartea, Chang and Penalva showed that learning agents collude more at larger ticks. Hyperliquid hands us dozens of coins crossing powers of ten at random times: each crossing is a natural experiment where the tick changes and nothing else does.
 
-\subsubsection{Mechanic 5: HLP, a public non-strategic market maker}
-The protocol itself runs a market-making vault called \textbf{HLP}. Anyone can deposit into it; it quotes across all markets, absorbs liquidations that the book cannot, and its positions are visible on-chain. Its strategy is proprietary but slow-moving and public in effect. In game-theory terms it is a \textbf{fixed policy}: an agent that does not adapt to you. The course scope requires a fixed-policy agent for comparison; HLP is the real-world instance, and ``how much can adaptive agents extract from HLP?'' is a question with a real dollar answer.
+\subsubsection{Mechanic 5: HLP, an inspiration for the fixed-policy benchmark}
+The protocol itself runs a market-making vault called \textbf{HLP}. Anyone can deposit into it; it quotes across all markets, absorbs liquidations that the book cannot, and its positions are visible on-chain. Its strategies are proprietary and undisclosed; the documentation says only that it runs ``multiple market-making strategies.'' We therefore do \emph{not} claim to know HLP's policy. The course scope requires a fixed-policy agent for comparison; ours is a fixed-spread, inventory-skewing quoter \emph{calibrated to what HLP observably does} (its positions and fills are on-chain), and ``how much can adaptive agents extract from an HLP-like quoter?'' is the question.
 
 \subsubsection{Mechanic 6: liquidation cascades and 10 October 2025}
-When a leveraged trader's margin runs out, Hyperliquid sends a forced market order to the book; if the book cannot absorb it, the position is transferred to the backstop vault. On 10 October 2025 a macro announcement triggered the largest liquidation event in crypto history: over \$19B of positions were closed across venues, more than \$10B of them on Hyperliquid; during the worst 40 minutes spreads on major venues were roughly $30\times$ their normal width and book depth fell by around 98\%. This is precisely the ``rare or high-impact scenario'' the course asks for, and because it is on-chain, we can see exactly what every market maker did. In the model, liquidations are the \emph{nonstrategic disruption}: they arrive at a rate $\lambda(\sigma_t)$ that rises with volatility, with sizes drawn from a distribution $F$ calibrated to the October data.
+When a leveraged trader's margin runs out, Hyperliquid sends a forced market order to the book; if the book cannot absorb it, the position is transferred to the backstop vault. On 10 October 2025 a macro announcement triggered the largest liquidation event in crypto history: over \$19B of positions were closed across venues, with CoinGlass attributing about \$10.3B to Hyperliquid. Separate multi-venue microstructure data (Amberdata) report spreads roughly $30\times$ normal and depth down about 98\% during the worst 40 minutes; those two numbers come from different sources and the spread figure is not Hyperliquid-specific, which is why we will compute Hyperliquid's own spread and depth path from the order-level data. This is precisely the ``rare or high-impact scenario'' the course asks for, and because it is on-chain, we can see exactly what every market maker did. In the model, liquidations are the \emph{nonstrategic disruption}: they arrive at a rate $\lambda(\sigma_t)$ that rises with volatility, with sizes drawn from a distribution $F$ calibrated to the October data.
 
 \subsubsection{The dataset}
 An Oxford group ran a Hyperliquid node and published what they call Level-4 data: for BTC, ETH and SOL in December 2025, every order's full lifecycle (placed, modified, cancelled, rejected, filled) with wallet IDs, counterparties on both sides of every trade, and each wallet's inventory after each trade; plus all trades on 250+ contracts from October 2025 through January 2026, spanning the cascade. Conventional academic datasets (e.g.\ LOBSTER for NASDAQ) have none of the identity or rejection information. This is the empirical backbone of the project.
@@ -393,7 +397,7 @@ An Oxford group ran a Hyperliquid node and published what they call Level-4 data
 \begin{deliverable}
 ``One perpetual contract on a Hyperliquid-style CLOB. Time is discrete in blocks $t=1,\dots,T$. An episode is $T=100$ blocks; learning runs across $10^4$--$10^5$ episodes.''
 \end{deliverable}
-A \textbf{block} is one tick of our clock: everything that happens ``at time $t$'' is processed together, then $t$ becomes $t+1$. Because Hyperliquid really does batch orders into discrete blocks, this is not an approximation. An \textbf{episode} is one ``game'' of 100 blocks with a fixed true value $V$; at the end $V$ is revealed and profits settle. The agents then play tens of thousands of episodes so that their learning converges.
+A \textbf{block} is one tick of our clock: everything that happens ``at time $t$'' is processed together, then $t$ becomes $t+1$. Hyperliquid does process orders in discrete blocks, but the blocks arrive on an irregular clock (median gap about 68 ms) and order priority within the block logic is continuous in the priority fee, so block time is a tractable event-time \emph{approximation}, not an exact model. An \textbf{episode} is one ``game'' of 100 blocks with a fixed true value $V$; at the end $V$ is revealed and profits settle. The agents then play tens of thousands of episodes so that their learning converges.
 
 \subsection{The agents}
 \begin{deliverable}
@@ -504,13 +508,13 @@ The metrics listed in the proposal, in plain words:
 \subsection{RQ2: exploitability of learned quoters}
 \textbf{The question.} Freeze each type of incumbent. How much can a best-responding adversary take from it? And does a colluding group of incumbents leak \emph{more} than a competitive one?
 
-\textbf{The incumbent types.} Tabular Q-learning; Hedge (no-regret); PPO (deep RL); an HLP-style fixed rule.
+\textbf{The incumbent types.} Tabular Q-learning; Hedge (no-regret); PPO (deep RL); an HLP-inspired fixed rule.
 
 \textbf{The attackers, each explained.}
 \begin{itemize}
 \item \emph{One-tick undercutter.} Always quote one tick inside the best incumbent quote. The simplest possible attack. Works if incumbents are soft (mechanism 2 in Section~\ref{sec:whycollude}); fails if they punish and the price war costs more than it gains.
 \item \emph{Steering MM.} Exploits the no-regret learners specifically: shapes the payoffs the incumbents observe so their weights converge to a spread that leaves the steering MM a profitable niche. From Deng, Schneider and Sivan.
-\item \emph{Rate-limit drainer.} Section~\ref{sec:ratelimit}.
+\item \emph{Induced request exhaustion.} Section~\ref{sec:ratelimit}.
 \item \emph{Predatory taker.} Section on agents above: provoke, then trade.
 \item \emph{Held-out PSRO attackers.} Best responses trained against the incumbents \emph{after} the incumbents were trained, so the incumbents never saw them.
 \end{itemize}
@@ -579,7 +583,7 @@ Resilient design & Venue rules and quoter architecture compared under nominal an
 \subsection{The three feedback questions, explained}
 \begin{enumerate}
 \item \emph{Stylized vs full order book.} In Glosten--Milgrom we can compute the competitive and monopoly benchmarks exactly, so $\Delta$ and exploitability are exact numbers. A full order book with queues and multiple sizes is more realistic but its competitive benchmark can only be approximated, which makes every ``how collusive'' claim fuzzy. We lean stylized, importing only the two Hyperliquid mechanics that change the game (request budgets, priced latency).
-\item \emph{Rate-limit drain.} It is legal under the venue's rules and it is a real vulnerability, but it is adversarial in spirit. We want the instructors' view on whether to study it as an attack we \emph{launch} or only as a threat our robust quoter must \emph{survive}.
+\item \emph{Induced request exhaustion.} It is legal under the venue's rules and it is a real vulnerability, but it is adversarial in spirit. We want the instructors' view on whether to study it as an attack we \emph{launch} or only as a threat our robust quoter must \emph{survive}.
 \item \emph{Network size.} The scope document mentions 10--100 nodes. Our natural network is $K$ correlated contracts with shared market makers (which also makes collusion easier, a known result about multimarket contact). We want to know whether this is required.
 \end{enumerate}
 
@@ -601,12 +605,12 @@ Resilient design & Venue rules and quoter architecture compared under nominal an
 \item[Discount factor $\gamma$] Weight placed on next period's reward relative to this period's.
 \item[Effective / realized spread] What a taker paid relative to mid / what the maker kept after the subsequent price move.
 \item[Episode] One game of $T$ blocks with a fixed true value $V$.
-\item[Exploitability] Profit a best responder extracts from a fixed policy, in bps per unit volume.
+\item[Exploitability] How much a frozen policy loses to its best-responding adversary relative to its nominal environment ($L_{\text{BR}}$); the market is general-sum, so incumbent loss, not attacker gain, is the statistic.
 \item[Fundamental $V$] The true value of the asset; unknown during the episode, revealed at the end.
 \item[Glosten--Milgrom] The basic model of a market maker facing a mix of informed and uninformed traders.
 \item[Grim trigger / price trigger] A strategy that cooperates until someone defects, then punishes.
 \item[Hazard $\lambda$] Per-block probability of an event (here, a liquidation).
-\item[HLP] Hyperliquid's protocol-run market-making and liquidation vault.
+\item[HLP] Hyperliquid's protocol-run market-making and liquidation vault; its strategies are undisclosed, so we use an HLP-inspired calibrated benchmark, not HLP itself.
 \item[Impulse-response test] Force one agent to deviate and watch whether the others punish.
 \item[Inventory $I$] Net position a market maker holds.
 \item[Limit / market order] Resting order at a chosen price / immediate order at the best available price.
@@ -626,6 +630,7 @@ Resilient design & Venue rules and quoter architecture compared under nominal an
 \item[Spread] Best ask minus best bid.
 \item[Tacit collusion] Supra-competitive outcomes sustained by punishment threats without communication.
 \item[Tape] The public record of quotes and trades.
+\item[Wallet identity] A persistent pseudonymous address attached to every committed order on Hyperliquid; visible after the block commits, not before.
 \item[Tick size $\theta$] Minimum price increment.
 \item[Toxicity $\alpha$] Fraction of order flow that is informed.
 \end{description}
