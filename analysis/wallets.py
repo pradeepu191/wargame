@@ -148,3 +148,75 @@ def taker_type_dispersion(trades: pd.DataFrame, horizon_s: int = 10, n_min: int 
     t["maker_markout"] = -s * (m_fut - t.px) / t.px * 1e4
     g = t.groupby("taker").agg(n=("maker_markout", "size"), markout=("maker_markout", "mean"))
     return g[g.n >= n_min].sort_values("markout")
+
+
+# ---------------------------------------------------------------- calibration helpers
+def collapse_orders(trades: pd.DataFrame, carry: tuple = ()) -> pd.DataFrame:
+    """One row per taker ORDER (an aggressive order sweeping several resting orders prints as
+    several fills with the same taker, time and side).  Consecutive fills of one sweep are not
+    'persistence' in the simulator's sense; the simulator's rho is the order-level repeat rate.
+    Keeps the first fill's price, the summed size, the volume-weighted price, and n_fills."""
+    t = with_roles(trades)
+    key = ["time_ms", "taker", "side"]
+    if "hash" in t.columns and t["hash"].notna().any():
+        key = ["hash", "taker", "side"]
+    t["notional"] = t.px * t.sz
+    g = t.groupby(key, sort=False)
+    spec = dict(time_ms=("time_ms", "first"), coin=("coin", "first"), taker=("taker", "first"),
+                side=("side", "first"), px=("px", "first"), sz=("sz", "sum"), n_fills=("px", "size"),
+                notional=("notional", "sum"), **{c: (c, "first") for c in carry})
+    out = g.agg(**spec).reset_index(drop=True)
+    out["vwap"] = out.notional / out.sz
+    return out.sort_values("time_ms", kind="stable").reset_index(drop=True)
+
+
+def split_half_type_persistence(trades: pd.DataFrame, horizon_s: int = 10, n_min: int = 30) -> dict:
+    """Zhai's statistic on our sample: per-taker mean markout in the first half of the sample vs the
+    second half, Spearman rank correlation over takers with >= n_min fills in both halves.
+    A high value means wallet toxicity is a persistent TYPE (the simulator's alpha_j), not noise."""
+    from scipy.stats import spearmanr
+    t = with_roles(trades)
+    m_fut = mid_proxy(t, horizon_s * 1000)
+    s = np.where(t.maker_sold, 1.0, -1.0)
+    t["maker_markout"] = -s * (m_fut - t.px) / t.px * 1e4
+    cut = t.time_ms.iloc[len(t) // 2]
+    a = t[t.time_ms < cut].groupby("taker").maker_markout.agg(["mean", "size"])
+    b = t[t.time_ms >= cut].groupby("taker").maker_markout.agg(["mean", "size"])
+    j = a.join(b, lsuffix="_1", rsuffix="_2", how="inner")
+    j = j[(j.size_1 >= n_min) & (j.size_2 >= n_min)]
+    if len(j) < 5:
+        return {"n_takers": int(len(j)), "rank_corr": float("nan"), "p": float("nan")}
+    r, p = spearmanr(j.mean_1, j.mean_2)
+    return {"n_takers": int(len(j)), "rank_corr": float(r), "p": float(p)}
+
+
+def conditional_markout_after_toxic(trades: pd.DataFrame, horizon_s: int = 10, n_min: int = 30,
+                                    quantile: float = 0.25) -> dict:
+    """The identity-value test in its simplest empirical form.  Classify takers on the FIRST half
+    of the sample (bottom `quantile` of per-taker maker-markout = 'toxic').  On the SECOND half,
+    compare the maker's markout on a fill whose PREVIOUS order came from a toxic wallet with the
+    markout when the previous order came from a non-toxic one.  A negative difference means
+    'who printed last' forecasts the toxicity of the next fill -- exactly what WalletEntrant
+    exploits, and zero if arrivals are not persistent (rho = 0) or types are not dispersed."""
+    t = with_roles(trades)
+    m_fut = mid_proxy(t, horizon_s * 1000)
+    s = np.where(t.maker_sold, 1.0, -1.0)
+    t["maker_markout"] = -s * (m_fut - t.px) / t.px * 1e4
+    cut = t.time_ms.iloc[len(t) // 2]
+    first = t[t.time_ms < cut].groupby("taker").maker_markout.agg(["mean", "size"])
+    first = first[first["size"] >= n_min]
+    if len(first) < 8:
+        return {"n_classified": int(len(first)), "diff_bps": float("nan"), "after_toxic": float("nan"),
+                "after_benign": float("nan"), "n_after_toxic": 0}
+    toxic = set(first[first["mean"] <= first["mean"].quantile(quantile)].index)
+    second = t[t.time_ms >= cut].reset_index(drop=True)
+    orders = collapse_orders(second, carry=("maker_markout",))     # markout of each order's first fill
+    prev_taker = orders.taker.shift(1)
+    after_toxic = prev_taker.isin(toxic).to_numpy()
+    mo = orders.maker_markout.to_numpy()
+    known = prev_taker.notna().to_numpy()
+    a, b = mo[after_toxic & known], mo[~after_toxic & known]
+    return {"n_classified": int(len(first)), "n_toxic": len(toxic), "after_toxic": float(np.mean(a)) if len(a) else float("nan"),
+            "after_benign": float(np.mean(b)) if len(b) else float("nan"),
+            "diff_bps": float(np.mean(a) - np.mean(b)) if len(a) and len(b) else float("nan"),
+            "n_after_toxic": int(len(a)), "n_after_benign": int(len(b))}

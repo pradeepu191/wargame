@@ -15,6 +15,20 @@ login node or a cheap VM); a laptop that sleeps will produce gaps. Reconnects on
 What the public feed does NOT give: inventories, rejected orders, failed cancels, per-order
 lifecycle. Those are only in the archive below.
 
+### From recorder output to the simulator's dials — `analysis/calibrate.py`
+```
+python analysis/calibrate.py                 # every coin under data/raw/live -> results/calibration.csv
+python analysis/calibrate.py --coins BTC     # one coin; per-wallet table in results/wallets_BTC.csv
+```
+Reports, per coin: markouts (alpha level), the order-level arrival persistence `rho_order` against
+its random-matching baseline (the simulator's `wallet_persistence`), split-half rank correlation
+and dispersion of per-taker markouts (is toxicity a persistent type; the simulator's
+`wallet_concentration`), the conditional markout after a toxic wallet's order (the value-of-identity
+signature itself), and the market-maker wallet set with avoidance ratio and leader-switch.
+Classification always uses the first half of the sample and measurement the second.
+`rho_fill` is the fill-level repeat rate and is mechanically inflated by sweeps; do not read it as rho.
+Commit `results/calibration.csv` and `results/wallets_*.csv`, never the parquet.
+
 ## B. Archive (BTC/ETH/SOL Dec 2025 at order level; all coins Oct 2025–Jan 2026 at trade level)
 
 ## Source
