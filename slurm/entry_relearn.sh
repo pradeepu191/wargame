@@ -9,7 +9,7 @@
 #SBATCH --output=slurm-%A_%a.out
 # Usage: sbatch slurm/entry_relearn.sh <policy>      (policy = markout | undercut | competitive)
 # Array index -> (alpha, seed): 3 alphas x 5 seeds = 15 tasks.  Each task writes its own CSV;
-# merge afterwards with:  python -c "import pandas as pd,glob; pd.concat(map(pd.read_csv, glob.glob('results/relearn_parts/*.csv'))).to_csv('results/cfl_exp2_entry_relearn_<policy>.csv', index=False)"
+# merge afterwards with:  python slurm/merge_relearn.py
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")/..}"
 module load anaconda/Python-ML-2025a

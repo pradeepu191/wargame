@@ -35,7 +35,9 @@ sbatch slurm/sweep.sh experiments/configs/robustness_exp.yaml \
 
 ## Run the entry experiments (sequential scripts, parallel over seeds via a job array)
 ```bash
-sbatch slurm/entry_relearn.sh markout      # one array task per (alpha, seed); merges at the end
+sbatch slurm/entry_relearn.sh markout      # one array task per (alpha, seed)
+# when the array is done:
+python slurm/merge_relearn.py              # -> results/cfl_exp2_entry_relearn_markout.csv
 ```
 
 ## Watching
