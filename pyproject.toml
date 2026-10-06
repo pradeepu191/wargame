@@ -7,7 +7,7 @@ dependencies = ["numpy>=1.26", "scipy>=1.11", "pandas>=2.1", "pyyaml>=6.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "nbstripout", "matplotlib", "pyarrow"]
-data = ["duckdb", "polars", "requests"]
+data = ["duckdb", "polars", "requests", "websockets", "pyarrow"]
 rl = ["torch"]
 
 [tool.setuptools]
