@@ -159,9 +159,12 @@ Q(greedy) − Q(myopic).
 
 # Robustness grid (`robust_exp2`): N × learning rate × Q-init at α = 0.3
 
-12 cells × 5 seeds, corrected encoding, exponential edge (h^C = 4, h^M = 14). Files:
-`robust_exp2_summary.csv`, `robust_exp2_runs.csv`. Config: `experiments/configs/robustness_exp.yaml`.
-Reproduce: see config header; `python analysis/robustness.py`.
+12 cells × **10 seeds** (run on MIT SuperCloud, 48 cores, 4 min), corrected encoding, exponential
+edge (h^C = 4, h^M = 14). Files: `robust_exp2_summary.csv`, `robust_exp2_runs.csv`. Config:
+`experiments/configs/robustness_exp.yaml`. Reproduce: see config header; `python analysis/robustness.py`.
+The 5-seed table below was computed first in the dev container; the 10-seed cluster run agrees on
+every cell within 0.01 in Δ, and on the 60 shared (cell, seed) pairs the per-run Δ matches
+**exactly** (max abs difference 0.0): the simulator is bit-reproducible across machines.
 
 | N | lr | Q-init | learned h | Δ | leader-switch | contested | restraint│contested | forgone r | Q-gap |
 |---|---|---|---|---|---|---|---|---|---|
