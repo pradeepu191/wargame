@@ -5,6 +5,12 @@ SuperCloud facts that matter here: SLURM; CPU nodes have 48 cores / 192 GB (`xeo
 the scheduler is happiest with a few large allocations rather than many tiny ones.
 Docs: https://supercloud.mit.edu/ (see "Submitting Jobs" and "Job Arrays").
 
+## Known gotchas (both handled by the scripts)
+* The default `anaconda/2023b` module is Python 3.9; the project needs >= 3.10. Scripts load
+  `anaconda/Python-ML-2025a` (3.10.14). If that module disappears, `module avail anaconda`.
+* The login node's shared `/tmp` (5 GB) is frequently full, which breaks pip with
+  "No space left on device". Scripts set `TMPDIR` inside the repo. Your home quota is not the issue.
+
 ## One-time setup (login node)
 ```bash
 git clone https://github.com/pradeepu191/wargame.git ~/wargame

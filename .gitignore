@@ -19,3 +19,5 @@ secrets*
 .ipynb_checkpoints/
 slurm-*.out
 results/relearn_parts/
+.tmp/
+.pipcache/

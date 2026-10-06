@@ -9,7 +9,9 @@
 # Usage: sbatch slurm/sweep.sh <config.yaml> [sweep.py args...]
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")/..}"
+module load anaconda/Python-ML-2025a
 source .venv/bin/activate
+export TMPDIR="$PWD/.tmp"; mkdir -p "$TMPDIR"
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 CONFIG="$1"; shift
 echo "host=$(hostname) cpus=${SLURM_CPUS_PER_TASK} config=${CONFIG} args=$*"

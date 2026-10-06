@@ -12,7 +12,9 @@
 # merge afterwards with:  python -c "import pandas as pd,glob; pd.concat(map(pd.read_csv, glob.glob('results/relearn_parts/*.csv'))).to_csv('results/cfl_exp2_entry_relearn_<policy>.csv', index=False)"
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")/..}"
+module load anaconda/Python-ML-2025a
 source .venv/bin/activate
+export TMPDIR="$PWD/.tmp"; mkdir -p "$TMPDIR"
 export OMP_NUM_THREADS=1
 POLICY="${1:-markout}"
 ALPHAS=(0.1 0.3 0.5)
