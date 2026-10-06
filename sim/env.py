@@ -1,11 +1,17 @@
 """Glosten--Milgrom dealer market with N quoting market makers on a tick grid.
 
 Model (see paper/deliverable1.tex, Section 1):
-  * Fundamental V in {V_L, V_H}, prior 1/2.  Two modes:
-      redraw_v_each_period=True  : V redrawn every period, mu_t = 1/2 always
-                                   (stationary repeated game; Colliard et al. baseline)
-      redraw_v_each_period=False : V drawn once per episode, public belief
-                                   mu_t = P(V=V_H | tape) updated by Bayes each period
+  * Fundamental V.  Two edge distributions (edge_dist):
+      "fixed"       : V in {V_L, V_H} = mid -/+ v, prior 1/2 (binary Glosten--Milgrom).
+                      Any half-spread >= v is immune to informed flow: an adverse-selection
+                      CLIFF that tabular learners find and sit on (see results/REPLICATION_NOTES.md).
+      "exponential" : V = mid + s*d, s = +/-1 w.p. 1/2, d ~ Exponential(mean = edge_mean).
+                      An informed trader trades at half-spread x w.p. exp(-x/m) -- never
+                      zero -- and by memorylessness the expected loss per informed fill is
+                      exactly m at every spread.  No immune quote.  i.i.d. V only.
+    Two timing modes (redraw_v_each_period):
+      True  : V redrawn every period, mu_t = 1/2 always (stationary repeated game)
+      False : V drawn once per episode, belief mu_t updated by Bayes (fixed edge only)
   * Mid-price m_t = E[V | mu_t].
   * Each period every MM i posts symmetric quotes at half-spread h_i ticks:
         bid_i = m_t - h_i * tick,  ask_i = m_t + h_i * tick.
@@ -57,7 +63,16 @@ class MarketConfig:
     inventory_cap: int = 50
     redraw_v_each_period: bool = False  # True: i.i.d. V (stationary game, Colliard et al. replication)
                                         # False: V persists for the episode, belief mu_t evolves
+    edge_dist: str = "fixed"            # "fixed" (binary V) or "exponential" (continuous edge)
+    edge_mean: float = 5.0              # mean informed edge for edge_dist="exponential"
     seed: int = 0
+
+    def __post_init__(self):
+        if self.edge_dist not in ("fixed", "exponential"):
+            raise ValueError("edge_dist must be 'fixed' or 'exponential'")
+        if self.edge_dist == "exponential" and not self.redraw_v_each_period:
+            raise ValueError("edge_dist='exponential' requires redraw_v_each_period=True "
+                             "(belief updating over a continuous V is not implemented)")
 
 
 class GlostenMilgromEnv:
@@ -75,7 +90,14 @@ class GlostenMilgromEnv:
     # ------------------------------------------------------------------ helpers
     @property
     def mid(self) -> float:
-        return self.mu * self.cfg.v_high + (1 - self.mu) * self.cfg.v_low
+        return self.mu * self.cfg.v_high + (1 - self.mu) * self.cfg.v_low   # = prior mean when mu = 1/2
+
+    def _draw_v(self) -> float:
+        c = self.cfg
+        if c.edge_dist == "exponential":
+            d = self.rng.exponential(c.edge_mean)
+            return self.mid + d if self.rng.random() < 0.5 else self.mid - d
+        return c.v_high if self.rng.random() < 0.5 else c.v_low
 
     def _p_buy_sell(self, ask: float, bid: float, mid: float, mu: float):
         """P(buy), P(sell) given best quotes and belief mu (marginal over V)."""
@@ -115,7 +137,8 @@ class GlostenMilgromEnv:
     def reset(self, V: Optional[float] = None) -> dict:
         c = self.cfg
         self.t = 0
-        self.V = (c.v_high if self.rng.random() < 0.5 else c.v_low) if V is None else V
+        self.mu = 0.5
+        self.V = self._draw_v() if V is None else V
         self.mu = 0.5
         self.inventory[:] = 0
         self.last_half_spreads[:] = c.max_half_spread
@@ -144,10 +167,10 @@ class GlostenMilgromEnv:
         # ---- taker arrival
         informed = self.rng.random() < c.alpha
         event = "none"
-        if informed:
-            if self.V == c.v_high and best_ask < self.V:
+        if informed:                       # trades only when the quote is strictly inside the true value
+            if self.V > mid and best_ask < self.V:
                 event = "buy"
-            elif self.V == c.v_low and best_bid > self.V:
+            elif self.V < mid and best_bid > self.V:
                 event = "sell"
         else:
             val = mid + self.rng.normal(0.0, c.sigma_L)
@@ -179,7 +202,7 @@ class GlostenMilgromEnv:
         # ---- public belief update and bookkeeping
         mu_prev = self.mu
         if c.redraw_v_each_period:
-            self.V = c.v_high if self.rng.random() < 0.5 else c.v_low
+            self.V = self._draw_v()
             self.mu = 0.5
         else:
             self.mu = self.posterior(self.mu, best_ask, best_bid, mid, event)

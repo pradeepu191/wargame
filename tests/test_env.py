@@ -86,3 +86,38 @@ def test_qlearning_monopolist_moves_toward_monopoly():
     assert late > early
     assert np.nanmean([r["delta"] for r in rows[-50:]]) > np.nanmean([r["delta"] for r in rows[:50]])
     assert agents[0].step_count == 300 * env.cfg.horizon
+
+
+def test_exponential_edge_has_no_immune_quote():
+    """With a continuous edge, informed traders trade at every half-spread with positive probability."""
+    env = make_env(edge_dist="exponential", edge_mean=5.0, redraw_v_each_period=True, tick=0.5,
+                   max_half_spread=24, alpha=1.0, sigma_L=8.0, seed=7)
+    env.reset()
+    fills = 0
+    for _ in range(2000):
+        _, _, done, info = env.step(np.array([24, 24]))     # widest possible quote
+        fills += info["event"] != "none"
+        if done:
+            env.reset()
+    assert fills > 0
+    # closed-form benchmark: expected informed-trade probability at x = 12 is exp(-12/5) ~ 9%
+    assert 0.05 < fills / 2000 < 0.14
+
+
+def test_exponential_benchmarks_match_monte_carlo():
+    env = make_env(edge_dist="exponential", edge_mean=5.0, redraw_v_each_period=True, tick=0.5,
+                   max_half_spread=24, alpha=0.3, sigma_L=8.0, seed=8)
+    Pi = expected_profit_by_half_spread(env, 0.5)
+    h = 10
+    env.reset(); tot = 0.0; n = 20000
+    for _ in range(n):
+        _, r, done, _ = env.step(np.array([h, h]))
+        tot += r.sum()
+        if done:
+            env.reset()
+    assert abs(tot / n - Pi[h - 1]) < 0.08      # MC noise at n=20k is ~0.03
+
+
+def test_exponential_requires_iid_v():
+    with pytest.raises(ValueError):
+        make_env(edge_dist="exponential", redraw_v_each_period=False)

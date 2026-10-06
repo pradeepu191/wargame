@@ -2,9 +2,9 @@
 
 Grid: alpha ∈ {0.1, 0.3, 0.5} × N ∈ {2, 3} × 10 seeds, tabular Q-learning (lr 0.15, γ 0.95,
 ε = exp(−4e-6·t)), i.i.d. V, 20k episodes × 100 periods = 2M steps/agent. Converged statistics
-are over the last 2,000 episodes (ε < 1e-3). Files: `replication_summary.csv`, `replication_runs.csv`,
-`replication_impulse.csv`, `fig_replication.{png,pdf}`. Reproduce: `make replicate` then
-`python analysis/replication.py`.
+are over the last 2,000 episodes (ε < 1e-3). Files: `cfl_2mm_summary.csv`, `cfl_2mm_runs.csv`,
+`cfl_2mm_impulse.csv`, `fig_cfl_2mm.{png,pdf}`. Reproduce: `make replicate` then
+`python analysis/replication.py --run cfl_2mm`.
 
 | α | N | learned h (ticks) | h^C | h^M | markup over h^C | Δ | cliff share | change rate |
 |---|---|---|---|---|---|---|---|---|

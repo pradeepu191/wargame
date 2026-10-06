@@ -1,9 +1,10 @@
 """Aggregate the Colliard-Foucault-Lovo replication grid and make the figure.
 
 Reads   results/<run>_alpha<a>_n_mm<N>_seed<k>/{episodes.csv, impulse.csv, config.yaml}
-Writes  results/replication_summary.csv      one row per (alpha, N): mean +- std over seeds
-        results/replication_impulse.csv      seed-averaged impulse responses per (alpha, N)
-        results/fig_replication.png / .pdf   three panels
+Writes  results/<run>_summary.csv      one row per (alpha, N): mean +- std over seeds
+        results/<run>_runs.csv         one row per run
+        results/<run>_impulse.csv      seed-averaged paired impulse responses per (alpha, N)
+        results/fig_<run>.png / .pdf   three panels
 
 Usage:  python analysis/replication.py [--run cfl_2mm] [--tail 2000]
 
@@ -65,10 +66,13 @@ def tape_dynamics(d: Path) -> dict:
     H = t[hcols].to_numpy()
     changed = (np.diff(H, axis=0) != 0).any(axis=1)
     cfg = yaml.safe_load((d / "config.yaml").read_text())["market"]
-    cliff = (cfg["v_high"] - cfg["v_low"]) / 2 / cfg["tick"] if "v_high" in cfg else 10.0 / cfg["tick"]
+    if cfg.get("edge_dist", "fixed") == "fixed":
+        v = (cfg.get("v_high", 110.0) - cfg.get("v_low", 90.0)) / 2
+        cliff_share = float((H.min(axis=1) * cfg["tick"] >= v).mean())   # best quote immune to informed flow
+    else:
+        cliff_share = float("nan")                                        # no immune quote exists
     return {"change_rate": float(changed.mean()), "h_range": int(H.max() - H.min()),
-            "h_min_mean": float(H.min(axis=1).mean()),
-            "cliff_share": float((H.min(axis=1) >= cliff).mean())}   # best quote immune to informed flow
+            "h_min_mean": float(H.min(axis=1).mean()), "cliff_share": cliff_share}
 
 
 def summarize(runs: pd.DataFrame) -> pd.DataFrame:
@@ -93,7 +97,7 @@ def impulse_summary(imp: pd.DataFrame) -> pd.DataFrame:
     return imp.groupby(["alpha", "n_mm", "rel_t"])[cols].mean().reset_index()
 
 
-def make_figure(summary: pd.DataFrame, imp: pd.DataFrame, out: Path, imp_alpha=0.3, imp_n=2):
+def make_figure(summary: pd.DataFrame, imp: pd.DataFrame, out: Path, imp_alpha=0.3, imp_n=2, cliff=None):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -131,11 +135,11 @@ def make_figure(summary: pd.DataFrame, imp: pd.DataFrame, out: Path, imp_alpha=0
         s = summary[summary.n_mm == n].sort_values("alpha")
         ax.errorbar(s.alpha, s.half_spread_mean, yerr=s.half_spread_std, color=C[n], lw=2, marker="o",
                     ms=5, capsize=3, label=f"N = {n}")
-    cliff = 10.0   # ask >= V_H: informed traders never trade above this half-spread (binary-V model)
-    ax.axhline(cliff, color="#e34948", lw=1, ls="-.")
-    ax.text(ref.alpha.iloc[0], cliff + 0.15, "no adverse selection at or above this quote", color="#e34948", fontsize=7, va="bottom")
+    if cliff is not None:   # binary-V model: ask >= V_H is immune to informed traders
+        ax.axhline(cliff, color="#e34948", lw=1, ls="-.")
+        ax.text(ref.alpha.iloc[0], cliff + 0.15, "no adverse selection at or above this quote", color="#e34948", fontsize=7, va="bottom")
     ax.set_xlabel(r"toxicity $\alpha$"); ax.set_ylabel("mean half-spread (ticks)")
-    ax.set_title("(b) Learned quotes sit on the adverse-selection cliff", loc="left", fontsize=9)
+    ax.set_title("(b) Learned quotes vs exact benchmarks", loc="left", fontsize=9)
     ax.grid(axis="y", color=GRID, lw=0.8); ax.set_axisbelow(True); ax.legend(frameon=False, fontsize=8)
 
     # (c) impulse response
@@ -166,15 +170,20 @@ def main():
     if runs.empty:
         raise SystemExit("no completed runs found")
     summary = summarize(runs)
-    summary.to_csv(results / "replication_summary.csv", index=False)
-    runs.to_csv(results / "replication_runs.csv", index=False)
+    runs.to_csv(results / f"{args.run}_runs.csv", index=False)
     imps = impulse_summary(imp)
     if not imps.empty:
-        imps.to_csv(results / "replication_impulse.csv", index=False)
+        imps.to_csv(results / f"{args.run}_impulse.csv", index=False)
     pd.set_option("display.width", 160)
     print(summary.round(3).to_string(index=False))
-    make_figure(summary, imps, results / "fig_replication", args.imp_alpha, args.imp_n)
-    print("figure:", results / "fig_replication.png")
+    first = next(results.glob(f"{args.run}_alpha*_n_mm*_seed*/config.yaml"))
+    mcfg = yaml.safe_load(first.read_text())["market"]
+    cliff = ((mcfg.get("v_high", 110.0) - mcfg.get("v_low", 90.0)) / 2 / mcfg["tick"]
+             if mcfg.get("edge_dist", "fixed") == "fixed" else None)
+    fig = results / f"fig_{args.run}"
+    summary.to_csv(results / f"{args.run}_summary.csv", index=False)
+    make_figure(summary, imps, fig, args.imp_alpha, args.imp_n, cliff=cliff)
+    print("figure:", fig.with_suffix(".png"))
 
 
 if __name__ == "__main__":

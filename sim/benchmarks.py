@@ -1,12 +1,15 @@
 """Exact competitive and joint-monopoly benchmarks on the tick grid.
 
 For a belief mu and symmetric half-spread h (ticks), expected one-period
-profit of the *whole* market (all MMs quoting h) is
+profit of the *whole* market (all MMs quoting h) is, with x = h*tick,
 
-    Pi(h; mu) = mu * [ p_buy(V_H) (a - V_H) + p_sell(V_H) (V_H - b) ]
-              + (1-mu) * [ p_buy(V_L) (a - V_L) + p_sell(V_L) (V_L - b) ]
+  fixed edge:        Pi(h; mu) = mu * [ p_buy(V_H) (a - V_H) + p_sell(V_H) (V_H - b) ]
+                               + (1-mu) * [ p_buy(V_L) (a - V_L) + p_sell(V_L) (V_L - b) ]
+  exponential edge:  Pi(h)     = (1-alpha) * 2 x Phibar(x / sigma_L)  -  alpha * m * exp(-x / m)
+                     (uninformed gain x on each side; an informed trader trades w.p. exp(-x/m)
+                      and, by memorylessness, costs the MM m in expectation when it does)
 
-with a = mid + h*tick, b = mid - h*tick.  Then
+with a = mid + x, b = mid - x.  Then
 
     h^C(mu) = min { h : Pi(h; mu) >= 0 }   (numerically: >= -1e-9)        (Glosten--Milgrom zero-profit quote,
                                                  rounded up to the grid; Bertrand
@@ -28,9 +31,13 @@ from .env import GlostenMilgromEnv, MarketConfig
 
 def expected_profit_by_half_spread(env: GlostenMilgromEnv, mu: float) -> np.ndarray:
     """Pi(h; mu) for h = 1..max_half_spread (market-wide, one period)."""
+    from scipy.stats import norm
     c = env.cfg
-    mid = mu * c.v_high + (1 - mu) * c.v_low
     hs = np.arange(1, c.max_half_spread + 1)
+    if c.edge_dist == "exponential":
+        x = hs * c.tick
+        return (1 - c.alpha) * 2 * x * norm.sf(x / c.sigma_L) - c.alpha * c.edge_mean * np.exp(-x / c.edge_mean)
+    mid = mu * c.v_high + (1 - mu) * c.v_low
     out = np.empty(len(hs))
     for k, h in enumerate(hs):
         a, b = mid + h * c.tick, mid - h * c.tick

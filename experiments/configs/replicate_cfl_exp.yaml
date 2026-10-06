@@ -1,0 +1,24 @@
+# CFL replication with a CONTINUOUS informed edge (no adverse-selection cliff).
+# V = mid +/- d, d ~ Exponential(mean 5). Benchmarks at alpha = 0.1 / 0.3 / 0.5:
+#   h^C = 2 / 4 / 8,  h^M = 13 / 14 / 17 (ticks of 0.5).  Informed trade w.p. exp(-x/5) at half-spread x.
+# Grid: python experiments/sweep.py experiments/configs/replicate_cfl_exp.yaml \
+#         --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9 --jobs 8
+run_name: cfl_exp
+seed: 0
+n_episodes: 20000
+n_tape_episodes: 3
+log_every: 1000
+market:
+  n_mm: 2
+  alpha: 0.3
+  sigma_L: 8.0
+  tick: 0.5
+  max_half_spread: 24
+  horizon: 100
+  redraw_v_each_period: true
+  edge_dist: exponential
+  edge_mean: 5.0
+agents:
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004, inventory_buckets: 1}}
+  - {type: q, params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 0.000004, inventory_buckets: 1}}
+impulse: {enabled: true, n_episodes: 500, t_shock: 50, pre: 5, post: 15}
