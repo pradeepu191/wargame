@@ -204,3 +204,65 @@ learners. Beyond CFL: continuous-edge model with closed-form benchmarks; turn-ta
 value-function restraint test as a perturbation-free collusion certificate; robustness across
 N × lr × init. Caveat: CFL's exact markup definition and learner settings still need to be checked
 against the paper before the write-up claims agreement or disagreement on specifics.
+
+---
+
+# Workshop 1 item (iii) / RQ1 first result: the strategic entrant (`cfl_exp2_entry`)
+
+A third market maker enters a market of two trained, FROZEN incumbents (greedy play from saved
+Q-tables; they react through their learned policy but do not re-learn). 500 episodes per
+(α, seed, policy), 10 seeds. Files: `cfl_exp2_entry.csv`, `fig_cfl_exp2_entry.{png,pdf}`.
+Code: `sim/entrants.py`, `experiments/entry.py`, `analysis/entry_fig.py`.
+
+Entrant policies (all see only public quotes and their own fills):
+* **competitive-GM**: quote the exact zero-profit half-spread h^C. Textbook benchmark.
+* **one-tick undercutter**: quote one tick inside the best incumbent, always.
+* **markout-inference**: estimate toxicity from own-fill PnL, derive h^C(α̂), undercut by one tick
+  only if the best incumbent quote exceeds h^C(α̂) by ≥ 2 ticks, else quote h^C(α̂).
+
+| α | policy | entrant π/period | share of π^M | fill share | incumbents' π before → after |
+|---|---|---|---|---|---|
+| 0.1 | competitive | 0.37 ± 0.05 | 32% | 0.98 | 1.00 → 0.00 |
+| 0.1 | markout | 0.95 ± 0.17 | 82% | 0.54 | 1.00 → 0.36 |
+| 0.1 | undercut | 1.00 ± 0.16 | 87% | 0.60 | 1.00 → 0.35 |
+| 0.3 | competitive | 0.12 ± 0.03 | 15% | 0.98 | 0.66 → 0.00 |
+| 0.3 | markout | 0.72 ± 0.12 | 96% | 0.58 | 0.66 → 0.25 |
+| 0.3 | undercut | 0.67 ± 0.19 | 89% | 0.58 | 0.66 → 0.25 |
+| 0.5 | competitive | 0.10 ± 0.02 | 27% | 0.95 | 0.33 → −0.02 |
+| 0.5 | markout | 0.36 ± 0.09 | 94% | 0.60 | 0.33 → 0.12 |
+| 0.5 | undercut | 0.30 ± 0.18 | 79% | 0.80 | 0.33 → 0.09 |
+
+## Findings
+1. **The learned cartel is almost fully exploitable.** A one-line policy (undercut by one tick when
+   the incumbents' quote is far above the competitive level) earns 82–96% of the *monopoly* profit
+   per period, 3–6× what the competitive entrant earns. The incumbents' profit falls by roughly
+   two-thirds. Exploitability of the learned policies at α = 0.3: ≈ 0.72 per period against a
+   monopoly rent of 0.75 — the entrant captures essentially everything the cartel was earning.
+2. **Winning every fill is the wrong objective.** The competitive entrant wins 95–98% of fills and
+   earns the least: it is quoting the zero-profit spread, so each fill is worth ≈ 0 in expectation.
+   The incumbents learn that a rival at h^C is unbeatable and park their quotes wide, collecting
+   nothing. Nobody makes money. This is the "race to the bottom" outcome a textbook predicts, and
+   it is the outcome a desk should avoid.
+3. **Markout inference beats blind undercutting as toxicity rises** (0.95 vs 1.00 at α = 0.1;
+   0.72 vs 0.67 at α = 0.3; 0.36 vs 0.30 at α = 0.5) and has roughly half the seed variance.
+   The undercutter chases the incumbents' cycle and the incumbents chase back, so its PnL is
+   erratic; the markout entrant undercuts into a stable configuration and otherwise sits at h^C.
+   Its toxicity estimate is biased upward (α̂ ≈ 0.32 / 0.36 / 0.48 vs true 0.1 / 0.3 / 0.5) because
+   it counts any losing fill as informed, including unlucky uninformed ones; a better estimator is
+   an obvious improvement.
+4. **The incumbents do not punish the entrant.** Against the competitive entrant they settle into a
+   fixed 3-cycle wide of the entrant and never contest; against the undercutter their quotes
+   bounce 4–24 but never pin the entrant at a loss. The restraint certified by the mechanism test
+   (they do not undercut *each other*) does not generalise to a third party quoting inside them.
+   This is the central vulnerability of tacit collusion learned at N: the policy is a response to
+   the rivals it trained with.
+
+## What this means for the paper
+* RQ1 answered in the simulator for one scenario: yes, a simple public-information rule separates
+  rent from toxicity well enough to capture most of the rent, and the naive alternative (quote
+  competitively) is the worst option.
+* The "rent is where toxicity is lowest" prediction (Colliard et al.) shows as entrant profit per
+  period: 0.95 at α = 0.1 vs 0.36 at α = 0.5. The entrant should go where the flow is benign.
+* Next: (a) let the incumbents re-learn during entry — does the cartel re-form around the entrant
+  or collapse? (b) entrant with a less biased toxicity estimator (markout against a public mark
+  rather than own-fill sign); (c) exploitability of the lr = 0.05 cartel, which quotes tighter.
