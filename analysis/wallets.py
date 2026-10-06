@@ -157,9 +157,9 @@ def collapse_orders(trades: pd.DataFrame, carry: tuple = ()) -> pd.DataFrame:
     'persistence' in the simulator's sense; the simulator's rho is the order-level repeat rate.
     Keeps the first fill's price, the summed size, the volume-weighted price, and n_fills."""
     t = with_roles(trades)
+    # fills of one sweep share the taker, the side and the block timestamp.  The L1 hash is NOT
+    # a usable key: it is all zeros for orders filled in their submission block (SCHEMA.md).
     key = ["time_ms", "taker", "side"]
-    if "hash" in t.columns and t["hash"].notna().any():
-        key = ["hash", "taker", "side"]
     t["notional"] = t.px * t.sz
     g = t.groupby(key, sort=False)
     spec = dict(time_ms=("time_ms", "first"), coin=("coin", "first"), taker=("taker", "first"),

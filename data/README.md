@@ -31,6 +31,22 @@ Commit `results/calibration.csv` and `results/wallets_*.csv`, never the parquet.
 
 ## B. Archive (BTC/ETH/SOL Dec 2025 at order level; all coins Oct 2025–Jan 2026 at trade level)
 
+### Download (login node, inside tmux) and convert — `data/zenodo_to_parquet.py`
+```
+mkdir -p data/raw/zenodo && cd data/raw/zenodo
+wget -c "https://zenodo.org/records/18184441/files/trades_2026_01.tar?download=1" -O trades_2026_01.tar   # 3.6 GB
+cd ../../..
+python data/zenodo_to_parquet.py --tar data/raw/zenodo/trades_2026_01.tar --coins BTC,ETH,SOL,HYPE \
+    [--dates 20260105-20260107] --out data/raw/zenodo_parquet
+python analysis/calibrate.py --raw data/raw/zenodo_parquet --out results/zenodo_2026_01
+```
+The converter streams the tar and writes the recorder's parquet layout plus archive-only columns:
+`taker_start_pos` / `maker_start_pos` (each counterparty's position BEFORE the trade — inventory
+paths for MM wallets, which the public feed never gives), `taker_twap` / `maker_twap`, `same_block`
+(order crossed in its submission block), and both order ids. The taker is identified as the
+side_info entry with the larger oid (the aggressor's order is the newer one); the converter prints
+how often side_info[0] was the buyer as a convention check.
+
 ## Source
 Albers, Cucuringu, Howison, Shestopaloff (2026), *An Open Book: Level 4 Order Book
 Data from the Hyperliquid Exchange*. Zenodo record 18184441
