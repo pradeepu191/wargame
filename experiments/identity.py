@@ -72,13 +72,13 @@ def play(env, agents, n_episodes, E):
 
 
 def one_cell(args):
-    d, kappa, rho, rho_z, n_wallets, n_episodes, margin = args
+    d, kappa, rho, rho_z, mark_lag, n_wallets, n_episodes, margin = args
     d = Path(d)
     cfg = yaml.safe_load((d / "config.yaml").read_text())
     mk = cfg["market"]
     N, alpha, seed = int(mk["n_mm"]), float(mk["alpha"]), int(cfg.get("seed", 0))
     het = dict(n_wallets=n_wallets, wallet_concentration=kappa, wallet_persistence=rho, wallet_seed=seed,
-               regime_persistence=rho_z)
+               regime_persistence=rho_z, mark_lag=mark_lag)
     m_inc = MarketConfig(**{**mk, **het, "seed": 10_000 + seed})
     m_entry = MarketConfig(**{**mk, **het, "n_mm": N + 1, "seed": 10_000 + seed})
     env_bm = GlostenMilgromEnv(m_inc)
@@ -104,7 +104,7 @@ def one_cell(args):
         pnl, fills, inf, dec, periods = play(env, [FrozenQ(Q[i], K, N + 1) for i in range(N)] + [ent], n_episodes, E=N)
         tot = fills.sum()
         rows.append({
-            "run": d.name, "n_mm": N, "alpha": alpha, "seed": seed, "kappa": kappa, "rho": rho, "rho_z": rho_z,
+            "run": d.name, "n_mm": N, "alpha": alpha, "seed": seed, "kappa": kappa, "rho": rho, "rho_z": rho_z, "mark_lag": mark_lag,
             "n_wallets": n_wallets, "alpha_eff": env.alpha_eff, "policy": name,
             "hC": hC, "hM": hM, "PiC": PiC, "PiM": PiM, "PiM_id": PiM_id,
             "Pi_nominal": float(pnl0.sum()), "informed_share_nominal": float(inf0.sum() / max(fills0.sum(), 1)),
@@ -132,6 +132,7 @@ def main():
     ap.add_argument("--kappas", default="1e6,5,1")
     ap.add_argument("--rhos", default="0,0.5,0.9", help="wallet persistence values")
     ap.add_argument("--rhos-z", default="0", help="regime persistence values (needs kappa < inf to matter)")
+    ap.add_argument("--mark-lags", default="1", help="periods until a print's mark is public")
     ap.add_argument("--margin", type=int, default=1,
                     help="undercut when best - h^C(alpha_next) >= margin; 1 = whenever the undercut quote is at or "
                          "above break-even (the first identity grid used 2, which discards positive-EV fills when "
@@ -148,21 +149,22 @@ def main():
     dirs = [d for d in dirs if (d / "Q_agent0.npy").exists()]
     if not dirs:
         raise SystemExit("no trained incumbents found")
-    jobs = [(str(d), float(k), float(r), float(rz), args.n_wallets, args.n_episodes, args.margin)
-            for d in dirs for k in args.kappas.split(",") for r in args.rhos.split(",") for rz in args.rhos_z.split(",")]
+    jobs = [(str(d), float(k), float(r), float(rz), int(L), args.n_wallets, args.n_episodes, args.margin)
+            for d in dirs for k in args.kappas.split(",") for r in args.rhos.split(",") for rz in args.rhos_z.split(",")
+            for L in args.mark_lags.split(",")]
     print(f"{len(dirs)} populations x {len(jobs) // len(dirs)} (kappa, rho) cells x {len(POLICIES)} policies", flush=True)
     rows = []
     with ProcessPoolExecutor(args.jobs) as ex:
         for k, out in enumerate(ex.map(one_cell, jobs)):
             rows.extend(out)
             r0 = out[0]
-            print(f"[{k + 1}/{len(jobs)}] {r0['run']} kappa={r0['kappa']:g} rho={r0['rho']} rho_z={r0['rho_z']} "
+            print(f"[{k + 1}/{len(jobs)}] {r0['run']} kappa={r0['kappa']:g} rho={r0['rho']} rho_z={r0['rho_z']} lag={r0['mark_lag']} "
                   + "  ".join(f"{r['policy']}:{r['entrant_pnl_norm']:.2f}" for r in out), flush=True)
     df = pd.DataFrame(rows)
     out_path = Path(args.out) if args.out else results / f"{args.run}_identity.csv"
     df.to_csv(out_path, index=False)
     pd.set_option("display.width", 240)
-    g = df.groupby(["alpha", "kappa", "rho", "rho_z", "policy"])[["entrant_pnl_norm", "entrant_informed_share", "incumbent_informed_share", "dec_withdraw", "entrant_fill_share"]].mean()
+    g = df.groupby(["alpha", "kappa", "rho", "rho_z", "mark_lag", "policy"])[["entrant_pnl_norm", "entrant_informed_share", "incumbent_informed_share", "dec_withdraw", "entrant_fill_share"]].mean()
     print(g.round(3).to_string())
     print("wrote", out_path)
 

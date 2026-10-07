@@ -41,7 +41,9 @@ Heterogeneous, persistent takers (n_wallets > 0; the Hyperliquid identity treatm
     last print is therefore evidence about the regime the next arrival shares, whoever it is --
     informed flow clusters in time, not by wallet.
   * After commitment the print is public: the observation carries last period's event, price,
-    wallet id and the ex-post mark V (the one-period markout).  Nobody ever sees the identity
+    wallet id, and -- `mark_lag` periods after the print -- its ex-post mark V as `marks`, a list of
+    (periods_ago, event, half_spread, price, wallet, V) released this period (mark_lag = 1 is the
+    original one-period markout; `last_V` is kept for that case and is NaN otherwise).  Nobody ever sees the identity
     of the order about to hit them.  With n_wallets = 0 the RNG stream is untouched and every
     earlier result reproduces bit-for-bit (tests/test_env.py pins this).
 
@@ -94,6 +96,10 @@ class MarketConfig:
     wallet_seed: Optional[int] = None   # seed for the type draw (default: seed); keep it fixed
                                         # across training / entry / evaluation environments
     regime_persistence: float = 0.0     # rho_z: P(regime unchanged next period); 0 = no regime
+    mark_lag: int = 1                   # periods until a print's ex-post mark V becomes public (>= 1).
+                                        # Identity is public at the print; the mark arrives later.
+                                        # On Hyperliquid the next order arrives in ~0.6 s and the
+                                        # markout realises over seconds: the lag is the value of identity.
 
     def __post_init__(self):
         if self.edge_dist not in ("fixed", "exponential"):
@@ -109,6 +115,8 @@ class MarketConfig:
             raise ValueError("regime_persistence needs n_wallets > 0")
         if not (0.0 <= self.regime_persistence < 1.0):
             raise ValueError("regime_persistence must be in [0, 1)")
+        if self.mark_lag < 1:
+            raise ValueError("mark_lag must be >= 1")
 
 
 class GlostenMilgromEnv:
@@ -126,7 +134,9 @@ class GlostenMilgromEnv:
         self.last_event: str = "none"
         self.last_price: float = float("nan")
         self.last_taker: int = -1          # wallet id of the last PRINT (-1: no trade last period)
-        self.last_V: float = float("nan")  # ex-post mark of the previous period
+        self.last_V: float = float("nan")  # ex-post mark of the previous period (mark_lag == 1 only)
+        self._pending = []                 # prints awaiting their mark: (t, event, hmin, price, wallet, V)
+        self.marks: list = []              # marks released this period
         # heterogeneous takers
         self.alpha_eff: float = cfg.alpha
         self.wallet_alpha: Optional[np.ndarray] = None
@@ -227,6 +237,7 @@ class GlostenMilgromEnv:
         self.inventory[:] = 0
         self.last_half_spreads[:] = c.max_half_spread
         self.last_event, self.last_price, self.last_taker, self.last_V = "none", float("nan"), -1, float("nan")
+        self._pending, self.marks = [], []
         # the wallet population and the active-wallet chain persist across episodes on purpose:
         # episodes are a training device, the taker process is one continuing market
         return self.observation()
@@ -243,6 +254,7 @@ class GlostenMilgromEnv:
             "last_price": self.last_price,
             "last_taker": self.last_taker,
             "last_V": self.last_V,
+            "marks": self.marks,
         }
 
     def step(self, half_spreads) -> tuple[dict, np.ndarray, bool, dict]:
@@ -302,7 +314,15 @@ class GlostenMilgromEnv:
         V_t = self.V
         self.last_event, self.last_price = event, price
         self.last_taker = wallet if event != "none" else -1      # identity is public only via a print
-        self.last_V = V_t                                          # the ex-post mark
+        if c.mark_lag == 1:
+            self.last_V = V_t                                      # the one-period ex-post mark
+            self.marks = [(1, event, hmin, price, self.last_taker, V_t)]
+        else:
+            self.last_V = float("nan")
+            self._pending.append((self.t, event, hmin, price, self.last_taker, V_t))
+            due = self.t + 1 - c.mark_lag                          # marks for period t - mark_lag + 1 ... released now
+            self.marks = [(self.t + 1 - p[0], *p[1:]) for p in self._pending if p[0] <= due]
+            self._pending = [p for p in self._pending if p[0] > due]
         if c.redraw_v_each_period:
             self.V = self._draw_v()
             self.mu = 0.5

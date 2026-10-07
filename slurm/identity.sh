@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
-#SBATCH --time=04:00:00
+#SBATCH --time=08:00:00
 #SBATCH --output=slurm-%j.out
 # Identity experiment (RQ1), 10 seeds x 3 alphas x 3 kappas x 4 rhos x 5 policies, 1000 episodes.
 # Usage: sbatch slurm/identity.sh
@@ -22,5 +22,5 @@ python experiments/identity.py --run cfl_exp2 --alphas 0.1,0.3,0.5 --seeds 0-9 \
     --kappas 1e6,5,1 --rhos 0,0.9,0.99 --rhos-z 0 --margin 1 --n-wallets 50 --n-episodes 1000 \
     --jobs "$SLURM_CPUS_PER_TASK" --out results/cfl_exp2_identity_10seed.csv
 python experiments/identity.py --run cfl_exp2 --alphas 0.1,0.3,0.5 --seeds 0-9 \
-    --kappas 5,1 --rhos 0 --rhos-z 0.9,0.99 --margin 1 --n-wallets 50 --n-episodes 1000 \
+    --kappas 5,1 --rhos 0 --rhos-z 0.9,0.99 --mark-lags 1,5,20,60 --margin 1 --n-wallets 50 --n-episodes 1000 \
     --jobs "$SLURM_CPUS_PER_TASK" --out results/cfl_exp2_identity_regime_10seed.csv

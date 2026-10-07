@@ -254,33 +254,41 @@ class WalletEntrant(Agent):
         return self._post_mean(self._wallet_logprior() + ll, self.GRID)
 
     def _ingest(self, obs):
-        ev = obs.get("last_event", "none")
         hs = obs["last_half_spreads"]
         h = min(int(v) for v in hs)                                # the print (if any) was at the best quote
         if h < 1 or h > self.K:                                    # first observation of an episode: no period yet
             return
+        ev = obs.get("last_event", "none")
+        # ---- immediate: the print itself (identity, or the fact of a print)
         if ev == "none":
-            if self.info_set != "oracle":
-                self._ll_pop += self._period_loglik(h, ev, 0.0); self._abar_cache = None
             if self.last_wallet >= 0:
                 self.k_since += 1
-            self._regime_update(h, ev, 0.0, -1)
-            return
-        p, V = float(obs["last_price"]), float(obs["last_V"])
-        pnl = (p - V) if ev == "buy" else (V - p)                  # maker's one-period markout
-        j = int(obs["last_taker"])
-        self.n_prints_seen += 1
-        if self.info_set != "oracle":
-            self._ll_pop += self._period_loglik(h, ev, pnl); self._abar_cache = None
-            ll = self._print_loglik(h, pnl)
-            self._ll_last = ll
-            if self.info_set == "id":
-                self._ll_w[j] = self._ll_w.get(j, 0.0) + ll
-                if self._vec is not None:
-                    self._vec[j] = self.wallet_alpha_hat(j)
-        self.n_w[j] = self.n_w.get(j, 0) + 1
-        self.last_wallet, self.k_since = j, 1
-        self._regime_update(h, ev, pnl, j)
+            self._regime_immediate(h, ev, -1)
+        else:
+            j = int(obs["last_taker"])
+            self.n_prints_seen += 1
+            self.n_w[j] = self.n_w.get(j, 0) + 1
+            self.last_wallet, self.k_since = j, 1
+            self._regime_immediate(h, ev, j)
+        # ---- delayed: marks released this period (mark_lag periods after their print)
+        for ago, mev, mh, mprice, mwallet, mV in obs.get("marks", ()):
+            mh = int(mh)
+            if mev == "none":
+                if self.info_set != "oracle":
+                    self._ll_pop += self._period_loglik(mh, mev, 0.0); self._abar_cache = None
+                continue
+            pnl = (float(mprice) - float(mV)) if mev == "buy" else (float(mV) - float(mprice))
+            if self.info_set != "oracle":
+                self._ll_pop += self._period_loglik(mh, mev, pnl); self._abar_cache = None
+                ll = self._print_loglik(mh, pnl)
+                self._ll_last = ll
+                if self.info_set == "id":
+                    jj = int(mwallet)
+                    self._ll_w[jj] = self._ll_w.get(jj, 0.0) + ll
+                    if self._vec is not None:
+                        self._vec[jj] = self.wallet_alpha_hat(jj)
+            self._regime_delayed(mh, pnl, int(ago) - 1)
+        self._regime_propagate()
 
     # -- regime filter ---------------------------------------------------------------------
     def _regime_params(self):
@@ -305,7 +313,20 @@ class WalletEntrant(Agent):
             self._vec_abar = a
         return self._vec
 
-    def _regime_update(self, h: int, ev: str, pnl: float, j: int):
+    def _regime_evidence(self, L1: float, L0: float, steps: int):
+        """Bayes step on b (currently the belief about the regime of the last arrival) with evidence
+        about the regime `steps` arrivals earlier.  The regime chain is 'keep w.p. rho_z, else redraw
+        from the stationary law', which is reversible, so the evidence transfers with weight rho_z^steps
+        and otherwise says only what the stationary law says."""
+        if steps > 0:
+            _, _, p1 = self._regime_params()
+            w = self.rho_z ** steps
+            mix = p1 * L1 + (1 - p1) * L0
+            L1, L0 = w * L1 + (1 - w) * mix, w * L0 + (1 - w) * mix
+        self.b = self.b * L1 / max(self.b * L1 + (1 - self.b) * L0, 1e-300)
+
+    def _regime_immediate(self, h: int, ev: str, j: int):
+        """Evidence available at the print itself: who printed (id, oracle) or that a print happened (anon)."""
         if self.rho_z <= 0:
             return
         a0, a1, p1 = self._regime_params()
@@ -313,19 +334,29 @@ class WalletEntrant(Agent):
             self.b = p1
         e, u = self._e[h], self._u[h]
         if ev == "none":
-            L1, L0 = 1 - a1 * e - (1 - a1) * u, 1 - a0 * e - (1 - a0) * u
+            self._regime_evidence(1 - a1 * e - (1 - a1) * u, 1 - a0 * e - (1 - a0) * u, 0)
         elif self.info_set == "anon":
-            if pnl > 0:
-                L1, L0 = (1 - a1) * u * (1 - e / 2), (1 - a0) * u * (1 - e / 2)
-            else:
-                L1, L0 = a1 * e + (1 - a1) * u * e / 2, a0 * e + (1 - a0) * u * e / 2
+            self._regime_evidence(a1 * e + (1 - a1) * u, a0 * e + (1 - a0) * u, 0)
         else:
-            aj = self.wallet_alpha_hat(j)
-            a = self.abar_hat
-            L1, L0 = aj / max(a, 1e-9), (1 - aj) / max(1 - a, 1e-9)     # w_j(1) / w_j(0) up to a common factor
-        post = self.b * L1 / max(self.b * L1 + (1 - self.b) * L0, 1e-300)
-        self.b = self.rho_z * post + (1 - self.rho_z) * p1
-        self.last_b = self.b
+            aj, a = self.wallet_alpha_hat(j), self.abar_hat
+            self._regime_evidence(aj / max(a, 1e-9), (1 - aj) / max(1 - a, 1e-9), 0)
+
+    def _regime_delayed(self, h: int, pnl: float, steps: int):
+        """Evidence that needs the mark (anon only; given identity the PnL sign says nothing about z)."""
+        if self.rho_z <= 0 or self.info_set != "anon" or self.b is None:
+            return
+        a0, a1, _ = self._regime_params()
+        e, u = self._e[h], self._u[h]
+        def sign_lik(a):                                   # P(sign | print, z), the part not used at the print
+            P = a * e + (1 - a) * u
+            return ((1 - a) * u * (1 - e / 2) / P) if pnl > 0 else ((a * e + (1 - a) * u * e / 2) / P)
+        self._regime_evidence(sign_lik(a1), sign_lik(a0), steps)
+
+    def _regime_propagate(self):
+        if self.rho_z > 0 and self.b is not None:
+            _, _, p1 = self._regime_params()
+            self.b = self.rho_z * self.b + (1 - self.rho_z) * p1
+            self.last_b = self.b
 
     def alpha_next(self) -> float:
         a = self.abar_hat

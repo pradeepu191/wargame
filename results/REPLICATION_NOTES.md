@@ -630,3 +630,66 @@ Entrant profit, rent units, 5 seeds, wallet persistence ρ = 0 (as the data say)
   move the identity story to the belief-update / skew channel (post-fill), Zhai's own mechanism.
 * The margin-2 identity grid (`cfl_exp2_identity.csv`) should be re-run at margin 1 before any
   of its numbers are quoted; `slurm/identity.sh` now does both channels at margin 1, 10 seeds.
+
+---
+
+# Identity beyond the anonymous tape (data), and the mark lag (model)
+
+## Data: the 2 × 2 split (`results/zenodo_2026_01/calibration.csv`, `two_*` columns)
+Next fill's maker markout (10 s, bps), second half of Jan 26–28, split by whether the previous
+taker is a toxic wallet (classified on the first half) and by whether the price had already
+moved against the previous maker when the next order arrived (what an anonymous quoter sees):
+
+| | BTC | ETH | HYPE | SOL |
+|---|---|---|---|---|
+| identity alone (toxic − benign) | −0.81 | −0.55 | −0.84 | −0.88 |
+| anonymous signal alone (adverse − not) | −0.74 | −0.55 | −0.31 | −0.46 |
+| **identity given the anonymous signal** | **−0.63** | **−0.47** | **−0.74** | **−0.87** |
+| P(price already moved against the last maker) | 0.18 | 0.21 | 0.21 | 0.20 |
+| P(toxic | moved) / P(toxic | not moved) | 0.56 / 0.16 | 0.58 / 0.28 | 0.34 / 0.16 | 0.57 / 0.17 |
+
+78–99% of identity's effect survives conditioning on the anonymous signal. **The wallet tag
+carries regime information the tape has not yet revealed** — the opposite of the simulator's
+regime result, where the anonymous entrant captured most of the value.
+
+## Why the simulator got it wrong, and the fix
+The simulator revealed each print's ex-post mark V one period later, so the anonymous entrant
+knew with oracle precision whether the last fill was informed before the next arrival. On
+Hyperliquid the next order arrives in ~0.6 s and the markout realises over seconds to minutes:
+four times out of five the price has not moved yet (`P(adverse)` ≈ 0.2). Identity is public at
+the print; the mark is late. **The lag between the print and its mark is the value of
+identity.** `MarketConfig.mark_lag` now delays the mark by L periods; the entrant's evidence is
+split into immediate (who printed / that a print happened) and delayed (the mark), with the
+delayed evidence transferred to the current regime through ρ_z^L (the keep-or-redraw chain is
+reversible, so this is exact). Against fixed quoters the anonymous regime hit rate falls from
+0.77 (L = 1) to 0.71 (L = 20) while id / oracle stay at 0.87 / 0.89.
+
+Also from the top-10 MM set: the leader-switch statistic is *below* its shuffled null on BTC
+(0.49 vs 0.64) and ETH (0.64 vs 0.70) — a persistent leader, not turn-taking — and above it only
+on HYPE (0.65 vs 0.56). MM–MM avoidance among the top-10 is strong on HYPE (0.33) and SOL (0.27),
+weak on ETH (0.68), absent on BTC (0.88): the CCG signal appears on the less liquid books.
+
+## Simulator with the mark lag (`cfl_exp2_identity_marklag.csv`; κ = 1, ρ = 0, margin 1, 5 seeds)
+
+| ᾱ | ρ_z | mark lag | anon | id | oracle | id − anon (paired) | oracle − anon |
+|---|---|---|---|---|---|---|---|
+| 0.3 | 0.9 | 1 / 5 / 20 | 0.65 / 0.65 / 0.65 | 0.68 / 0.67 / 0.68 | 0.69 | +0.03 / +0.03 / +0.03 | +0.04 / +0.04 / +0.03 |
+| 0.3 | 0.99 | 1 / 5 / 20 | 0.78 / 0.80 / 0.79 | 0.80 / 0.81 / 0.80 | 0.84 | +0.02 / +0.02 / +0.01 | +0.07 / +0.05 / +0.05 |
+| 0.5 | 0.9 | 1 / 5 / 20 | 0.68 / 0.68 / 0.65 | 0.76 / 0.75 / 0.79 | 0.75 | +0.08 / +0.07 / **+0.14** | +0.07 / +0.07 / +0.10 |
+| 0.5 | 0.99 | 1 / 5 / 20 | 0.97 / 0.94 / 0.89 | 1.02 / 1.00 / 1.02 | 1.11 | +0.05 / +0.06 / **+0.13** | +0.14 / +0.17 / +0.22 |
+
+* **The lag does what the data say it should, where the regime matters.** At ᾱ = 0.5 the
+  anonymous entrant's profit falls as the mark arrives later (0.97 → 0.89 at ρ_z = 0.99) while
+  the identity entrant's is flat, so identity's increment grows from +0.05 to +0.13 rent units
+  (every seed positive at ρ_z = 0.9, lag 20). The anonymous entrant is still trading on a regime
+  belief that is 20 arrivals stale; the identity entrant is not.
+* At ᾱ = 0.3 the lag changes nothing (+0.02 throughout): with the incumbents at ~11 ticks, even the
+  toxic state leaves an undercut profitable, so the regime is not decision-relevant and neither
+  is knowing it sooner. Identity pays when the toxic state crosses the undercut threshold —
+  which depends on how wide the cartel quotes relative to break-even. That is a sharp, testable
+  statement: on Hyperliquid, the value of the wallet tag to an inside quoter should be larger on
+  books where the resting spread is close to the toxic-regime break-even.
+* Calibration targets for the sim, all from `calibrate.py`: regime contrast from the toxic /
+  benign conditional markouts; mark lag from order inter-arrival (0.4–1.8 s) against the markout
+  horizon (seconds to a minute) → L ≈ 5–60 arrivals; the cartel's quote relative to break-even
+  from the L2 spread once the book is recorded.
