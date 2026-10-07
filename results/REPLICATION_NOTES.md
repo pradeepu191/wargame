@@ -530,3 +530,60 @@ differences), `_as.png` (adverse-selection shift).
 * Calibration targets from `data/record.py` output: ρ̂ (same-taker repeat rate vs Herfindahl
   baseline), the cross-sectional dispersion of per-taker markouts (κ), and ᾱ from the markout
   level. 10-seed cluster run: `sbatch slurm/identity.sh`.
+
+---
+
+# First Hyperliquid data: Jan 26–28 2026, Zenodo trades archive (`results/zenodo_2026_01/`)
+
+Source: Albers et al. record 18184441, `trades_2026_01.tar` → `data/zenodo_to_parquet.py` →
+`analysis/calibrate.py`. January coverage is Jan 1–3 and Jan 19–31 (a 15-day hole in the
+archive); we used three full consecutive days. 3.42M prints for BTC/ETH/SOL/HYPE, 1.44M taker
+orders after collapsing sweeps. `side_info` is `[buyer, seller]`; 2.9% of aggressors have an
+older oid than the resting order (trigger/liquidation flow), flagged `taker_older`. Markouts use
+the trade-price mid proxy (bid–ask bounce at short horizons; the L2 mid is the fix).
+
+| | BTC | ETH | HYPE | SOL |
+|---|---|---|---|---|
+| orders / min | 97 | 68 | 135 | 34 |
+| maker markout 10 s (bps) | −0.69 | −0.79 | −0.12 | −0.41 |
+| ρ_order (same taker next) / random baseline | 0.020 / 0.005 | 0.034 / 0.009 | 0.038 / 0.012 | 0.045 / 0.011 |
+| ρ_fill (mechanical, sweeps) | 0.57 | 0.53 | 0.53 | 0.43 |
+| type rank corr, split-half (p) | 0.17 (1e-6) | 0.39 (1e-17) | 0.11 (2e-3) | 0.42 (8e-11) |
+| markout after toxic / after benign (bps) | −0.90 / −0.09 | −0.77 / −0.21 | −0.73 / +0.11 | −0.84 / +0.04 |
+| MM wallets (classifier), volume share | 374, 56% | 250, 52% | 284, 52% | 165, 50% |
+| MM–MM avoidance ratio | 1.00 | 1.05 | 0.93 | 0.99 |
+
+## Findings
+* **The identity signature is present and large.** Conditioning on whether the previous
+  order's taker is in the toxic quartile (classified on the first 36 h, measured on the second)
+  moves the maker's markout on the next fill by 0.55–0.88 bps, against a mean of −0.1 to −0.8.
+  "After benign" is ≈ 0 on every coin; "after toxic" is ≈ −0.8. n ≈ 18k–56k orders per coin.
+* **But not through the channel the simulator has.** Same-wallet persistence at the order level
+  is 0.02–0.045 — three to four times random matching, and negligible in absolute terms. The
+  simulator at ρ = 0.5 already gave zero value of identity. Informed flow clusters *in time*,
+  and a toxic wallet's print is a signal that the market is in a toxic regime shared by the next
+  arrival, whoever it is. Identity is a regime indicator, not a repeat-customer forecast. The
+  model change this forces: a latent toxicity regime with persistence, wallet activity that
+  depends on it, and an entrant that filters the regime from the identity-tagged tape.
+* **Toxicity is a persistent wallet type** (split-half rank correlation 0.11–0.42, all
+  significant), weaker than Zhai's ten-day 0.52, which is expected with 36-hour halves and a
+  trade-price proxy.
+* **HYPE is different:** mean 10-s markout −0.12 bps vs −0.4 to −0.8 for the cross-listed coins,
+  and the top HYPE makers show *positive* 10-s markouts (+0.5 to +0.96 bps). HYPE has no Binance
+  / OKX price to be arbitraged against. A clean cross-coin contrast for the "rent is where
+  toxicity is lowest" prediction, pending the L2-mid check.
+* **No MM–MM avoidance** (ratio ≈ 1 on all four coins; the 0.5–0.65 in the first run was an
+  artefact of the 3% role swaps before the converter fix). The CCG anonymity-signalling result
+  does not show in three days of Hyperliquid data at this classifier setting. The top-10 MM
+  wallets carry 27–29% of all volume; turn-taking tests should use that set with the shuffled
+  null now in `calibrate.py`, not the 374-wallet set.
+* The HLP vault address does not appear with ≥ 30 fills on any of the four coins in this window.
+
+## What this means for the paper
+* Workshop 1 item (iv) is done; the data section can state coverage, the conversion rules, and
+  this table.
+* RQ1's framing survives, the mechanism in the simulator does not: replace wallet persistence
+  with regime persistence. The empirical statistic that calibrates it is the conditional
+  markout split above, and the entrant's rule becomes a regime filter on the public tape.
+* Next data steps: October tar (the cascade; check contiguity), the Mac recorder with the L2
+  book for a true-mid markout cross-check, and the Dec 2025 L4 files for reaction functions.

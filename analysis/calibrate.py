@@ -93,6 +93,20 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30) 
             _, row["mm_avoidance_ratio"] = pair_matrix(t, mm)
             row["mm_leader_switch_1s"] = leader_switch(t, mm, window_ms=1000)
             row["mm_leader_switch_10s"] = leader_switch(t, mm, window_ms=10_000)
+            # the turn-taking test needs a small, dominant set and a null: top-10 MM wallets by volume,
+            # leader-switch vs the same statistic with maker labels shuffled (independence null)
+            top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(10))
+            row["mm_top10_volume_share"] = float(feats[feats.wallet.isin(top)].volume_share.sum())
+            row["mm_top10_leader_switch_10s"] = leader_switch(t, set(top), window_ms=10_000)
+            rng = np.random.default_rng(0)
+            tt = t[t.maker.isin(top)]
+            nulls = []
+            for _ in range(10):
+                sh = tt.copy(); sh["maker"] = rng.permutation(sh.maker.to_numpy())
+                sh["buyer"] = np.where(sh.side == "buy", sh.taker, sh.maker); sh["seller"] = np.where(sh.side == "buy", sh.maker, sh.taker)
+                nulls.append(leader_switch(sh, set(top), window_ms=10_000))
+            row["mm_top10_leader_switch_10s_null"] = float(np.mean(nulls))
+            _, row["mm_top10_avoidance_ratio"] = pair_matrix(t, set(top))
             for d in horizons:
                 row[f"mm_markout_{d}_bps"] = float(feats[feats.is_mm][f"markout_{d}"].mean())
                 row[f"nonmm_markout_{d}_bps"] = float(feats[~feats.is_mm][f"markout_{d}"].mean()) if (~feats.is_mm).any() else np.nan
