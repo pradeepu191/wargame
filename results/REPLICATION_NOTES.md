@@ -693,3 +693,26 @@ weak on ETH (0.68), absent on BTC (0.88): the CCG signal appears on the less liq
   benign conditional markouts; mark lag from order inter-arrival (0.4–1.8 s) against the markout
   horizon (seconds to a minute) → L ≈ 5–60 arrivals; the cartel's quote relative to break-even
   from the L2 spread once the book is recorded.
+
+## Live feed vs archive (`results/live_2026_10/`, Mac recorder, Oct 6–7 2026, 19 h, no book)
+
+| archive Jan 26–28 / live Oct 6–7 | BTC | ETH | HYPE | SOL |
+|---|---|---|---|---|
+| prints / min | 262 / 248 | 157 / 135 | 313 / 225 | 61 / 65 |
+| orders / min | 97 / 122 | 68 / 68 | 135 / 77 | 34 / 35 |
+| ρ_order | 0.020 / 0.018 | 0.034 / 0.031 | 0.038 / 0.051 | 0.045 / 0.045 |
+| ρ_fill | 0.57 / 0.49 | 0.53 / 0.47 | 0.53 / 0.65 | 0.43 / 0.47 |
+| type rank corr | 0.17 / 0.15 | 0.39 / 0.41 | 0.11 / 0.30 | 0.42 / 0.40 |
+| maker markout 10 s (bps) | −0.69 / −0.10 | −0.79 / −1.02 | −0.12 / −0.36 | −0.41 / −0.42 |
+| identity given anon signal (bps) | −0.63 / −0.24 | −0.47 / −1.25 | −0.74 / −0.50 | −0.87 / −0.92 |
+| P(adverse move before next order) | 0.18 / 0.11 | 0.21 / 0.13 | 0.21 / 0.25 | 0.20 / 0.14 |
+
+Structural statistics (rates, sweep collapsing, wallet persistence, type persistence, identity's
+increment) reproduce across the two sources; the feed and the archive are the same data. State
+statistics moved: BTC was much less toxic in the live window and identity's increment on BTC
+shrank with it — the simulator's prediction that identity pays when the toxic regime crosses the
+undercut threshold. HYPE is at $90 vs $29 in January. The top-10 MM statistics (avoidance,
+leader-switch vs null) flipped between samples and are not stable at 19 h / 3 days with a
+volume-selected wallet set; do not report them until a fixed set over a longer window exists.
+Coverage (`data/coverage.py`): 20 hours, 770k prints, no missing hours or wallet ids; one 42-min
+gap (laptop lid) in hour 17 UTC on Oct 7.
