@@ -63,3 +63,13 @@ def test_pipeline_runs_on_the_mm_tape():
     row, feats = calibrate_coin(synthetic_tape(), n_min=30)
     assert row["n_mm"] == 2 and row["mm_avoidance_ratio"] == 0.0
     assert {"rho_order", "markout_10_bps", "type_rank_corr", "cond_diff_bps"} <= set(row)
+
+
+def test_two_signal_split_identity_adds_little_when_anon_signal_is_informative():
+    from analysis.wallets import conditional_markout_two_signals
+    tape, _ = bursty_tape(rho=0.8)
+    two = conditional_markout_two_signals(tape, horizon_s=1, n_min=20)
+    assert two["diff_id_bps"] < -1.0 and two["diff_anon_bps"] < 0          # both signals work
+    # identity's increment given the anonymous signal is smaller than identity alone
+    assert abs(two["diff_id_given_anon_bps"]) <= abs(two["diff_id_bps"]) + 1e-9
+    assert two["p_toxic_given_adverse"] > two["p_toxic_given_not_adverse"]  # the anon signal flags toxic wallets

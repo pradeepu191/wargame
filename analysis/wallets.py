@@ -220,3 +220,59 @@ def conditional_markout_after_toxic(trades: pd.DataFrame, horizon_s: int = 10, n
             "after_benign": float(np.mean(b)) if len(b) else float("nan"),
             "diff_bps": float(np.mean(a) - np.mean(b)) if len(a) and len(b) else float("nan"),
             "n_after_toxic": int(len(a)), "n_after_benign": int(len(b))}
+
+
+def conditional_markout_two_signals(trades: pd.DataFrame, horizon_s: int = 10, n_min: int = 30,
+                                    quantile: float = 0.25) -> dict:
+    """Does wallet identity add regime information beyond what the anonymous tape already shows?
+
+    At the moment order k arrives, an anonymous quoter knows the previous print's price and side
+    and the current price, so it can see whether the market has since moved AGAINST the previous
+    maker (anon signal: adverse = 1).  An identity-aware quoter additionally knows whether the
+    previous taker is a toxic wallet (classified on the first half).  We measure the maker's
+    markout on order k's fill under the 2 x 2 split and report
+        diff_id     = E[mo | toxic] - E[mo | benign]                       (identity alone)
+        diff_anon   = E[mo | adverse] - E[mo | not adverse]                 (anonymous tape alone)
+        diff_id_given_anon = mean over anon strata of (E[mo | toxic, s] - E[mo | benign, s])
+                                                                            (identity's increment)
+    All on the second half of the sample.  If diff_id_given_anon ~ 0 the anonymous tape already
+    carries the regime and identity is redundant for a quoter -- the simulator's regime result."""
+    t = with_roles(trades)
+    m_fut = mid_proxy(t, horizon_s * 1000)
+    s = np.where(t.maker_sold, 1.0, -1.0)
+    t["maker_markout"] = -s * (m_fut - t.px) / t.px * 1e4
+    cut = t.time_ms.iloc[len(t) // 2]
+    first = t[t.time_ms < cut].groupby("taker").maker_markout.agg(["mean", "size"])
+    first = first[first["size"] >= n_min]
+    out = {"n_classified": int(len(first))}
+    if len(first) < 8:
+        return {**out, "diff_id_bps": np.nan, "diff_anon_bps": np.nan, "diff_id_given_anon_bps": np.nan}
+    toxic = set(first[first["mean"] <= first["mean"].quantile(quantile)].index)
+    second = t[t.time_ms >= cut].reset_index(drop=True)
+    o = collapse_orders(second, carry=("maker_markout",))
+    prev_px, prev_side, prev_taker = o.px.shift(1), o.side.shift(1), o.taker.shift(1)
+    known = prev_taker.notna().to_numpy()
+    # previous maker sold if the previous taker bought; adverse to that maker if price rose since
+    prev_maker_sold = (prev_side == "buy").to_numpy()
+    moved = (o.px.to_numpy() - prev_px.to_numpy())
+    adverse = np.where(prev_maker_sold, moved > 0, moved < 0)
+    tox = prev_taker.isin(toxic).to_numpy()
+    mo = o.maker_markout.to_numpy()
+    def m(mask):
+        mask = mask & known
+        return float(mo[mask].mean()) if mask.sum() > 50 else np.nan
+    out["mo_toxic"], out["mo_benign"] = m(tox), m(~tox)
+    out["mo_adverse"], out["mo_not_adverse"] = m(adverse), m(~adverse)
+    out["diff_id_bps"] = out["mo_toxic"] - out["mo_benign"]
+    out["diff_anon_bps"] = out["mo_adverse"] - out["mo_not_adverse"]
+    incr, wts = [], []
+    for sgn in (True, False):
+        a, b = m(tox & (adverse == sgn)), m(~tox & (adverse == sgn))
+        if np.isfinite(a) and np.isfinite(b):
+            w = int(((adverse == sgn) & known).sum())
+            incr.append((a - b) * w); wts.append(w)
+    out["diff_id_given_anon_bps"] = float(sum(incr) / sum(wts)) if wts else np.nan
+    out["p_adverse"] = float(adverse[known].mean())
+    out["p_toxic_given_adverse"] = float(tox[adverse & known].mean()) if (adverse & known).sum() else np.nan
+    out["p_toxic_given_not_adverse"] = float(tox[~adverse & known].mean()) if (~adverse & known).sum() else np.nan
+    return out

@@ -587,3 +587,46 @@ the trade-price mid proxy (bid–ask bounce at short horizons; the L2 mid is the
   markout split above, and the entrant's rule becomes a regime filter on the public tape.
 * Next data steps: October tar (the cascade; check contiguity), the Mac recorder with the L2
   book for a true-mid markout cross-check, and the Dec 2025 L4 files for reaction functions.
+
+---
+
+# Regime channel in the simulator (`cfl_exp2_identity_regime.csv`)
+
+Model (`MarketConfig.regime_persistence` = ρ_z): latent z ∈ {calm, toxic}, kept w.p. ρ_z else
+redrawn from a stationary law chosen so the mean toxicity stays at ᾱ; wallet activity tilts by
+α_j in the toxic state and (1 − α_j) in the calm one. With κ = 1 the regime toxicities are
+0.15 / 0.65, with κ = 5 they are 0.25 / 0.415. The entrant runs a two-state filter on the public
+tape: with ids the evidence is *who* printed (likelihood ratio α_j(1−ᾱ)/((1−α_j)ᾱ)); without ids
+it is whether the last print *lost money* for its maker. Quote rule now undercuts at break-even
+(`--margin 1`); the first identity grid used margin 2, which can make a better-informed
+entrant earn *less* (it declines positive-EV fills when its forecast is pessimistic), and did.
+
+Entrant profit, rent units, 5 seeds, wallet persistence ρ = 0 (as the data say):
+
+| ᾱ | κ | ρ_z | anon | id | oracle | id − anon (paired) | oracle − anon |
+|---|---|---|---|---|---|---|---|
+| 0.3 | 1 | 0 / 0.9 / 0.99 | 0.68 / 0.64 / 0.79 | 0.68 / 0.68 / 0.80 | 0.69 / 0.69 / 0.84 | 0 / +0.04 / +0.01 | 0 / +0.05 / +0.06 |
+| 0.5 | 1 | 0 / 0.9 / 0.99 | 0.77 / 0.67 / 0.96 | 0.77 / 0.75 / 0.97 | 0.71 / 0.75 / 1.11 | 0 / +0.08 / +0.01 | 0 / +0.07 / +0.15 |
+| 0.3 | 5 | 0.9 / 0.99 | 0.65 / 0.68 | 0.67 / 0.67 | 0.67 / 0.69 | +0.03 / −0.01 | +0.02 / +0.01 |
+| 0.5 | 5 | 0.9 / 0.99 | 0.70 / 0.76 | 0.70 / 0.80 | 0.68 / 0.78 | −0.01 / +0.03 | −0.02 / +0.02 |
+
+## Findings
+* **Under the regime mechanism the anonymous tape already carries most of the value.** The
+  last print's markout is itself a regime signal, and the regime — not the wallet — is what the
+  next arrival shares. Identity sharpens the filter (regime hit rate 0.87 vs 0.76 against fixed
+  quoters) but the profit increment is +0.01 to +0.08 rent units, versus +0.16 to +0.30 under
+  the wallet-persistence channel that the data rule out.
+* Identity only pays when the regime contrast crosses the entrant's decision threshold: at κ = 1
+  the toxic state's 0.65 makes an undercut at the incumbents' quote unprofitable, and there the
+  oracle gains +0.15 at ᾱ = 0.5, ρ_z = 0.99 (withdraws 15% of periods, informed share of its
+  fills 0.28 vs incumbents' 0.50). At κ = 5 the toxic state (0.415) never crosses it and all three
+  information sets coincide.
+* So the empirical question is not "does identity predict the next fill's toxicity" (it does,
+  −0.8 bps) but **"does identity predict it beyond what the anonymous tape already shows"**.
+  `calibrate.py` now reports that directly: the 2 × 2 split of the next fill's markout by
+  (previous taker toxic?) × (price moved against the previous maker by the time the next order
+  arrived?). `two_diff_id_given_anon_bps` is identity's increment; if it is near zero, a quoter
+  gets the regime from the tape and the wallet tag is redundant for *this* use — which would
+  move the identity story to the belief-update / skew channel (post-fill), Zhai's own mechanism.
+* The margin-2 identity grid (`cfl_exp2_identity.csv`) should be re-run at margin 1 before any
+  of its numbers are quoted; `slurm/identity.sh` now does both channels at margin 1, 10 seeds.

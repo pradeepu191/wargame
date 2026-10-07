@@ -146,6 +146,15 @@ class WalletEntrant(Agent):
         alpha_next = rho^k alpha_j_hat + (1 - rho^k) abar_hat
     (rho, kappa, m, sigma are treated as known market structure; the types are not.)
 
+    Regime filter (MarketConfig.regime_persistence > 0).  The entrant tracks b = P(z = toxic) for
+    the coming arrival.  Every period is evidence: a print by wallet j has likelihood ratio
+    w_j(1)/w_j(0) = alpha_j (1-abar) / ((1-alpha_j) abar) under the activity-tilt rule (id, oracle:
+    identity is the evidence; the PnL sign adds nothing given j); without ids (anon) the PnL sign
+    is the evidence through the regime's mean type, P(print & loss | z) = alpha(z) e + (1-alpha(z)) u e/2
+    etc. (all linear in alpha, so only alpha(z) is needed); a no-print period is weak evidence
+    either way.  Then b <- rho_z b + (1 - rho_z) p1 and the forecast is b alpha(1) + (1-b) alpha(0),
+    combined with the wallet-persistence term when both channels are on.
+
     Quote rule, with (h^C, h^M) evaluated at alpha_next and best = best incumbent quote:
         if best - h^C >= margin:  h = min(best - 1, h^M)     undercut, never past that type's monopoly quote
         else:                     h = h^C                     do not pay to take this flow
@@ -172,6 +181,7 @@ class WalletEntrant(Agent):
         self.alpha_eff = alpha_eff
         self.m, self.sigma, self.tick, self.K = cfg.edge_mean, cfg.sigma_L, cfg.tick, cfg.max_half_spread
         self.rho, self.kappa = cfg.wallet_persistence, cfg.wallet_concentration
+        self.rho_z = cfg.regime_persistence
         self.alpha_prior, self.n0, self.margin, self.h_min = alpha_prior, prior_strength, margin, h_min
         A = self.GRID
         self._log_prior_pop = (self.n0 * alpha_prior) * np.log(A) + (self.n0 * (1 - alpha_prior)) * np.log(1 - A)
@@ -193,6 +203,10 @@ class WalletEntrant(Agent):
         self.last_decision = None; self.last_alpha_next = None
         self.n_prints_seen = 0
         self._abar_cache = None
+        self.b = None                        # P(next arrival is in the toxic regime)
+        self.last_b = None
+        self._vec = None                     # cached per-wallet posterior means (id)
+        self._vec_abar = None                # abar_hat the cache was built with
 
     def reset(self):
         pass                                 # memory persists across episodes
@@ -250,6 +264,7 @@ class WalletEntrant(Agent):
                 self._ll_pop += self._period_loglik(h, ev, 0.0); self._abar_cache = None
             if self.last_wallet >= 0:
                 self.k_since += 1
+            self._regime_update(h, ev, 0.0, -1)
             return
         p, V = float(obs["last_price"]), float(obs["last_V"])
         pnl = (p - V) if ev == "buy" else (V - p)                  # maker's one-period markout
@@ -261,11 +276,62 @@ class WalletEntrant(Agent):
             self._ll_last = ll
             if self.info_set == "id":
                 self._ll_w[j] = self._ll_w.get(j, 0.0) + ll
+                if self._vec is not None:
+                    self._vec[j] = self.wallet_alpha_hat(j)
         self.n_w[j] = self.n_w.get(j, 0) + 1
         self.last_wallet, self.k_since = j, 1
+        self._regime_update(h, ev, pnl, j)
+
+    # -- regime filter ---------------------------------------------------------------------
+    def _regime_params(self):
+        """(alpha_calm, alpha_toxic, p1) under the entrant's current type estimates."""
+        a = self.abar_hat
+        if self.info_set == "anon":
+            # types ~ Beta(kappa a, kappa (1-a)); tilting by alpha / (1-alpha) shifts one parameter by 1
+            A, B = self.kappa * a, self.kappa * (1 - a)
+            a1, a0 = (A + 1) / (A + B + 1), A / (A + B + 1)
+        else:
+            al = self._all_wallet_alpha()
+            a1, a0 = float((al * al).sum() / al.sum()), float((al * (1 - al)).sum() / (1 - al).sum())
+        p1 = (a - a0) / (a1 - a0) if a1 > a0 + 1e-12 else 0.5
+        return a0, a1, float(min(max(p1, 0.0), 1.0))
+
+    def _all_wallet_alpha(self) -> np.ndarray:
+        if self.info_set == "oracle":
+            return self.wallet_alpha
+        a = self.abar_hat
+        if self._vec is None or abs(a - self._vec_abar) > 0.005:          # prior moved: rebuild all
+            self._vec = np.array([self.wallet_alpha_hat(j) for j in range(self.cfg.n_wallets)])
+            self._vec_abar = a
+        return self._vec
+
+    def _regime_update(self, h: int, ev: str, pnl: float, j: int):
+        if self.rho_z <= 0:
+            return
+        a0, a1, p1 = self._regime_params()
+        if self.b is None:
+            self.b = p1
+        e, u = self._e[h], self._u[h]
+        if ev == "none":
+            L1, L0 = 1 - a1 * e - (1 - a1) * u, 1 - a0 * e - (1 - a0) * u
+        elif self.info_set == "anon":
+            if pnl > 0:
+                L1, L0 = (1 - a1) * u * (1 - e / 2), (1 - a0) * u * (1 - e / 2)
+            else:
+                L1, L0 = a1 * e + (1 - a1) * u * e / 2, a0 * e + (1 - a0) * u * e / 2
+        else:
+            aj = self.wallet_alpha_hat(j)
+            a = self.abar_hat
+            L1, L0 = aj / max(a, 1e-9), (1 - aj) / max(1 - a, 1e-9)     # w_j(1) / w_j(0) up to a common factor
+        post = self.b * L1 / max(self.b * L1 + (1 - self.b) * L0, 1e-300)
+        self.b = self.rho_z * post + (1 - self.rho_z) * p1
+        self.last_b = self.b
 
     def alpha_next(self) -> float:
         a = self.abar_hat
+        if self.rho_z > 0 and self.b is not None:
+            a0, a1, _ = self._regime_params()
+            a = self.b * a1 + (1 - self.b) * a0                     # regime forecast replaces the mean
         if self.last_wallet < 0 or self.rho <= 0:
             return a
         w = self.rho ** self.k_since

@@ -32,6 +32,14 @@ Heterogeneous, persistent takers (n_wallets > 0; the Hyperliquid identity treatm
     previous period's wallet w.p. rho = wallet_persistence, else a fresh draw from w: bursty,
     autocorrelated toxicity.  Stationary arrival distribution is w regardless of rho, so the
     market-wide benchmarks use alpha_eff = sum_j w_j alpha_j.
+  * Toxicity REGIME (regime_persistence > 0; what the Jan 2026 Hyperliquid data asks for): a
+    latent state z_t in {0 calm, 1 toxic}: kept w.p. rho_z = regime_persistence, else redrawn
+    from the stationary distribution, whose P(z = 1) is chosen so that the stationary mean
+    toxicity equals alpha (so switching the regime on changes the clustering of informed flow,
+    not its level).  Wallet activity depends on it: in the toxic state the arrival weights are
+    w_j alpha_j (toxic wallets active), in the calm state w_j (1 - alpha_j).  The identity of the
+    last print is therefore evidence about the regime the next arrival shares, whoever it is --
+    informed flow clusters in time, not by wallet.
   * After commitment the print is public: the observation carries last period's event, price,
     wallet id and the ex-post mark V (the one-period markout).  Nobody ever sees the identity
     of the order about to hit them.  With n_wallets = 0 the RNG stream is untouched and every
@@ -85,6 +93,7 @@ class MarketConfig:
     wallet_zipf: float = 0.0            # activity weights ∝ rank^-zipf (0 = uniform)
     wallet_seed: Optional[int] = None   # seed for the type draw (default: seed); keep it fixed
                                         # across training / entry / evaluation environments
+    regime_persistence: float = 0.0     # rho_z: P(regime unchanged next period); 0 = no regime
 
     def __post_init__(self):
         if self.edge_dist not in ("fixed", "exponential"):
@@ -96,6 +105,10 @@ class MarketConfig:
             raise ValueError("wallet_persistence must be in [0, 1]")
         if self.n_wallets and self.wallet_concentration <= 0:
             raise ValueError("wallet_concentration must be > 0")
+        if self.regime_persistence and not self.n_wallets:
+            raise ValueError("regime_persistence needs n_wallets > 0")
+        if not (0.0 <= self.regime_persistence < 1.0):
+            raise ValueError("regime_persistence must be in [0, 1)")
 
 
 class GlostenMilgromEnv:
@@ -119,6 +132,9 @@ class GlostenMilgromEnv:
         self.wallet_alpha: Optional[np.ndarray] = None
         self.wallet_weights: Optional[np.ndarray] = None
         self._active_wallet: int = -1      # the wallet that arrived last period (traded or not)
+        self.regime: int = -1              # latent toxicity state (-1: no regime model)
+        self.regime_weights = None
+        self.regime_alpha = None
         if cfg.n_wallets:
             from scipy.stats import beta as _beta
             wrng = np.random.default_rng(cfg.seed if cfg.wallet_seed is None else cfg.wallet_seed)
@@ -133,6 +149,14 @@ class GlostenMilgromEnv:
             self.wallet_weights = w / w.sum()
             self.alpha_eff = float(self.wallet_weights @ self.wallet_alpha)
             self._uniform_wallets = cfg.wallet_zipf == 0.0
+            if cfg.regime_persistence > 0:      # regime_weights (2, M): calm / toxic arrival weights
+                a = self.wallet_alpha
+                w1 = self.wallet_weights * a; w0 = self.wallet_weights * (1 - a)
+                self.regime_weights = np.vstack([w0 / w0.sum(), w1 / w1.sum()])
+                self.regime_alpha = self.regime_weights @ a            # P(informed | calm), P(informed | toxic)
+                a0, a1 = float(self.regime_alpha[0]), float(self.regime_alpha[1])
+                self.regime_p1 = float((self.alpha_eff - a0) / (a1 - a0)) if a1 > a0 else 0.5
+                self._uniform_wallets = False
 
     # ------------------------------------------------------------------ helpers
     @property
@@ -141,8 +165,13 @@ class GlostenMilgromEnv:
 
     def _draw_wallet(self) -> int:
         c = self.cfg
+        if c.regime_persistence > 0:
+            if self.regime < 0 or self.rng.random() >= c.regime_persistence:
+                self.regime = int(self.rng.random() < self.regime_p1)    # redraw from the stationary law
         if self._active_wallet >= 0 and c.wallet_persistence > 0 and self.rng.random() < c.wallet_persistence:
             return self._active_wallet
+        if self.regime_weights is not None:
+            return int(self.rng.choice(c.n_wallets, p=self.regime_weights[self.regime]))
         if self._uniform_wallets:
             return int(self.rng.integers(c.n_wallets))
         return int(self.rng.choice(c.n_wallets, p=self.wallet_weights))
@@ -288,6 +317,7 @@ class GlostenMilgromEnv:
             "filled": filled,
             "informed": informed,
             "taker": wallet,
+            "regime": self.regime,
             "mid": mid,
             "mid_next": self.mid,
             "best_ask": best_ask,

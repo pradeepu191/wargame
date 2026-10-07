@@ -34,8 +34,8 @@ import numpy as np
 import pandas as pd
 
 from analysis.wallets import (activity_herfindahl, arrival_persistence, collapse_orders,
-                              conditional_markout_after_toxic, leader_switch, mid_proxy, pair_matrix,
-                              split_half_type_persistence, wallet_features, with_roles)
+                              conditional_markout_after_toxic, conditional_markout_two_signals, leader_switch,
+                              mid_proxy, pair_matrix, split_half_type_persistence, wallet_features, with_roles)
 
 
 def load_trades(raw: Path, coin: str) -> pd.DataFrame:
@@ -84,6 +84,10 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30) 
     cm = conditional_markout_after_toxic(t, horizon_s=10, n_min=n_min)
     row["cond_after_toxic_bps"], row["cond_after_benign_bps"], row["cond_diff_bps"] = cm["after_toxic"], cm["after_benign"], cm["diff_bps"]
     row["cond_n_after_toxic"] = cm["n_after_toxic"]
+    two = conditional_markout_two_signals(t, horizon_s=10, n_min=n_min)
+    for k in ("diff_id_bps", "diff_anon_bps", "diff_id_given_anon_bps", "p_adverse",
+              "p_toxic_given_adverse", "p_toxic_given_not_adverse"):
+        row[f"two_{k}"] = two.get(k, np.nan)
     if len(feats):
         mm = set(feats[feats.is_mm].wallet)
         row["n_mm"] = len(mm)
@@ -137,7 +141,8 @@ def main():
         print(f"{c}: {row['hours']:.1f} h, {row['prints']} prints, {row['orders']} orders, "
               f"rho_order={row['rho_order']:.3f} (baseline {row['rho_order_baseline']:.3f}), "
               f"markout_10s={row['markout_10_bps']:+.2f} bps, type rank corr={row['type_rank_corr']:.2f}, "
-              f"cond diff={row['cond_diff_bps']:+.2f} bps, MMs={row.get('n_mm', 0)}", flush=True)
+              f"cond diff={row['cond_diff_bps']:+.2f} bps [id|anon-signal: {row['two_diff_id_given_anon_bps']:+.2f}, "
+              f"anon alone: {row['two_diff_anon_bps']:+.2f}], MMs={row.get('n_mm', 0)}", flush=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)
     pd.set_option("display.width", 250)
