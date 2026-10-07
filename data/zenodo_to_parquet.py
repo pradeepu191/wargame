@@ -6,17 +6,21 @@ line, ALL coins interleaved:
     coin, side ("B" buy aggressor / "A" sell aggressor), time (ISO, ns), px, sz, hash,
     trade_dir_override, side_info: [ {user, start_pos, oid, twap_id, cloid}, {...} ]
 
-Who is the taker?  The schema does not say which side_info entry is which.  Order ids are
-assigned incrementally by the matching engine, so the AGGRESSOR is the entry with the LARGER
-oid (its order arrived later than the resting one).  With side = "B" the taker bought, so
-buyer = taker, seller = maker; with "A" the reverse.  The converter also reports how often
-side_info[0] turned out to be the buyer, as a check on the convention.
+Who is who?  side_info is [buyer, seller], the public API's `users` order.  (Verified on
+Jan 26-28 2026: the entry with the larger oid -- the order that arrived later, i.e. the
+aggressor -- is side_info[0] on buy-aggressor trades and side_info[1] on sell-aggressor trades
+in 97.1% of 3.4M trades; the remaining 2.9% are aggressors whose order is OLDER than the
+resting one, which is what triggered stop orders and liquidation orders look like.)  So
+taker = buyer when side = "B", seller when side = "A"; `taker_older` flags the oid-rule
+disagreements for exactly that reason.
 
 Output: <out>/trades_<COIN>_<YYYYMMDDHH>.parquet with the recorder's columns
     time_ms, coin, side, px, sz, tid, hash, buyer, seller
 plus archive-only columns
-    taker_oid, maker_oid, taker_start_pos, maker_start_pos, taker_twap, maker_twap, same_block
-(same_block: hash is all zeros, i.e. the order crossed in the block it was submitted).
+    taker_oid, maker_oid, taker_start_pos, maker_start_pos, taker_twap, maker_twap, same_block,
+    taker_older
+(same_block: hash is all zeros, i.e. the order crossed in the block it was submitted;
+ taker_older: the aggressor's oid is smaller than the resting order's -- trigger/liquidation flow).
 
 Usage:
   python data/zenodo_to_parquet.py --tar data/raw/zenodo/trades_2026_01.tar \
@@ -47,7 +51,8 @@ MEMBER = re.compile(r"(?:^|/)(?P<date>\d{8})/(?P<hour>\d{1,2})\.gz$")
 ZERO_HASH = re.compile(r"^0x0+$")
 
 COLS = ["time_ms", "coin", "side", "px", "sz", "tid", "hash", "buyer", "seller",
-        "taker_oid", "maker_oid", "taker_start_pos", "maker_start_pos", "taker_twap", "maker_twap", "same_block"]
+        "taker_oid", "maker_oid", "taker_start_pos", "maker_start_pos", "taker_twap", "maker_twap", "same_block",
+        "taker_older"]
 
 
 def parse_hour(raw: bytes, coins: set[str] | None, tid0: int) -> tuple[pd.DataFrame, dict]:
@@ -71,26 +76,20 @@ def parse_hour(raw: bytes, coins: set[str] | None, tid0: int) -> tuple[pd.DataFr
             si = t["side_info"]
             if len(si) != 2:
                 continue
-            a, b = si
-            # aggressor = larger oid (arrived later than the resting order)
-            if a["oid"] >= b["oid"]:
-                taker, maker, taker_idx = a, b, 0
-            else:
-                taker, maker, taker_idx = b, a, 1
+            buyer_e, seller_e = si                         # side_info = [buyer, seller]
             side = t["side"]
-            if side == "B":
-                buyer, seller = taker["user"], maker["user"]
-                idx0_buyer += taker_idx == 0
-            else:
-                buyer, seller = maker["user"], taker["user"]
-                idx0_buyer += taker_idx == 1
+            taker, maker = (buyer_e, seller_e) if side == "B" else (seller_e, buyer_e)
+            buyer, seller = buyer_e["user"], seller_e["user"]
+            taker_older = taker["oid"] < maker["oid"]      # aggressor older than the resting order
+            # convention check: with [buyer, seller] the larger oid should sit at index 0 on B trades
+            idx0_buyer += (buyer_e["oid"] >= seller_e["oid"]) == (side == "B")
             h = t.get("hash") or ""
             rows.append((t["time"], t["coin"], side, float(t["px"]), float(t["sz"]), tid0 + len(rows), h,
                          buyer, seller, int(taker["oid"]), int(maker["oid"]),
                          float(taker["start_pos"]) if taker.get("start_pos") is not None else np.nan,
                          float(maker["start_pos"]) if maker.get("start_pos") is not None else np.nan,
                          taker.get("twap_id") is not None, maker.get("twap_id") is not None,
-                         bool(ZERO_HASH.match(h))))
+                         bool(ZERO_HASH.match(h)), taker_older))
     df = pd.DataFrame(rows, columns=COLS)
     if len(df):
         df["time_ms"] = (pd.to_datetime(df["time_ms"], format="ISO8601", utc=True).astype("int64") // 1_000_000)
@@ -136,8 +135,8 @@ def main():
             print(f"{date} h{hour:02d}: {diag['n_lines']} lines -> {diag['n_kept']} kept "
                   f"({', '.join(f'{c}:{n}' for c, n in df.coin.value_counts().items())})  "
                   f"[{time.time() - t_start:.0f}s]", flush=True)
-    print(f"done: {n_files} hour files, {tid} trades, side_info[0] was the buyer in "
-          f"{np.mean(idx0) if idx0 else float('nan'):.3f} of trades (convention check)")
+    print(f"done: {n_files} hour files, {tid} trades; oid rule agrees with the [buyer, seller] convention in "
+          f"{np.mean(idx0) if idx0 else float('nan'):.3f} of trades (expect ~0.97; the rest are taker_older)")
 
 
 if __name__ == "__main__":

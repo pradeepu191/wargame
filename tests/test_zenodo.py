@@ -26,7 +26,8 @@ def make_hour(rng, n=400, coins=("BTC", "ETH", "DOGE"), date="2026-01-05", hour=
         taker = {"user": f"0xtaker{rng.integers(10)}", "start_pos": "0.0", "oid": oid + 1,
                  "twap_id": int(rng.integers(1, 9)) if rng.random() < 0.2 else None, "cloid": None}
         oid += 2
-        si = [maker, taker] if rng.random() < 0.5 else [taker, maker]
+        buyer_e, seller_e = (taker, maker) if side == "B" else (maker, taker)
+        si = [buyer_e, seller_e]                                   # archive convention
         lines.append(json.dumps({"coin": coin, "side": side, "time": ts, "px": "100.5", "sz": "0.1",
                                  "hash": "0x" + "0" * 64 if rng.random() < 0.3 else "0xabc",
                                  "trade_dir_override": "Na", "side_info": si}))
@@ -34,7 +35,7 @@ def make_hour(rng, n=400, coins=("BTC", "ETH", "DOGE"), date="2026-01-05", hour=
     return gzip.compress(("\n".join(lines) + "\n").encode()), truth
 
 
-def test_parse_hour_assigns_taker_by_oid_and_filters_coins():
+def test_parse_hour_uses_buyer_seller_convention_and_filters_coins():
     rng = np.random.default_rng(0)
     raw, truth = make_hour(rng)
     df, diag = parse_hour(raw, {"BTC", "ETH"}, tid0=0)
@@ -45,8 +46,8 @@ def test_parse_hour_assigns_taker_by_oid_and_filters_coins():
         assert row.coin == coin and row.side == side
         buyer, seller = (taker, maker) if side == "B" else (maker, taker)
         assert row.buyer == buyer and row.seller == seller
-        assert row.taker_twap == twap and row.taker_oid == row.maker_oid + 1
-    assert 0.3 < diag["idx0_is_buyer_share"] < 0.7          # side_info order was random in the synthetic data
+        assert row.taker_twap == twap and row.taker_oid == row.maker_oid + 1 and not row.taker_older
+    assert diag["idx0_is_buyer_share"] == 1.0                # resting order always older in the synthetic data
     assert df.time_ms.is_monotonic_increasing
     assert abs(df.same_block.mean() - 0.3) < 0.1
     assert pd.Timestamp(df.time_ms.iloc[0], unit="ms", tz="UTC").hour == 3
