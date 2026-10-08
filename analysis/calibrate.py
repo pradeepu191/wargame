@@ -35,6 +35,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))    # run from anywhere, no install needed
+from analysis.l2 import book_summary, load_l2, true_mid_markouts
 from analysis.wallets import (activity_herfindahl, arrival_persistence, collapse_orders,
                               conditional_markout_after_toxic, conditional_markout_two_signals, leader_switch,
                               mid_proxy, pair_matrix, split_half_type_persistence, wallet_features, with_roles)
@@ -49,7 +50,8 @@ def load_trades(raw: Path, coin: str) -> pd.DataFrame:
     return df.sort_values("time_ms", kind="stable").reset_index(drop=True)
 
 
-def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30) -> tuple[dict, pd.DataFrame]:
+def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30,
+                   book: pd.DataFrame | None = None) -> tuple[dict, pd.DataFrame]:
     t = with_roles(trades)
     orders = collapse_orders(t)
     hours = (t.time_ms.max() - t.time_ms.min()) / 3.6e6
@@ -90,6 +92,29 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30) 
     for k in ("diff_id_bps", "diff_anon_bps", "diff_id_given_anon_bps", "p_adverse",
               "p_toxic_given_adverse", "p_toxic_given_not_adverse"):
         row[f"two_{k}"] = two.get(k, np.nan)
+    if book is not None and len(book):
+        # true-mid markouts (bid-ask bounce removed) and the book itself
+        row.update(book_summary(book))
+        tm = true_mid_markouts(t, book, horizons_s=horizons)
+        row["l2_fills_marked"] = len(tm)
+        row["effective_spread_bps"] = float(tm.effective_bps.mean())
+        for d in horizons:
+            row[f"mid_markout_{d}_bps"] = float(tm[f"markout_{d}_bps"].mean())
+            row[f"mid_realized_{d}_bps"] = float(tm[f"realized_{d}_bps"].mean())
+            row[f"proxy_bias_{d}_bps"] = row[f"markout_{d}_bps"] - row[f"mid_markout_{d}_bps"]
+        # the identity split against the true mid
+        mm_tm = tm.rename(columns={"markout_10_bps": "maker_markout"})
+        cut = mm_tm.time_ms.iloc[len(mm_tm) // 2]
+        first = mm_tm[mm_tm.time_ms < cut].groupby("taker").maker_markout.agg(["mean", "size"])
+        first = first[first["size"] >= n_min]
+        if len(first) >= 8:
+            toxic = set(first[first["mean"] <= first["mean"].quantile(0.25)].index)
+            o = collapse_orders(mm_tm[mm_tm.time_ms >= cut].reset_index(drop=True), carry=("maker_markout",))
+            prev = o.taker.shift(1)
+            known = prev.notna().to_numpy(); tox = prev.isin(toxic).to_numpy(); mo = o.maker_markout.to_numpy()
+            row["mid_cond_after_toxic_bps"] = float(mo[tox & known].mean()) if (tox & known).sum() > 50 else np.nan
+            row["mid_cond_after_benign_bps"] = float(mo[~tox & known].mean()) if (~tox & known).sum() > 50 else np.nan
+            row["mid_cond_diff_bps"] = row["mid_cond_after_toxic_bps"] - row["mid_cond_after_benign_bps"]
     if len(feats):
         mm = set(feats[feats.is_mm].wallet)
         row["n_mm"] = len(mm)
@@ -137,14 +162,18 @@ def main():
         tr = load_trades(raw, c)
         if tr.empty:
             print(f"{c}: no data"); continue
-        row, feats = calibrate_coin(tr, n_min=args.n_min)
+        book = load_l2(raw, c)
+        row, feats = calibrate_coin(tr, n_min=args.n_min, book=book if len(book) else None)
         rows.append(row)
         feats.to_csv(out / f"wallets_{c}.csv", index=False)
         print(f"{c}: {row['hours']:.1f} h, {row['prints']} prints, {row['orders']} orders, "
               f"rho_order={row['rho_order']:.3f} (baseline {row['rho_order_baseline']:.3f}), "
               f"markout_10s={row['markout_10_bps']:+.2f} bps, type rank corr={row['type_rank_corr']:.2f}, "
               f"cond diff={row['cond_diff_bps']:+.2f} bps [id|anon-signal: {row['two_diff_id_given_anon_bps']:+.2f}, "
-              f"anon alone: {row['two_diff_anon_bps']:+.2f}], MMs={row.get('n_mm', 0)}", flush=True)
+              f"anon alone: {row['two_diff_anon_bps']:+.2f}], MMs={row.get('n_mm', 0)}"
+              + (f" | L2: spread {row['spread_bps_median']:.2f} bps, true-mid markout_10 {row['mid_markout_10_bps']:+.2f} "
+                 f"(proxy bias {row['proxy_bias_10_bps']:+.2f}), cond diff {row.get('mid_cond_diff_bps', float('nan')):+.2f}"
+                 if "spread_bps_median" in row else ""), flush=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)
     pd.set_option("display.width", 250)
