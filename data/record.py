@@ -10,7 +10,9 @@ What it writes (one parquet per hour per stream, under data/raw/live/):
         time_ms, coin, side, px, sz, tid, hash, buyer, seller
     l2_<COIN>_<YYYYMMDDHH>.parquet       (one row per snapshot per level)
         time_ms, coin, side, level, px, sz, n_orders
-    (the book feed is a snapshot per block, so this is Level 2 at block resolution)
+    (the l2Book feed is throttled to roughly one snapshot per 5 s; use it for depth)
+    bbo_<COIN>_<YYYYMMDDHH>.parquet      (one row per top-of-book change; this is the mid)
+        time_ms, coin, bid, bid_sz, ask, ask_sz
 
 Usage:
     python data/record.py --coins BTC,ETH,SOL,HYPE --hours 24
@@ -89,6 +91,8 @@ async def record(url: str, coins: list[str], hours: float, writer: HourlyWriter,
                     if book:
                         await ws.send(json.dumps({"method": "subscribe",
                                                   "subscription": {"type": "l2Book", "coin": c}}))
+                        await ws.send(json.dumps({"method": "subscribe",
+                                                  "subscription": {"type": "bbo", "coin": c}}))
                 print(f"subscribed to {coins} on {url}", flush=True)
                 last_flush = time.time()
                 while time.time() < deadline:
@@ -102,6 +106,14 @@ async def record(url: str, coins: list[str], hours: float, writer: HourlyWriter,
                                 "px": float(t["px"]), "sz": float(t["sz"]), "tid": int(t["tid"]),
                                 "hash": t.get("hash"), "buyer": users[0], "seller": users[1]})
                             n_trades += 1
+                    elif ch == "bbo":
+                        d = msg["data"]
+                        b, a = d.get("bbo") or [None, None]
+                        if b and a:
+                            writer.add("bbo", d["coin"], {
+                                "time_ms": int(d["time"]), "coin": d["coin"],
+                                "bid": float(b["px"]), "bid_sz": float(b["sz"]),
+                                "ask": float(a["px"]), "ask_sz": float(a["sz"])})
                     elif ch == "l2Book":
                         d = msg["data"]
                         tms = int(d["time"])

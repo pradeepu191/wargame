@@ -716,3 +716,31 @@ leader-switch vs null) flipped between samples and are not stable at 19 h / 3 da
 volume-selected wallet set; do not report them until a fixed set over a longer window exists.
 Coverage (`data/coverage.py`): 20 hours, 770k prints, no missing hours or wallet ids; one 42-min
 gap (laptop lid) in hour 17 UTC on Oct 7.
+
+## True-mid markouts (`results/live_2026_10/`, six hours of L2 on Oct 8 2026 + 36 h of trades)
+
+| | BTC | ETH | HYPE | SOL |
+|---|---|---|---|---|
+| quoted spread, median / p90 (bps) | 0.12 / 0.12 | 0.39 / 0.39 | 0.11 / 0.23 | 0.87 / 0.87 |
+| = one tick at 5 significant figures | $1 on $83.7k | $0.10 | $0.001 | $0.01 |
+| top-of-book depth, median (USD) | 508k | 314k | 10.6k | 100k |
+| true-mid maker markout 1 s / 10 s / 60 s (bps) | +0.33 / −0.33 / −0.31 | +0.58 / −0.33 / −0.31 | +1.36 / −0.36 / −0.15 | +0.90 / −0.30 / −0.48 |
+| proxy markout 10 s (bps), for comparison | −0.15 | −0.83 | −0.42 | −0.40 |
+| identity split vs true mid: after toxic / after benign | −0.56 / −0.07 | −0.56 / −0.06 | −0.77 / −0.30 | −0.64 / +0.05 |
+
+* **The inside is pinned at one tick.** p90 = median on BTC, ETH and SOL: the quoted spread is the
+  5-sig-fig tick essentially all the time. A CFL-style rent cannot appear as a wider quoted spread
+  on these books; it can only live in queue position at the one-tick spread and in how far sweeps
+  walk the book. For the simulator this moves the relevant action from "how wide" to "where in the
+  queue at one tick" — the priority-fee lever in the proposal — and makes the tick-size result of
+  Cartea–Chang–Penalva the binding constraint, not a robustness check. HYPE (depth $10.6k) is the
+  one book that opens to two ticks.
+* **Adverse selection at 10 s is −0.33 bps on every coin** once bid–ask bounce is removed; the
+  trade-price proxy had spread it from −0.15 to −0.83. A resting fill earns the half-spread at
+  1 s and is under water by 10 s: on net, resting liquidity on Hyperliquid loses to the mid within
+  ten seconds. The identity split survives the true mid unchanged.
+* **Measurement caveat.** The `l2Book` feed delivered 4,020 snapshots in six hours (one per 5.4 s),
+  not one per block. A stale mid inflates the effective spread (0.9–3.6 bps vs the 0.1–0.9 quoted)
+  because trade direction is correlated with the move since the last snapshot; the 10-s markouts
+  are unaffected. The recorder now also subscribes to `bbo` (top of book on every change);
+  `analysis/l2.py` prefers it. Effective-spread numbers from this run should not be quoted.

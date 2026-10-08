@@ -25,15 +25,22 @@ import pandas as pd
 
 
 def load_l2(raw: Path, coin: str) -> pd.DataFrame:
-    """Best bid / ask per snapshot: columns time_ms, bid, ask, mid, spread_bps, bid_sz, ask_sz."""
-    files = sorted(glob.glob(str(Path(raw) / f"l2_{coin}_*.parquet")))
-    if not files:
-        return pd.DataFrame()
-    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
-    top = df[df.level == 0]
-    bid = top[top.side == "bid"][["time_ms", "px", "sz"]].rename(columns={"px": "bid", "sz": "bid_sz"})
-    ask = top[top.side == "ask"][["time_ms", "px", "sz"]].rename(columns={"px": "ask", "sz": "ask_sz"})
-    book = bid.merge(ask, on="time_ms", how="inner").drop_duplicates("time_ms").sort_values("time_ms")
+    """Best bid / ask over time: columns time_ms, bid, ask, mid, spread_bps, bid_sz, ask_sz.
+    Prefers bbo_<coin>_*.parquet (every top-of-book change) and falls back to the top level of the
+    throttled l2Book snapshots (~one per 5 s), which leaves the mid stale between snapshots."""
+    bbo_files = sorted(glob.glob(str(Path(raw) / f"bbo_{coin}_*.parquet")))
+    if bbo_files:
+        book = pd.concat([pd.read_parquet(f) for f in bbo_files], ignore_index=True)
+        book = book.drop_duplicates("time_ms", keep="last").sort_values("time_ms")
+    else:
+        files = sorted(glob.glob(str(Path(raw) / f"l2_{coin}_*.parquet")))
+        if not files:
+            return pd.DataFrame()
+        df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+        top = df[df.level == 0]
+        bid = top[top.side == "bid"][["time_ms", "px", "sz"]].rename(columns={"px": "bid", "sz": "bid_sz"})
+        ask = top[top.side == "ask"][["time_ms", "px", "sz"]].rename(columns={"px": "ask", "sz": "ask_sz"})
+        book = bid.merge(ask, on="time_ms", how="inner").drop_duplicates("time_ms").sort_values("time_ms")
     book = book[book.ask > book.bid]
     book["mid"] = (book.bid + book.ask) / 2
     book["spread_bps"] = (book.ask - book.bid) / book.mid * 1e4
@@ -68,6 +75,8 @@ def true_mid_markouts(trades: pd.DataFrame, book: pd.DataFrame, horizons_s=(1, 1
 def book_summary(book: pd.DataFrame) -> dict:
     if book.empty:
         return {}
-    return {"l2_snapshots": len(book), "spread_bps_median": float(book.spread_bps.median()),
+    gaps = np.diff(book.time_ms.to_numpy()) / 1000.0
+    return {"l2_snapshots": len(book), "l2_median_gap_s": float(np.median(gaps)) if len(gaps) else np.nan,
+            "spread_bps_median": float(book.spread_bps.median()),
             "spread_bps_p90": float(book.spread_bps.quantile(0.9)),
             "top_depth_usd_median": float(((book.bid_sz + book.ask_sz) / 2 * book.mid).median())}
