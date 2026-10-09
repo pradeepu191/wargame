@@ -257,18 +257,9 @@ class GlostenMilgromEnv:
             "marks": self.marks,
         }
 
-    def step(self, half_spreads) -> tuple[dict, np.ndarray, bool, dict]:
-        """half_spreads: int sequence of length n_mm, each in 1..max_half_spread."""
+    def _draw_taker(self, best_ask: float, best_bid: float, mid: float):
+        """One arrival: (wallet, informed, event) against the given best quotes."""
         c = self.cfg
-        n = c.n_mm
-        h = [int(x) for x in half_spreads]
-        assert len(h) == n and min(h) >= 1 and max(h) <= c.max_half_spread
-        mid = self.mid
-        hmin = min(h)
-        best_ask = mid + hmin * c.tick
-        best_bid = mid - hmin * c.tick
-
-        # ---- taker arrival
         wallet = -1
         if c.n_wallets:
             wallet = self._draw_wallet()
@@ -288,6 +279,36 @@ class GlostenMilgromEnv:
                 event = "buy"
             elif val < best_bid:
                 event = "sell"
+        return wallet, informed, event
+
+    def _publish(self, event: str, hmin: int, price: float, wallet: int, V_t: float):
+        """Make this period's print public now and schedule its mark mark_lag periods out."""
+        c = self.cfg
+        self.last_event, self.last_price = event, price
+        self.last_taker = wallet if event != "none" else -1      # identity is public only via a print
+        if c.mark_lag == 1:
+            self.last_V = V_t                                      # the one-period ex-post mark
+            self.marks = [(1, event, hmin, price, self.last_taker, V_t)]
+        else:
+            self.last_V = float("nan")
+            self._pending.append((self.t, event, hmin, price, self.last_taker, V_t))
+            due = self.t + 1 - c.mark_lag                          # marks for period t - mark_lag + 1 ... released now
+            self.marks = [(self.t + 1 - p[0], *p[1:]) for p in self._pending if p[0] <= due]
+            self._pending = [p for p in self._pending if p[0] > due]
+
+    def step(self, half_spreads) -> tuple[dict, np.ndarray, bool, dict]:
+        """half_spreads: int sequence of length n_mm, each in 1..max_half_spread."""
+        c = self.cfg
+        n = c.n_mm
+        h = [int(x) for x in half_spreads]
+        assert len(h) == n and min(h) >= 1 and max(h) <= c.max_half_spread
+        mid = self.mid
+        hmin = min(h)
+        best_ask = mid + hmin * c.tick
+        best_bid = mid - hmin * c.tick
+
+        # ---- taker arrival
+        wallet, informed, event = self._draw_taker(best_ask, best_bid, mid)
 
         # ---- matching: one unit to a random MM among those at the best quote
         reward = np.zeros(n)
@@ -312,17 +333,7 @@ class GlostenMilgromEnv:
         # ---- public belief update and bookkeeping
         mu_prev = self.mu
         V_t = self.V
-        self.last_event, self.last_price = event, price
-        self.last_taker = wallet if event != "none" else -1      # identity is public only via a print
-        if c.mark_lag == 1:
-            self.last_V = V_t                                      # the one-period ex-post mark
-            self.marks = [(1, event, hmin, price, self.last_taker, V_t)]
-        else:
-            self.last_V = float("nan")
-            self._pending.append((self.t, event, hmin, price, self.last_taker, V_t))
-            due = self.t + 1 - c.mark_lag                          # marks for period t - mark_lag + 1 ... released now
-            self.marks = [(self.t + 1 - p[0], *p[1:]) for p in self._pending if p[0] <= due]
-            self._pending = [p for p in self._pending if p[0] > due]
+        self._publish(event, hmin, price, wallet, V_t)
         if c.redraw_v_each_period:
             self.V = self._draw_v()
             self.mu = 0.5

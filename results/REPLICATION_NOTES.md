@@ -744,3 +744,61 @@ gap (laptop lid) in hour 17 UTC on Oct 7.
   because trade direction is correlated with the move since the last snapshot; the 10-s markouts
   are unaffected. The recorder now also subscribes to `bbo` (top of book on every change);
   `analysis/l2.py` prefers it. Effective-spread numbers from this run should not be quoted.
+
+---
+
+# Identity grid re-run at the break-even rule (`cfl_exp2_identity_m1.csv`)
+
+Same grid as `cfl_exp2_identity.csv` (wallet persistence ρ × dispersion κ × ᾱ, 5 seeds) with the
+entrant undercutting at break-even (margin 1) instead of margin 2. The result stands:
+id − anon = +0.17 / +0.17 (ᾱ = 0.3, κ = 1, ρ = 0.9 / 0.99), +0.23 / +0.17 (ᾱ = 0.5, κ = 1), +0.06 to
++0.24 at κ = 5, exactly 0.00 at ρ = 0 or κ = ∞; oracle − id within ±0.06. §5.4(a) of the revised
+deliverable is no longer provisional.
+
+---
+
+# The one-tick queue game (`sim/queue_env.py`, `experiments/queue_game.py`, `queue_always.csv`)
+
+Model: the spread is fixed (h = h^C(ᾱ) at break-even, or h^C + 1 when a coarse tick leaves the
+inside slightly supra-competitive); makers choose REST or OUT each period; resting makers form a
+time-priority queue; a fill consumes the front order, which rejoins at the back if it keeps
+resting (round-robin); stepping out and returning means joining at the back; a period with
+nobody resting has no trade and no print (`noliq`, uninformative about the regime). Takers, wallet
+types, regime and mark lag are the spread game's. Per-fill value at h against type α is
+(1 − q)·x − q·μ with q the fill-conditional informed probability: at h^C it is +0.15 on average,
++1.10 in the calm state and −2.26 in the toxic one (κ = 1); at h^C + 1, +0.58 / +1.57 / −1.99.
+
+Incumbents here are two always-resting makers (the tick-constrained competitive book); one entrant
+per policy; 300 episodes; 5 seeds; ᾱ = 0.3, κ = 1. Profit per period per maker:
+
+| spread | ρ_z | L | always-rest | anon | id | oracle | id − anon (paired, min over seeds) |
+|---|---|---|---|---|---|---|---|
+| h^C | 0.9 | 1 / 5 / 20 | 0.04 | 0.10 / 0.09 / 0.05 | 0.14 / 0.14 / 0.15 | 0.15 | +0.04 / +0.05 / **+0.10** (min +0.05) |
+| h^C | 0.99 | 1 / 5 / 20 | 0.03 | 0.16 / 0.15 / 0.12 | 0.16 / 0.16 / 0.16 | 0.18 | +0.01 / +0.01 / +0.04 |
+| h^C + 1 | 0.9 | 1 / 5 / 20 | 0.15 | 0.16 / 0.14 / 0.14 | 0.21 / 0.21 / 0.21 | 0.21 | +0.06 / +0.07 / +0.07 (min +0.04) |
+| h^C + 1 | 0.99 | 1 / 5 / 20 | 0.11 | 0.22 / 0.20 / 0.19 | 0.24 / 0.23 / 0.23 | 0.25 | +0.02 / +0.03 / +0.04 |
+
+Informed share of fills (h^C, ρ_z = 0.9): always-rest 0.27; id entrant 0.16; the two incumbents
+0.29 with their profit at 0.00 to −0.03. The id entrant rests in ~65% of periods and takes 20% of
+fills instead of a round-robin third.
+
+## Findings
+* **On a one-tick book, identity is worth something in every cell and every seed but one**, and the
+  increment grows with the mark lag: at break-even with ρ_z = 0.9 the anonymous selector's edge
+  over always-resting collapses from +0.06 (L = 1) to +0.01 (L = 20) while the identity entrant's
+  stays at +0.10. With a 20-arrival lag the anonymous tape is too stale to time the regime;
+  identity is not. The identity entrant attains 90–100% of the oracle.
+* **At break-even the whole profit is selection.** Always-resting earns ≈ 0, as the data say the
+  average resting fill on BTC does; the identity entrant earns 0.14–0.16 per period by resting
+  when the regime is calm and leaving the toxic flow to those who stay. The incumbents' fills get
+  dirtier (0.27 → 0.29–0.31 informed) and their profit goes to zero or below.
+* **Above break-even the tick rent is shared by rotation and identity adds ~45% to it** (0.15 →
+  0.21), taken from the incumbents (0.14 → 0.11).
+* The spread game and the queue game now give the same answer by different mechanisms: a quoter
+  who knows who just printed captures the benign flow and leaves the toxic flow to identity-blind
+  rivals. In the spread game that shows as undercutting selectively; here as resting selectively.
+* Not yet done: learned incumbents in the queue game. Tabular Q-learners with (status, depth,
+  anonymous signal) state and a persistent signal fall into a self-fulfilling lock (nobody rests →
+  no prints → no signal → nobody rests) at break-even and learn to stay out; above break-even with
+  optimistic initialisation is the next attempt. The priority fee (pay to jump the queue) is the
+  lever to add after that.

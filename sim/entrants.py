@@ -260,7 +260,10 @@ class WalletEntrant(Agent):
             return
         ev = obs.get("last_event", "none")
         # ---- immediate: the print itself (identity, or the fact of a print)
-        if ev == "none":
+        if ev == "noliq":                                          # one-tick book with nobody resting: no information
+            if self.last_wallet >= 0:
+                self.k_since += 1
+        elif ev == "none":
             if self.last_wallet >= 0:
                 self.k_since += 1
             self._regime_immediate(h, ev, -1)
@@ -273,6 +276,8 @@ class WalletEntrant(Agent):
         # ---- delayed: marks released this period (mark_lag periods after their print)
         for ago, mev, mh, mprice, mwallet, mV in obs.get("marks", ()):
             mh = int(mh)
+            if mev == "noliq":
+                continue
             if mev == "none":
                 if self.info_set != "oracle":
                     self._ll_pop += self._period_loglik(mh, mev, 0.0); self._abar_cache = None
