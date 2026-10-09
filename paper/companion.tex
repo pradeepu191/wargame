@@ -591,6 +591,81 @@ Resilient design & Venue rules and quoter architecture compared under nominal an
 \textbf{``Publish by December'' does not mean ``accepted by December.''} A polished preprint on arXiv is realistic; peer-reviewed acceptance takes months. The plan targets the preprint.
 \end{warning}
 
+
+%==================================================================
+\section{Part X: What We Found, and What It Changed (added October 9)}
+%==================================================================
+This part was added after three days of simulation and the first Hyperliquid data. It records,
+in the same plain language as the rest of this document, what turned out to be true, what did not,
+and what that did to the plan. The numbers are in \texttt{results/REPLICATION\_NOTES.md} and in the
+revised proposal (\texttt{paper/deliverable1\_revised.tex}).
+
+\subsection{Five words you need, from the ground up}
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=2pt]
+\item[Spread] A market maker posts a price at which it will buy (the bid) and a slightly higher one at
+which it will sell (the ask). The gap is the spread. Buy at 99.9, sell at 100.1, earn 0.2 per round trip.
+\item[Why the spread cannot be zero] Some of the people hitting those quotes know something---they saw
+the price move elsewhere a few milliseconds ago. The maker loses on those trades (``adverse
+selection''). The spread must be wide enough that gains from uninformed traders cover losses to informed
+ones. There is a width where it exactly breaks even: the \emph{competitive} spread.
+\item[Rent] Anything the maker earns by quoting wider than break-even. It exists only because nobody is
+undercutting it. Same word as in economics generally: income beyond what it takes to keep you doing the job.
+\item[Undercutting] Quoting a slightly better price than your competitor so that trades go to you. Two
+makers both selling at 100.2; one moves to 100.1 and takes every buyer, still earning 0.1 over the mid. As
+long as a maker can undercut and stay above break-even it has a reason to, so spreads shrink to
+break-even. That is why competition is supposed to kill rent.
+\item[Collusion, cartel] Rent survives when makers \emph{stop} undercutting because each has learned that
+undercutting starts a price war that leaves both worse off. Agreed over dinner, that is illegal
+collusion; reached by two reinforcement-learning agents that never communicate, it is \emph{tacit}
+collusion, and it is what Colliard--Foucault--Lovo found and we reproduced. The \emph{cartel} is just the
+group of makers sustaining it. Our collusion index puts a population between break-even ($0$) and the
+single-monopolist spread ($1$); ours land near $0.8$.
+\item[Tick] Prices move in minimum steps. On Hyperliquid the step on BTC is currently \$1, on ETH \$0.10,
+on SOL \$0.01. The tightest possible spread is one step; there is nothing in between.
+\end{description}
+
+\subsection{What the simulator said}
+\begin{enumerate}
+\item \textbf{The cartel re-forms around an entrant.} A newcomer that reads the public tape takes most
+of the rent, and when the incumbents are allowed to keep learning they do not punish it or collapse;
+they settle into a wider three-way arrangement that includes the newcomer. The one entrant that
+\emph{does} collapse the cartel---the textbook competitive quoter---earns the least, because the rent
+only exists while someone else quotes wide.
+\item \textbf{More collusive is not more exploitable.} We expected the most collusive populations to be
+the easiest to exploit per unit of rent. They are not: a rational entrant takes about 70\% of the rent
+whatever the population. We restated that question as a measurement.
+\item \textbf{Identity, first attempt, failed the right way.} We modelled wallet identity as ``the same
+toxic wallet keeps coming back''. Under that model identity was worth 26--35\% of the entrant's profit.
+The data then said the same wallet almost never comes back consecutively (2--5\% of the time).
+\end{enumerate}
+
+\subsection{What the data said}
+\begin{enumerate}
+\item \textbf{Knowing who just traded predicts the next fill's toxicity}, by half to nine tenths of a
+basis point, on all four coins, in the archive and in our own recording. And most of that survives
+after accounting for what an anonymous quoter can see---whether the price has already moved against the
+last maker---because by the time the next order arrives, four times out of five it has not.
+\item So the mechanism is \textbf{time, not wallets}: informed flow clusters in time, and a toxic
+wallet's print tells you the market is in a toxic spell \emph{before the price does}. The gap between a
+print and the price move that would reveal it is where identity's value lives. We rebuilt the
+simulator around that (a latent toxicity regime, and a lag between a print and its mark), and identity's
+value came back where the data say it should.
+\item \textbf{The spread on the big coins is one tick, all the time.} So the picture in Parts II--III,
+where rent shows up as a wide quote and undercutting means quoting tighter, cannot be what happens on
+BTC, ETH or SOL under normal conditions: there is no tighter price to offer. If makers earn anything
+there, it is from \emph{which fills they get}---being first in line at that one price, cancelling before
+the toxic flow arrives, and knowing who is active. That is the same fill-selection mechanism the
+identity result found, and it is the next thing to model.
+\end{enumerate}
+
+\subsection{What changed in the plan}
+The question stayed. Three edits: identity works through the regime, not the wallet; the exploitability
+hypothesis is now a measurement; and on tick-bound books the game is queue position rather than spread
+width, so the next simulator adds a queue, cancellation, and the priority fee as the price of a place in
+line. The data section of the paper now has numbers rather than intentions: the archive and the live
+feed agree, the quoted spread is a tick, and adverse selection at ten seconds is $-0.33$ basis points on
+every coin once bid--ask bounce is removed.
+
 %==================================================================
 \section{Glossary}\label{sec:glossary}
 %==================================================================

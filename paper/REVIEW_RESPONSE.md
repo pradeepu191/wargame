@@ -1,3 +1,5 @@
+> **Superseded (Oct 9 2026).** The revised deliverable `paper/deliverable1_revised.tex` incorporates these review responses and the Workshop-1 findings; its Section 2 is the audit of what changed since the submitted version.
+
 # Response to the external assessment of Deliverable 1 (6 Oct 2026)
 
 A deep-research review of the proposal was obtained and acted on. Every new reference it
