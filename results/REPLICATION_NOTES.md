@@ -802,3 +802,14 @@ fills instead of a round-robin third.
   no prints → no signal → nobody rests) at break-even and learn to stay out; above break-even with
   optimistic initialisation is the next attempt. The priority fee (pay to jump the queue) is the
   lever to add after that.
+
+### Learned incumbents in the queue game (`queue_q.csv`) — not yet credible
+Two tabular Q-learners (state: own status, depth, anonymous signal; optimistic init 1.0, lr 0.05,
+12k episodes) one tick above break-even end up resting rarely: their profit is 0.01–0.03 per
+period against 0.146 for always resting, and an always-resting entrant takes 90–95% of fills.
+The bootstrapped value of "out" (exactly 0 reward, value borrowed from states reached through the
+other learner) beats the noisy value of "rest" whose rewards are ±2 and clustered by regime.
+Entrant numbers against these incumbents measure a near-empty book and are not reported. Options:
+Monte-Carlo returns instead of one-step bootstrapping; a longer, slower exploration schedule;
+or treat always-rest as the incumbent benchmark (which is what the data say the competitive
+one-tick book is) and reserve learning for the entrant side.
