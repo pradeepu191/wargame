@@ -21,7 +21,7 @@
 \large Revised proposal and Workshop-1 report}
 \author{Deepu Pradeep \quad Miguel Betran Menz \\
 \normalsize 6.S974 Games, Learning, and Security --- Example 4 (Algorithmic Market with Adaptive Agents)}
-\date{October 9, 2026 --- supersedes Deliverable 1 of October 6}
+\date{October 11, 2026 --- supersedes Deliverable 1 of October 6}
 
 \begin{document}
 \maketitle
@@ -55,7 +55,7 @@ Markouts from the trade tape. & Trade-price proxy carries bid--ask bounce; true-
 \addlinespace
 MM wallets avoid each other (CCG signature). & Avoidance ratio $\approx1$ on 374 classified wallets; below 1 only among the top-10 on thin books; unstable across windows. & Not claimed until a fixed wallet set over a longer window exists. \\
 \addlinespace
-Entrant quote rule: undercut when rent $\ge 2$ ticks. & A margin makes a \emph{better-informed} entrant earn less (it declines positive-EV fills when pessimistic). & Break-even rule (margin 1); first identity grid flagged for re-run. \\
+Entrant quote rule: undercut when rent $\ge 2$ ticks. & A margin makes a \emph{better-informed} entrant earn less (it declines positive-EV fills when pessimistic). & Break-even rule (margin 1); the first identity grid re-run under it gives the same result (\S\ref{sec:identity}). \\
 \bottomrule
 \end{tabular}
 \caption{Audit of claims in Deliverable 1 against findings to date.}\label{tab:changes}
@@ -181,7 +181,7 @@ With incumbents that resume learning ($\varepsilon_0=0.3$ decaying to $0$ over 8
 \subsection{The value of identity in the simulator (RQ1, revised form)}\label{sec:identity}
 Three grids against frozen two-maker cartels, five seeds, entrant profit in rent units.
 
-\paragraph{(a) Wallet persistence (the Deliverable-1 mechanism).} With same-wallet persistence $\rho$ and dispersion $\kappa$, identity is worth nothing at $\rho=0$ or $\kappa=\infty$ and $+0.16$ to $+0.30$ rent units (26--35\% of entrant profit) at $\rho=0.9$--$0.99$, $\kappa=1$; the identity entrant attains the oracle. The mechanism is fill selection: at $\bar\alpha=0.5$, $\rho=0.99$ it withdraws in 31\% of periods, its fills are 18\% informed against the incumbents' 53\%, and the identity-blind cartel's residual book goes below $\Pi^C$ while market $\Delta$ stays at $0.9$---the rent moved to the entrant (Figure~\ref{fig:as}). This grid used the margin-2 quote rule and is flagged for re-run; the qualitative result does not depend on it.
+\paragraph{(a) Wallet persistence (the Deliverable-1 mechanism).} With same-wallet persistence $\rho$ and dispersion $\kappa$, identity is worth nothing at $\rho=0$ or $\kappa=\infty$ and $+0.16$ to $+0.30$ rent units (26--35\% of entrant profit) at $\rho=0.9$--$0.99$, $\kappa=1$; the identity entrant attains the oracle. The mechanism is fill selection: at $\bar\alpha=0.5$, $\rho=0.99$ it withdraws in 31\% of periods, its fills are 18\% informed against the incumbents' 53\%, and the identity-blind cartel's residual book goes below $\Pi^C$ while market $\Delta$ stays at $0.9$---the rent moved to the entrant (Figure~\ref{fig:as}). Re-run under the break-even quote rule the numbers are $+0.17$ to $+0.24$ at $\rho=0.9$--$0.99$, $\kappa=1$, zero exactly where they should be, oracle $\approx$ id; the result does not depend on the rule.
 
 \begin{figure}[h]\centering
 \includegraphics[width=0.85\textwidth]{fig_cfl_exp2_identity_as.pdf}
@@ -256,15 +256,46 @@ after toxic / after benign, true mid (bps) & $-0.56$ / $-0.07$ & $-0.56$ / $-0.0
 \caption{Book statistics, Oct 8 2026, six hours.}\label{tab:l2}
 \end{table}
 
+\subsection{The one-tick queue game (RQ3, first result)}\label{sec:queue}
+Section~\ref{sec:l2} says the spread on the major books cannot move. We therefore built the game in which it does not: the spread is fixed at $h$ ticks; each period every maker chooses to \emph{rest} at the inside or \emph{step out}; resting makers form a time-priority queue; the taker hits the front for one unit; the filled maker's order is consumed and it rejoins at the back if it keeps resting, so fills rotate among those who stay; a maker that steps out and returns joins at the back. Takers, wallet types, regime and mark lag are those of \S\ref{sec:takers}. The expected value of a fill at $h$ against a taker of type $\alpha$ is $(1-q)x-q\mu$ with $q$ the fill-conditional informed probability; at the population break-even $h=h^C$ it is $+0.15$ on average, $+1.10$ in the calm state and $-2.26$ in the toxic one ($\kappa=1$): all the value is in selection. One tick above break-even ($+0.58$ average) a coarse tick leaves the inside slightly supra-competitive and the queue shares that rent.
+
+The incumbents are two always-resting makers---the tick-constrained competitive book---and the entrant is the wallet entrant with the decision ``rest iff the fill value against the regime forecast is positive''. Figure~\ref{fig:queue} and Table~\ref{tab:queue}.
+
+\begin{figure}[h]\centering
+\includegraphics[width=\textwidth]{fig_queue_always.pdf}
+\caption{Queue game: entrant profit per period by information set against the mark lag, at break-even (top) and one tick above (bottom), $\rho_z=0.9$ (left) and $0.99$ (right); $\kappa=1$, $\bar\alpha=0.3$, 5 seeds, 95\% intervals.}\label{fig:queue}
+\end{figure}
+
+\begin{table}[h]\footnotesize\centering
+\begin{tabular}{llcccccc}
+\toprule
+spread & $\rho_z$ & $L$ & always rest & anon & id & oracle & id $-$ anon (paired) \\
+\midrule
+$h^C$ & 0.9 & 1 / 5 / 20 & 0.04 & 0.10 / 0.09 / 0.05 & 0.14 / 0.14 / 0.15 & 0.15 & $+0.04$ / $+0.05$ / $\mathbf{+0.10}$ \\
+$h^C$ & 0.99 & 1 / 5 / 20 & 0.03 & 0.16 / 0.15 / 0.12 & 0.16 / 0.16 / 0.16 & 0.18 & $+0.01$ / $+0.01$ / $+0.04$ \\
+$h^C+1$ & 0.9 & 1 / 5 / 20 & 0.15 & 0.16 / 0.14 / 0.14 & 0.21 / 0.21 / 0.21 & 0.21 & $+0.06$ / $+0.07$ / $+0.07$ \\
+$h^C+1$ & 0.99 & 1 / 5 / 20 & 0.11 & 0.22 / 0.20 / 0.19 & 0.24 / 0.23 / 0.23 & 0.25 & $+0.02$ / $+0.03$ / $+0.04$ \\
+\bottomrule
+\end{tabular}
+\caption{Queue game, entrant profit per period (price units); always-resting incumbents, 300 episodes, 5 seeds. Identity's increment is positive in every cell and in every seed but one.}\label{tab:queue}
+\end{table}
+
+\begin{itemize}
+\item At break-even the always-resting maker earns $\approx0$, as the BTC book data say the average resting fill does, and the identity entrant earns $0.14$--$0.16$ per period by resting only when the regime is calm. Its fills are 16\% informed against the incumbents' 29--31\%, and the incumbents' profit goes to zero or below: the toxic flow is left to those who stay.
+\item The anonymous selector's edge collapses with the mark lag ($+0.06$ over always-resting at $L=1$, $+0.01$ at $L=20$, $\rho_z=0.9$) while the identity entrant's does not ($+0.10$). A tape that is twenty arrivals stale cannot time the regime; identity can. The identity entrant attains 90--100\% of the oracle.
+\item One tick above break-even the rotation shares the tick rent ($0.15$ each) and identity adds about 45\% to it ($0.21$), taken from the incumbents ($0.14\to0.11$).
+\end{itemize}
+The spread game and the queue game give the same answer through different actions: a quoter who knows who just printed captures the benign flow and leaves the toxic flow to identity-blind rivals---by undercutting selectively where undercutting is possible, by resting selectively where it is not. Learned incumbents in the queue game and the priority fee as the price of a place in line are the next two steps (identity-blind Q-learners fall into a self-fulfilling lock at break-even---nobody rests, so no prints, so no signal, so nobody rests---which is itself a remark about why thin books stay thin).
+
 \subsection{Synthesis}
-The chain the proposal set out to test now reads, with numbers: learning makers earn rent ($\Delta\approx0.8$) that survives a best-responding entrant (the cartel re-forms around it; entrant keeps 79--96\% of the monopoly rent); the entrant's binding problem is fill selection, i.e.\ reading the toxicity regime; on Hyperliquid the regime is readable from the wallet tag $0.5$--$0.9$ bps before the price reveals it; and on the major books, where the spread cannot widen, fill selection is the only place rent can live. What remains to be shown is the last step on real quotes: that makers who select fills (by queue position, cancellation, and identity) earn positive realized spread while the average resting fill loses $0.33$ bps. The data to test it are in hand.
+The chain the proposal set out to test now reads, with numbers: learning makers earn rent ($\Delta\approx0.8$) that survives a best-responding entrant (the cartel re-forms around it; entrant keeps 79--96\% of the monopoly rent); the entrant's binding problem is fill selection, i.e.\ reading the toxicity regime; on Hyperliquid the regime is readable from the wallet tag $0.5$--$0.9$ bps before the price reveals it; and on the major books, where the spread cannot widen, fill selection is the only place rent can live. The queue game of \S\ref{sec:queue} closes the loop in the simulator: on a book where the spread cannot move, the identity entrant earns the selection rent and the identity-blind makers absorb the toxic flow. What remains to be shown is the same step on real quotes: that makers who select fills (by queue position, cancellation, and identity) earn positive realized spread while the average resting fill loses $0.33$ bps. The data to test it are in hand.
 
 \section{Research questions, restated}
 \paragraph{RQ1 (Executable value of identity).} Under $\Fanon\subset\Fid\subset\For$, what is an entrant's profit, and how does $\pi^{\mathrm{id}}-\pi^{\mathrm{anon}}$ depend on regime persistence $\rho_z$, type dispersion $\kappa$, the mark lag $L$, and the incumbents' quote relative to the toxic-regime break-even? \emph{Prediction (from \S\ref{sec:identity})}: the increment is zero when the toxic state leaves an undercut profitable, and grows with $L$ otherwise. \emph{Empirical counterpart}: the identity-given-anonymous-signal split by coin, against each coin's spread relative to break-even.
 
 \paragraph{RQ2 (Exploitability, as measurement).} For each incumbent population, report $L_{\mathrm{BR}}$ under the damage-maximising attacker and under the attacker's own best response, and $\kappa$. The claim supported so far: $\kappa\approx0.7$ independent of $C$; a rational entrant captures about two thirds of what it destroys and the rest passes to takers as tighter quotes. Open: whether attackers that target the \emph{reaction function} (steering, \cite{dss,brownmackay}) rather than the quote level break the flatness of $\kappa$.
 
-\paragraph{RQ3 (Tick-constrained books; new).} On a one-tick book, model the maker's action as queue position and cancellation at the inside rather than spread width, with the priority fee as the price of position. Does the identity signal translate into realized spread for makers who use it, and is the resulting equilibrium a selection cartel---makers who leave the toxic flow to each other---rather than a spread cartel? \emph{Empirical anchor}: per-wallet realized spread of the top makers vs the average resting fill, from the December L4 lifecycles.
+\paragraph{RQ3 (Tick-constrained books; new).} On a one-tick book, model the maker's action as queue position and cancellation at the inside rather than spread width, with the priority fee as the price of position. Does the identity signal translate into realized spread for makers who use it, and is the resulting equilibrium a selection cartel---makers who leave the toxic flow to each other---rather than a spread cartel? \emph{First result} (\S\ref{sec:queue}): against always-resting makers, yes---identity is worth $+0.04$ to $+0.10$ per period at break-even, growing with the mark lag, and the identity-blind makers' fills get dirtier. Open: learned incumbents, the priority fee. \emph{Empirical anchor}: per-wallet realized spread of the top makers vs the average resting fill, from the December L4 lifecycles.
 
 \paragraph{RQ4 (Defences; extension).} Quoter levers (randomisation, hysteresis, budget reserve, identity-aware control) and venue levers (anonymity, tick, request allowance, priority mechanism), reported as a profit--resilience frontier so ``robust'' cannot mean ``withdrew''.
 
