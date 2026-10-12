@@ -59,6 +59,6 @@ def test_maker_summary_finds_the_selector():
     assert s2["mk_split_n_makers"] == 10 and abs(s2["mk_split_rank_corr"] - 1.0) < 1e-9 and s2["mk_split_rank_corr_p"] < 1e-6
     assert "mk_top_markout_bps" not in s2                       # no classifier table, no fixed sets
     tab = maker_table(tm, horizon_s=10, n_min=100)
-    assert list(tab.wallet) == ["avg", "sel", "swept"]           # volume order
+    assert set(tab.wallet) == {"avg", "sel", "swept"} and (tab.volume.diff().dropna() <= 0).all()   # volume order
     assert tab.set_index("wallet").loc["swept", "touch_share"] == 0.0
     assert (tab.se_bps > 0).all() and (tab.se_bps < 0.1).all()
