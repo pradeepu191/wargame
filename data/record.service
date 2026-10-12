@@ -1,0 +1,23 @@
+# systemd unit for the Hyperliquid recorder on an always-on Linux box (see data/VPS.md).
+#   sudo cp data/record.service /etc/systemd/system/wargame-record.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now wargame-record
+#   journalctl -u wargame-record -f
+[Unit]
+Description=Hyperliquid trades + top-of-book recorder (wargame)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wargame
+WorkingDirectory=/home/wargame/wargame
+ExecStart=/home/wargame/wargame/.venv/bin/python data/record.py --coins BTC,ETH,SOL,HYPE --forever
+Restart=always
+RestartSec=10
+# SIGTERM -> the recorder flushes the open hour and exits; give it time to write
+KillSignal=SIGTERM
+TimeoutStopSec=60
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
