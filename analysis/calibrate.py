@@ -35,7 +35,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))    # run from anywhere, no install needed
-from analysis.l2 import book_summary, load_l2, true_mid_markouts
+from analysis.l2 import book_summary, load_l2, sweep_decomposition, true_mid_markouts
 from analysis.wallets import (activity_herfindahl, arrival_persistence, collapse_orders,
                               conditional_markout_after_toxic, conditional_markout_two_signals, leader_switch,
                               mid_proxy, pair_matrix, split_half_type_persistence, wallet_features, with_roles)
@@ -102,6 +102,7 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30,
             row[f"mid_markout_{d}_bps"] = float(tm[f"markout_{d}_bps"].mean())
             row[f"mid_realized_{d}_bps"] = float(tm[f"realized_{d}_bps"].mean())
             row[f"proxy_bias_{d}_bps"] = row[f"markout_{d}_bps"] - row[f"mid_markout_{d}_bps"]
+        row.update(sweep_decomposition(tm, horizon_s=10))
         # the identity split against the true mid
         mm_tm = tm.rename(columns={"markout_10_bps": "maker_markout"})
         cut = mm_tm.time_ms.iloc[len(mm_tm) // 2]
@@ -175,7 +176,11 @@ def main():
                  f"{row['l2_fills_marked']} fills marked, quoted {row['spread_bps_median']:.2f} / effective "
                  f"{row['effective_spread_bps']:.2f} bps, true-mid markout_1/10/60 {row['mid_markout_1_bps']:+.2f} / "
                  f"{row['mid_markout_10_bps']:+.2f} / {row['mid_markout_60_bps']:+.2f} (proxy bias_10 {row['proxy_bias_10_bps']:+.2f}), "
-                 f"cond diff {row.get('mid_cond_diff_bps', float('nan')):+.2f}"
+                 f"cond diff {row.get('mid_cond_diff_bps', float('nan')):+.2f} | touch share {row['touch_share']:.2f}, "
+                 f"effective touch/walk/order {row['effective_touch_bps']:.2f} / {row['effective_walk_bps']:.2f} / "
+                 f"{row['effective_order_bps']:.2f}, markout_10 touch/walk {row['mid_markout_10_touch_bps']:+.2f} / "
+                 f"{row['mid_markout_10_walk_bps']:+.2f}, {row['fills_per_order']:.2f} fills/order, "
+                 f"{row['walk_order_share']:.2f} of orders walk"
                  if "spread_bps_median" in row else ""), flush=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)

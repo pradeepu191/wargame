@@ -61,11 +61,8 @@ def load_l2(raw: Path, coin: str) -> pd.DataFrame:
     return book.reset_index(drop=True)
 
 
-def mid_at(book: pd.DataFrame, times_ms, strict: bool = False, max_stale_ms: float | None = None) -> np.ndarray:
-    """Mid as of the last snapshot at or before each time -- strictly before it when strict=True
-    (the pre-trade book for a fill; see the module docstring).  NaN before the first snapshot and,
-    when max_stale_ms is given, wherever that snapshot is older than max_stale_ms (no recorder
-    coverage at that time)."""
+def _col_at(book: pd.DataFrame, col: str, times_ms, strict: bool = False,
+            max_stale_ms: float | None = None) -> np.ndarray:
     tb = book.time_ms.to_numpy()
     times_ms = np.asarray(times_ms, dtype=np.int64)
     idx = np.searchsorted(tb, times_ms, side="left" if strict else "right") - 1
@@ -74,7 +71,44 @@ def mid_at(book: pd.DataFrame, times_ms, strict: bool = False, max_stale_ms: flo
         age = times_ms - tb[np.clip(idx, 0, len(tb) - 1)]
         ok &= age <= max_stale_ms
     out = np.full(len(times_ms), np.nan)
-    out[ok] = book.mid.to_numpy()[idx[ok]]
+    out[ok] = book[col].to_numpy()[idx[ok]]
+    return out
+
+
+def mid_at(book: pd.DataFrame, times_ms, strict: bool = False, max_stale_ms: float | None = None) -> np.ndarray:
+    """Mid as of the last snapshot at or before each time -- strictly before it when strict=True
+    (the pre-trade book for a fill; see the module docstring).  NaN before the first snapshot and,
+    when max_stale_ms is given, wherever that snapshot is older than max_stale_ms (no recorder
+    coverage at that time)."""
+    return _col_at(book, "mid", times_ms, strict=strict, max_stale_ms=max_stale_ms)
+
+
+def sweep_decomposition(tm: pd.DataFrame, horizon_s: int = 10) -> dict:
+    """Why the effective spread exceeds the one-tick quoted spread, and whether the under-water
+    markout is a sweep phenomenon or holds for ordinary fills at the touch.
+
+    Print level: share of fills at the pre-trade touch (`at_touch`), the effective spread and the
+    horizon markout for touch fills vs fills the order walked to.  Order level (fills sharing
+    taker, side and block time): the effective spread of the order's volume-weighted price,
+    equal-weighted across orders, and the share of orders that walked past the touch."""
+    if tm.empty:
+        return {}
+    at = tm.at_touch.to_numpy(dtype=bool)
+    mk = f"markout_{horizon_s}_bps"
+    out = {"touch_share": float(at.mean()),
+           "effective_touch_bps": float(tm.effective_bps[at].mean()) if at.any() else np.nan,
+           "effective_walk_bps": float(tm.effective_bps[~at].mean()) if (~at).any() else np.nan,
+           f"mid_markout_{horizon_s}_touch_bps": float(tm[mk][at].mean()) if at.any() else np.nan,
+           f"mid_markout_{horizon_s}_walk_bps": float(tm[mk][~at].mean()) if (~at).any() else np.nan}
+    g = tm.assign(notional=tm.px * tm.sz).groupby(["time_ms", "taker", "side"], sort=False)
+    o = g.agg(sz=("sz", "sum"), notional=("notional", "sum"), mid_0=("mid_0", "first"),
+              maker_sold=("maker_sold", "first"), walked=("at_touch", lambda a: not a.all()),
+              n_fills=("px", "size")).reset_index()
+    vwap = o.notional / o.sz
+    s = np.where(o.maker_sold, 1.0, -1.0)
+    out.update({"n_orders_marked": int(len(o)), "fills_per_order": float(o.n_fills.mean()),
+                "effective_order_bps": float((2 * s * (vwap - o.mid_0) / vwap * 1e4).mean()),
+                "walk_order_share": float(o.walked.mean())})
     return out
 
 
@@ -87,8 +121,12 @@ def true_mid_markouts(trades: pd.DataFrame, book: pd.DataFrame, horizons_s=(1, 1
     times = t.time_ms.to_numpy()
     stale = max_stale_s * 1000
     t["mid_0"] = mid_at(book, times, strict=True, max_stale_ms=stale)
+    t["bid_0"] = _col_at(book, "bid", times, strict=True, max_stale_ms=stale)
+    t["ask_0"] = _col_at(book, "ask", times, strict=True, max_stale_ms=stale)
     s = np.where(t.maker_sold, 1.0, -1.0)
     t["effective_bps"] = 2 * s * (t.px - t.mid_0) / t.px * 1e4
+    # did this print land at (or inside) the pre-trade touch, or did the order walk past it?
+    t["at_touch"] = np.where(t.maker_sold, t.px <= t.ask_0 + 1e-12, t.px >= t.bid_0 - 1e-12)
     for d in horizons_s:
         m = mid_at(book, times + d * 1000, strict=False, max_stale_ms=stale)
         t[f"markout_{d}_bps"] = -s * (m - t.px) / t.px * 1e4

@@ -102,3 +102,27 @@ def test_marks_outside_recorder_coverage_are_dropped():
     # default guard also kills the frozen-mid lookups directly
     assert np.isnan(mid_at(book, [t0 + 3_600_000], max_stale_ms=60_000)[0])
     assert np.isfinite(mid_at(book, [t0 + 3_600_000])[0])
+
+
+def test_sweep_decomposition_separates_touch_fills_from_walked_fills():
+    from analysis.l2 import sweep_decomposition
+    t0 = 1_760_000_000_000
+    book = _book([(t0, 99.0, 101.0), (t0 + 5000, 99.0, 101.0), (t0 + 20_000, 99.0, 101.0)])
+    tape = pd.DataFrame([
+        # one order that walks three levels (same taker, side, block time)
+        {"time_ms": t0 + 1000, "side": "buy", "px": 101.0, "sz": 1.0, "buyer": "big", "seller": "m1"},
+        {"time_ms": t0 + 1000, "side": "buy", "px": 102.0, "sz": 1.0, "buyer": "big", "seller": "m2"},
+        {"time_ms": t0 + 1000, "side": "buy", "px": 103.0, "sz": 2.0, "buyer": "big", "seller": "m3"},
+        # one ordinary fill at the touch
+        {"time_ms": t0 + 6000, "side": "sell", "px": 99.0, "sz": 1.0, "buyer": "m1", "seller": "small"},
+    ])
+    tape["coin"] = "X"
+    tm = true_mid_markouts(with_roles(tape), book, horizons_s=(10,))
+    d = sweep_decomposition(tm, horizon_s=10)
+    assert d["touch_share"] == 0.5 and d["walk_order_share"] == 0.5 and d["fills_per_order"] == 2.0
+    assert abs(d["effective_touch_bps"] - np.mean([2 * (101 - 100) / 101 * 1e4, 2 * (100 - 99) / 99 * 1e4])) < 1e-9
+    assert d["effective_walk_bps"] > d["effective_touch_bps"]
+    vwap = (101 + 102 + 2 * 103) / 4
+    assert abs(d["effective_order_bps"] - np.mean([2 * (vwap - 100) / vwap * 1e4, 2 * (100 - 99) / 99 * 1e4])) < 1e-9
+    # the walked makers sold above the mid 10 s later: positive markout; the touch fills kept the half spread
+    assert d["mid_markout_10_walk_bps"] > d["mid_markout_10_touch_bps"] > 0
