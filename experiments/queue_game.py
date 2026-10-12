@@ -3,7 +3,17 @@
 For each cell (regime persistence rho_z, mark lag L, ticks above break-even) and seed:
   1. incumbents: N makers that always rest (the tick-constrained competitive book) or N tabular
      Q-learners trained on the queue game (identity-blind; they see depth, own rank, and the
-     anonymous tape signal with the mark lag);
+     anonymous tape signal with the mark lag), plus an optional FRINGE of always-resting makers.
+     The fringe is the realistic part of a one-tick book -- retail limit orders and the protocol
+     vault never step out -- and it is what makes learning well-posed: without it two learners
+     that both step out in a toxic spell leave an empty book, no prints, a frozen tape signal,
+     and a self-fulfilling lock in which nobody ever rests again.  With a fringe present the
+     learners keep the spread game's discount (0.95): most of the value of resting is the
+     continuation value of keeping one's place in the queue, and a myopic learner (discount 0)
+     cannot see it -- the per-period mean of "rest" is a few hundredths against reward noise of
+     +-3, so it rests about 40% of the time at random, whereas at 0.95 it rests ~80% of the time,
+     steps out in toxic spells, and earns 2-3x the fringe.  (The earlier run without a fringe was
+     read as a discount problem; it was the lock.)
   2. one entrant per policy, frozen incumbents, `n_episodes` episodes:
         always   rest every period (joins the round-robin)
         anon     WalletEntrant regime filter without ids
@@ -14,7 +24,8 @@ For each cell (regime persistence rho_z, mark lag L, ticks above break-even) and
 
 Usage:
   python experiments/queue_game.py --alphas 0.3 --seeds 0-4 --rhos-z 0.9,0.99 --mark-lags 1,5,20 \
-      --above 0,1 --incumbents always --n-episodes 300 --jobs 2 --out results/queue.csv
+      --above 0,1 --incumbents always --n-episodes 300 --jobs 2 --out results/queue_always.csv
+  python experiments/queue_game.py --incumbents q --fringe 2 --n-train 12000 --out results/queue_q_fringe2.csv
 """
 from __future__ import annotations
 
@@ -36,9 +47,31 @@ BASE = dict(sigma_L=8.0, tick=0.5, max_half_spread=24, redraw_v_each_period=True
 POLICIES = ("always", "anon", "id", "oracle")
 
 
-def play(env, agents, n_episodes, E):
+def train_q(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: int | None = None,
+            discount: float = 0.95, learning_rate: float = 0.05):
+    """cfg.n_mm makers: the first n_learn are Q-learners, the rest an always-resting fringe."""
+    env = QueueEnv(cfg, half_spread=h)
+    n_learn = cfg.n_mm if n_learn is None else n_learn
+    qc = QConfig(learning_rate=learning_rate, discount=discount, exploration_decay=2e-6, inventory_buckets=1, init_q=1.0)
+    agents = [QueueQAgent(cfg.n_mm, qc, seed=seed * 10 + k) for k in range(n_learn)]
+    agents += [AlwaysRest() for _ in range(cfg.n_mm - n_learn)]
+    for _ in range(n_episodes):
+        obs = env.reset(); done = False
+        while not done:
+            acts = [a.act(obs, i) for i, a in enumerate(agents)]
+            obs_n, r, done, _ = env.step(acts)
+            for i, a in enumerate(agents[:n_learn]):
+                a.update(obs, acts[i], float(r[i]), obs_n, done)
+            obs = obs_n
+    for a in agents[:n_learn]:
+        a.set_eval(True)
+    return agents
+
+
+def play_all(env, agents, n_episodes):
+    """Like play() but returns per-agent rest shares."""
     n = env.cfg.n_mm
-    pnl = np.zeros(n); fills = np.zeros(n); inf = np.zeros(n); rest = 0; rank_sum = 0.0; periods = 0
+    pnl = np.zeros(n); fills = np.zeros(n); inf = np.zeros(n); rest = np.zeros(n); periods = 0
     for _ in range(n_episodes):
         obs = env.reset()
         for ag in agents:
@@ -46,7 +79,7 @@ def play(env, agents, n_episodes, E):
         done = False
         while not done:
             acts = [ag.act(obs, i) for i, ag in enumerate(agents)]
-            rest += acts[E]
+            rest += acts
             obs, r, done, info = env.step(acts)
             pnl += r; periods += 1
             f = info["filled"]
@@ -55,53 +88,44 @@ def play(env, agents, n_episodes, E):
     return pnl / periods, fills, inf, rest / periods, periods
 
 
-def train_q(cfg: MarketConfig, h: int, n_episodes: int, seed: int):
-    env = QueueEnv(cfg, half_spread=h)
-    qc = QConfig(learning_rate=0.05, discount=0.95, exploration_decay=2e-6, inventory_buckets=1, init_q=1.0)
-    agents = [QueueQAgent(cfg.n_mm, qc, seed=seed * 10 + k) for k in range(cfg.n_mm)]
-    for _ in range(n_episodes):
-        obs = env.reset(); done = False
-        while not done:
-            acts = [a.act(obs, i) for i, a in enumerate(agents)]
-            obs_n, r, done, _ = env.step(acts)
-            for i, a in enumerate(agents):
-                a.update(obs, acts[i], float(r[i]), obs_n, done)
-            obs = obs_n
-    for a in agents:
-        a.set_eval(True)
-    return agents
-
-
 def one_cell(args):
-    alpha, rho_z, L, above, n_inc, seed, incumbents, n_episodes, n_train = args
+    alpha, rho_z, L, above, n_inc, seed, incumbents, n_episodes, n_train, fringe, discount = args
     mk = dict(BASE, alpha=alpha, regime_persistence=rho_z, mark_lag=L, wallet_seed=seed)
-    cfg_inc = MarketConfig(**mk, n_mm=n_inc, seed=seed)
+    n_pop = n_inc + fringe                        # learners (or always-resters) + fringe
+    cfg_inc = MarketConfig(**mk, n_mm=n_pop, seed=seed)
     env_inc = QueueEnv(cfg_inc, ticks_above_breakeven=above)
     h = env_inc.h
     bm = selection_benchmarks(env_inc)
     if incumbents == "q":
-        inc = train_q(cfg_inc, h, n_train, seed)
+        inc = train_q(cfg_inc, h, n_train, seed, n_learn=n_inc, discount=discount)
     else:
-        inc = [AlwaysRest() for _ in range(n_inc)]
+        inc = [AlwaysRest() for _ in range(n_pop)]
     rows = []
-    cfg_e = MarketConfig(**mk, n_mm=n_inc + 1, seed=10_000 + seed)
-    E = n_inc
+    cfg_e = MarketConfig(**mk, n_mm=n_pop + 1, seed=10_000 + seed)
+    E = n_pop
+    I = slice(0, n_inc)                           # the incumbents proper; fringe is n_inc:n_pop
+    F = slice(n_inc, n_pop)
     for name in POLICIES:
         env = QueueEnv(cfg_e, half_spread=h)
         if name == "always":
             ent = AlwaysRest()
         else:
             ent = QueueWalletEntrant(cfg_e, h, name, wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)
-        pnl, fills, inf, rest_share, periods = play(env, inc + [ent], n_episodes, E)
+        pnl, fills, inf, rest, periods = play_all(env, inc + [ent], n_episodes)
         rows.append({"alpha": alpha, "rho_z": rho_z, "mark_lag": L, "above": above, "h": h, "n_inc": n_inc,
+                     "fringe": fringe, "discount": discount if incumbents == "q" else np.nan,
                      "seed": seed, "incumbents": incumbents, "policy": name,
                      "fill_value_avg": bm["fill_value_avg"], "fill_value_calm": bm.get("fill_value_calm"),
                      "fill_value_toxic": bm.get("fill_value_toxic"),
-                     "entrant_pnl": float(pnl[E]), "incumbent_pnl": float(pnl[:E].mean()),
+                     "entrant_pnl": float(pnl[E]), "incumbent_pnl": float(pnl[I].mean()),
+                     "fringe_pnl": float(pnl[F].mean()) if fringe else np.nan,
                      "entrant_fill_share": float(fills[E] / max(fills.sum(), 1)),
+                     "incumbent_fill_share": float(fills[I].sum() / max(fills.sum(), 1)),
                      "entrant_informed_share": float(inf[E] / max(fills[E], 1)),
-                     "incumbent_informed_share": float(inf[:E].sum() / max(fills[:E].sum(), 1)),
-                     "entrant_rest_share": rest_share, "fill_rate": float(fills.sum() / periods)})
+                     "incumbent_informed_share": float(inf[I].sum() / max(fills[I].sum(), 1)),
+                     "fringe_informed_share": float(inf[F].sum() / max(fills[F].sum(), 1)) if fringe else np.nan,
+                     "entrant_rest_share": float(rest[E]), "incumbent_rest_share": float(rest[I].mean()),
+                     "fill_rate": float(fills.sum() / periods)})
     return rows
 
 
@@ -116,11 +140,14 @@ def main():
     ap.add_argument("--incumbents", default="always", choices=["always", "q"])
     ap.add_argument("--n-episodes", type=int, default=300)
     ap.add_argument("--n-train", type=int, default=12000)
+    ap.add_argument("--fringe", type=int, default=0, help="always-resting makers added to the incumbent population")
+    ap.add_argument("--discount", type=float, default=0.95, help="Q-learner discount (incumbents=q)")
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--out", default="results/queue.csv")
     args = ap.parse_args()
     a_, b_ = map(int, args.seeds.split("-"))
-    jobs = [(float(a), float(rz), int(L), int(ab), args.n_inc, s, args.incumbents, args.n_episodes, args.n_train)
+    jobs = [(float(a), float(rz), int(L), int(ab), args.n_inc, s, args.incumbents, args.n_episodes, args.n_train,
+             args.fringe, args.discount)
             for a in args.alphas.split(",") for rz in args.rhos_z.split(",") for L in args.mark_lags.split(",")
             for ab in args.above.split(",") for s in range(a_, b_ + 1)]
     print(f"{len(jobs)} cells x {len(POLICIES)} policies, incumbents={args.incumbents}", flush=True)
@@ -135,7 +162,7 @@ def main():
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out, index=False)
     pd.set_option("display.width", 250)
-    g = df.groupby(["alpha", "above", "rho_z", "mark_lag", "policy"])[["entrant_pnl", "incumbent_pnl", "entrant_informed_share", "incumbent_informed_share", "entrant_rest_share"]].mean()
+    g = df.groupby(["alpha", "above", "rho_z", "mark_lag", "policy"])[["entrant_pnl", "incumbent_pnl", "fringe_pnl", "entrant_informed_share", "incumbent_informed_share", "fringe_informed_share", "entrant_rest_share", "incumbent_rest_share", "fill_rate"]].mean()
     print(g.round(3).to_string())
     print("wrote", args.out)
 
