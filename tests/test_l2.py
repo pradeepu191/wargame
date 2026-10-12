@@ -48,3 +48,57 @@ def test_true_mid_removes_bounce(tmp_path):
     proxy = (-s * (mid_proxy(t, 1000) - t.px) / t.px * 1e4).mean()
     assert proxy > 9.0
     assert np.isnan(mid_at(book, np.array([book.time_ms.iloc[0] - 1]))[0])
+
+
+def _book(rows):
+    b = pd.DataFrame(rows, columns=["time_ms", "bid", "ask"])
+    b["bid_sz"] = 1.0; b["ask_sz"] = 1.0
+    b["mid"] = (b.bid + b.ask) / 2
+    b["spread_bps"] = (b.ask - b.bid) / b.mid * 1e4
+    return b
+
+
+def test_fill_mid_is_the_pre_trade_book():
+    """A trade and the top-of-book update it caused share a block timestamp: the snapshot AT the
+    fill's time is the post-trade book.  Strict alignment picks the previous one."""
+    t0 = 1_760_000_000_000
+    book = _book([(t0, 99.0, 101.0),            # pre-trade: one-tick book around 100
+                  (t0 + 1000, 99.0, 103.0)])    # same block as the buy that cleared the ask
+    assert mid_at(book, [t0 + 1000], strict=False)[0] == 101.0
+    assert mid_at(book, [t0 + 1000], strict=True)[0] == 100.0
+    tape = pd.DataFrame([{"time_ms": t0 + 1000, "coin": "X", "side": "buy", "px": 101.0, "sz": 1.0,
+                          "buyer": "taker", "seller": "mm"}])
+    tm = true_mid_markouts(with_roles(tape), book, horizons_s=(1,))
+    # taker paid the full one-tick quoted spread (2 bps on 100) against the book it hit
+    assert abs(tm.effective_bps.iloc[0] - 2 / 101 * 1e4) < 1e-6
+    # at-or-before would have said the taker paid nothing
+    post = mid_at(book, [t0 + 1000], strict=False)[0]
+    assert 2 * (101.0 - post) / 101.0 * 1e4 == 0.0
+
+
+def test_marks_outside_recorder_coverage_are_dropped():
+    """bbo exists only while the recorder ran; trades outside that window must not be marked
+    against a frozen last mid."""
+    t0 = 1_760_000_000_000
+    snaps = [(t0 + k * 1000, 99.0, 101.0) for k in range(101)]              # 100 s of coverage
+    snaps += [(t0 + 7_200_000 + k * 1000, 109.0, 111.0) for k in range(101)]  # second session, 2 h later
+    book = _book(snaps)
+    s = book_summary(book)
+    assert s["l2_sessions"] == 2 and abs(s["l2_coverage_h"] - 200 / 3600) < 1e-9
+    tape = pd.DataFrame([
+        {"time_ms": t0 + 50_500, "side": "buy", "px": 101.0},     # inside session 1, all marks inside
+        {"time_ms": t0 + 95_500, "side": "buy", "px": 101.0},     # inside; its 10-s mark is outside
+        {"time_ms": t0 + 3_600_000, "side": "buy", "px": 130.0},  # in the gap: no coverage
+        {"time_ms": t0 + 7_200_000 + 500, "side": "sell", "px": 109.0},  # session 2
+    ])
+    tape["coin"] = "X"; tape["sz"] = 1.0
+    tape["buyer"] = np.where(tape.side == "buy", "taker", "mm"); tape["seller"] = np.where(tape.side == "buy", "mm", "taker")
+    tm = true_mid_markouts(with_roles(tape), book, horizons_s=(1, 10), max_stale_s=5.0)
+    assert len(tm) == 3 and t0 + 3_600_000 not in set(tm.time_ms)
+    r = tm.set_index("time_ms")
+    assert np.isfinite(r.loc[t0 + 50_500, "markout_10_bps"])
+    assert np.isfinite(r.loc[t0 + 95_500, "markout_1_bps"]) and np.isnan(r.loc[t0 + 95_500, "markout_10_bps"])
+    assert np.isfinite(r.loc[t0 + 7_200_000 + 500, "markout_1_bps"])
+    # default guard also kills the frozen-mid lookups directly
+    assert np.isnan(mid_at(book, [t0 + 3_600_000], max_stale_ms=60_000)[0])
+    assert np.isfinite(mid_at(book, [t0 + 3_600_000])[0])

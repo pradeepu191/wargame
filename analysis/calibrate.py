@@ -171,8 +171,11 @@ def main():
               f"markout_10s={row['markout_10_bps']:+.2f} bps, type rank corr={row['type_rank_corr']:.2f}, "
               f"cond diff={row['cond_diff_bps']:+.2f} bps [id|anon-signal: {row['two_diff_id_given_anon_bps']:+.2f}, "
               f"anon alone: {row['two_diff_anon_bps']:+.2f}], MMs={row.get('n_mm', 0)}"
-              + (f" | L2: spread {row['spread_bps_median']:.2f} bps, true-mid markout_10 {row['mid_markout_10_bps']:+.2f} "
-                 f"(proxy bias {row['proxy_bias_10_bps']:+.2f}), cond diff {row.get('mid_cond_diff_bps', float('nan')):+.2f}"
+              + (f" | L2: {row['l2_coverage_h']:.1f} h in {row['l2_sessions']} session(s), gap {row['l2_median_gap_s']:.3f} s, "
+                 f"{row['l2_fills_marked']} fills marked, quoted {row['spread_bps_median']:.2f} / effective "
+                 f"{row['effective_spread_bps']:.2f} bps, true-mid markout_1/10/60 {row['mid_markout_1_bps']:+.2f} / "
+                 f"{row['mid_markout_10_bps']:+.2f} / {row['mid_markout_60_bps']:+.2f} (proxy bias_10 {row['proxy_bias_10_bps']:+.2f}), "
+                 f"cond diff {row.get('mid_cond_diff_bps', float('nan')):+.2f}"
                  if "spread_bps_median" in row else ""), flush=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)
