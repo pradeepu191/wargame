@@ -28,12 +28,15 @@ Hyperliquid data (the open L4 archive and our own live recorder).
   reveals the regime before the price does. On Hyperliquid, conditioning on the previous
   taker's class moves the next fill's markout by 0.5–0.9 bps, and 78–99% of that survives
   conditioning on what an anonymous quoter sees.
-* The quoted spread on BTC/ETH/SOL is one tick essentially always; true-mid adverse
-  selection is −0.33 bps at 10 s on all four coins. On those books rent cannot live in the
-  spread, only in which fills a maker gets.
+* The quoted spread on BTC/ETH/SOL is one tick essentially always, and a fill at the touch
+  pays exactly that tick — then loses 0.3–0.6 bps to the mid within ten seconds on every coin
+  (top-of-book resolution, Oct 11–12). The taker's cost is in depth: one order in ten walks
+  the book and pays twenty ticks on BTC, and on the deep books those are the informed orders.
+  On those books rent cannot live in the spread, only in which fills a maker gets and how much
+  it shows behind the inside.
 
 Paper: `paper/deliverable1.tex` (as submitted, Oct 6), `paper/deliverable1_revised.tex`
-(revised, no page limit, Oct 9). From-scratch explainer: `paper/companion.tex`.
+(revised, no page limit, Oct 12). From-scratch explainer: `paper/companion.tex`.
 
 ## Quick start
 
@@ -120,9 +123,10 @@ tests/          pytest (38)
 - [x] Exploitability vs rent across 120 populations (RQ2 as measurement)
 - [x] Heterogeneous takers, regime, mark lag; value of identity grids
 - [x] Data: Zenodo archive converter, live recorder (trades, L2, bbo), calibration pipeline,
-      archive-vs-feed agreement, true-mid markouts, identity split on real data
+      archive-vs-feed agreement, true-mid markouts at top-of-book resolution (pre-trade
+      alignment, coverage guard, touch-vs-walked decomposition), identity split on real data
 - [ ] 10-seed cluster runs of the identity grids at the break-even rule (`slurm/identity.sh`)
-- [ ] October archive (the Oct 10 cascade); clean book run with `bbo`; top-maker realized spread
+- [ ] October archive (the Oct 10 cascade); multi-day book run; top-maker realized spread
 - [ ] Queue-position model for one-tick books (RQ3); priority fee as the price of position
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow

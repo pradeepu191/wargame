@@ -21,13 +21,13 @@
 \large Revised proposal and Workshop-1 report}
 \author{Deepu Pradeep \quad Miguel Betran Menz \\
 \normalsize 6.S974 Games, Learning, and Security --- Example 4 (Algorithmic Market with Adaptive Agents)}
-\date{October 11, 2026 --- supersedes Deliverable 1 of October 6}
+\date{October 12, 2026 --- supersedes Deliverable 1 of October 6}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-\noindent Independent reinforcement-learning market makers settle at spreads above the competitive level without communicating. A wide spread is either \emph{rent} that an entrant can capture or the correct price of \emph{toxic} order flow, and the two look identical on the tape. We study the entrant's problem on Hyperliquid, an on-chain order book where every print carries both counterparties' wallet addresses. This document revises our October~6 proposal in light of three days of simulation and the first Hyperliquid data. Three things changed. (1)~The exploitability hypothesis ``more collusive $\Rightarrow$ more exploitable'' holds only in a trivial form; the fraction of rent a profit-maximising entrant destroys is flat at $\approx 0.7$ across populations, so RQ2 is restated as a measurement. (2)~The mechanism by which wallet identity pays is not wallet persistence (same-wallet repeats are $3$--$4\times$ chance but only $0.02$--$0.05$ in level); it is that informed flow clusters in time and a toxic wallet's print reveals the regime \emph{before the price does}. The simulator now has a latent toxicity regime and a lag between a print and its mark, and with them identity's value reappears where the data say it should. (3)~The quoted spread on BTC, ETH and SOL is pinned at one tick essentially all the time, so on those books rent cannot live in the spread; it can only live in which fills a maker gets. We lay out the revised model, the results that forced the revisions, the calibration numbers, and the plan to a December preprint.
+\noindent Independent reinforcement-learning market makers settle at spreads above the competitive level without communicating. A wide spread is either \emph{rent} that an entrant can capture or the correct price of \emph{toxic} order flow, and the two look identical on the tape. We study the entrant's problem on Hyperliquid, an on-chain order book where every print carries both counterparties' wallet addresses. This document revises our October~6 proposal in light of three days of simulation and the first Hyperliquid data. Three things changed. (1)~The exploitability hypothesis ``more collusive $\Rightarrow$ more exploitable'' holds only in a trivial form; the fraction of rent a profit-maximising entrant destroys is flat at $\approx 0.7$ across populations, so RQ2 is restated as a measurement. (2)~The mechanism by which wallet identity pays is not wallet persistence (same-wallet repeats are $3$--$4\times$ chance but only $0.02$--$0.05$ in level); it is that informed flow clusters in time and a toxic wallet's print reveals the regime \emph{before the price does}. The simulator now has a latent toxicity regime and a lag between a print and its mark, and with them identity's value reappears where the data say it should. (3)~The quoted spread on BTC, ETH and SOL is pinned at one tick essentially all the time, so on those books rent cannot live in the spread; it can only live in which fills a maker gets. A fill at the touch pays that one tick and loses $0.3$--$0.6$ bps to the mid within ten seconds on every coin; the taker's cost is in depth---one order in ten walks the book and pays twenty ticks, and on the deep books those are the informed ones. We lay out the revised model, the results that forced the revisions, the calibration numbers, and the plan to a December preprint.
 \end{abstract}
 
 \section{Motivation and central claim}
@@ -51,7 +51,7 @@ Identity matters because wallet toxicity is a persistent trait (Zhai's ten-day p
 \addlinespace
 Rent appears as a quoted spread above break-even; undercutting means quoting tighter. & Quoted spread on BTC/ETH/SOL is one tick, p90 $=$ median, over six hours of book data (\S\ref{sec:l2}). & Spread game kept as theory and for books that open beyond a tick; on tick-bound books rent is reinterpreted as fill selection; queue model added to plan. \\
 \addlinespace
-Markouts from the trade tape. & Trade-price proxy carries bid--ask bounce; true-mid adverse selection is $-0.33$ bps on all four coins. & L2 recorded; all markouts now against the true mid. \\
+Markouts from the trade tape. & Trade-price proxy carries bid--ask bounce. Against the true mid the 10-s markout is negative on all four coins in both book windows, and negative for fills at the touch ($-0.27$ to $-0.56$ bps); the taker's cost is in depth, not the one-tick quote (\S\ref{sec:l2}). & Top-of-book recorded on every change; all markouts against the pre-trade mid. \\
 \addlinespace
 MM wallets avoid each other (CCG signature). & Avoidance ratio $\approx1$ on 374 classified wallets; below 1 only among the top-10 on thin books; unstable across windows. & Not claimed until a fixed wallet set over a longer window exists. \\
 \addlinespace
@@ -237,23 +237,34 @@ $P(\text{adverse move before next order})$ & 0.18 & 0.21 & 0.21 & 0.20 \\
 \end{itemize}
 
 \subsubsection{The book}\label{sec:l2}
-Six hours of L2 on October~8 (Table~\ref{tab:l2}). The quoted spread is one tick: p90 equals the median on BTC, ETH and SOL. Top-of-book depth is \$508k, \$314k, \$100k and \$10.6k. Against the true mid, the maker's markout is $+0.3$ to $+1.4$ bps at one second (the half-spread earned) and $-0.33$ bps at ten seconds on every coin ($-0.30$ to $-0.36$), where the trade-price proxy had spread it from $-0.15$ to $-0.83$. A resting fill on Hyperliquid is, on average, under water within ten seconds. The identity split against the true mid is unchanged ($-0.49$ to $-0.70$ bps). The L2 feed is throttled to one snapshot per $5.4$\,s, which inflates effective-spread estimates; the recorder now also captures the top of book on every change, and those numbers are not quoted here.
+Two book windows: six hours on October~8 from the throttled \texttt{l2Book} feed (one snapshot per $5.4$\,s) and six hours on October~11--12 from the \texttt{bbo} feed (every top-of-book change; median gap $0.13$\,s). Two alignment rules were needed, both learned from the second window and both now in \texttt{analysis/l2.py}: a trade and the top-of-book update it causes carry the same block timestamp, so a fill's reference mid is the last snapshot \emph{strictly before} the trade (at-or-before returns the post-trade book and gave a negative effective spread on BTC); and marks are computed only inside the recorder's coverage window. Table~\ref{tab:l2} is the second window; the first window's ten-second markouts are kept as a row for comparison.
+
+\paragraph{The quote is one tick; the cost is in depth.} The quoted spread is one tick on BTC, ETH and SOL in both windows (p90 $=$ median). A fill at the pre-trade touch pays exactly the quoted spread---effective $0.12$ / $0.42$ / $0.17$ / $0.92$ bps against quoted $0.12$ / $0.39$ / $0.12$ / $0.90$---which is also the check that the alignment is right. But 20--46\% of prints are not at the touch: one order in ten (one in five on HYPE) walks past it, and those prints pay $2.4$--$5.2$ bps, twenty ticks on BTC. Print-weighted, the effective spread is $0.73$ / $1.01$ / $1.73$ / $1.76$ bps, six times the quoted spread on BTC and fifteen on HYPE; equal-weighted across orders (the order's volume-weighted price against the pre-trade mid) it is $0.27$ / $0.60$ / $0.40$ / $1.09$, $1.2$--$3.4\times$ quoted. On a one-tick book the maker's price decision is not the inside quote but how much to show at the inside and behind it.
+
+\paragraph{The ordinary fill loses, and it is not a sweep artefact.} Against the fresh mid the maker is under water at one second on BTC, ETH and HYPE ($-0.26$ / $-0.30$ / $-0.19$ bps; SOL $+0.15$) and at ten seconds on all four ($-0.52$ / $-0.92$ / $-0.25$ / $-0.02$). The October~8 level---$-0.30$ to $-0.36$ on every coin---did not reproduce; the sign did, on every coin in both windows, and in both windows the adverse move exceeds the half-spread earned ($0.06$ / $0.20$ / $0.06$ / $0.45$). Splitting by where the print landed settles whether large sweeps drive this: fills \emph{at the touch}, the fill a quiet maker gets, lose $-0.41$ / $-0.56$ / $-0.45$ / $-0.27$ bps at ten seconds on all four coins. Walked fills split by book. On the deep BTC and ETH books the makers an order walks to lose more than the touch ($-0.80$, $-2.26$): an order that pays twenty ticks to walk BTC is informed and its impact is permanent. On HYPE and SOL walked fills break even or earn ($-0.01$, $+0.98$): walking a \$6k-deep or $0.9$-bps-wide book is cheap and uninformative, the price reverts, and the maker resting deep keeps the walk. This is the regime contrast of \S\ref{sec:takers} measured by depth instead of by wallet. The identity split against the true mid holds on BTC, HYPE and SOL (after toxic minus after benign $-0.70$ / $-0.48$ / $-0.47$ bps) and is $+0.06$ on ETH at six hours of marked fills; the 125.8-hour trades-only split ($-0.66$ / $-1.02$ / $-0.52$ / $-0.63$ given the anonymous signal) is the one to quote for identity.
 
 \begin{table}[h]\footnotesize\centering
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
  & BTC & ETH & HYPE & SOL \\
 \midrule
-quoted spread, median / p90 (bps) & 0.12 / 0.12 & 0.39 / 0.39 & 0.11 / 0.23 & 0.87 / 0.87 \\
+quoted spread, median / p90 (bps) & 0.12 / 0.12 & 0.39 / 0.39 & 0.12 / 0.58 & 0.90 / 0.90 \\
 one tick (bps) & 0.12 & 0.39 & 0.11 & 0.86 \\
-top-of-book depth, median (USD) & 508k & 314k & 10.6k & 100k \\
-true-mid maker markout, 1\,s (bps) & $+0.33$ & $+0.58$ & $+1.36$ & $+0.90$ \\
-true-mid maker markout, 10\,s (bps) & $-0.33$ & $-0.33$ & $-0.36$ & $-0.30$ \\
-true-mid maker markout, 60\,s (bps) & $-0.31$ & $-0.31$ & $-0.15$ & $-0.48$ \\
-after toxic / after benign, true mid (bps) & $-0.56$ / $-0.07$ & $-0.56$ / $-0.06$ & $-0.77$ / $-0.30$ & $-0.64$ / $+0.05$ \\
+top-of-book depth, median (USD) & 611k & 283k & 6.2k & 78k \\
+prints at the pre-trade touch & 73\% & 79\% & 54\% & 80\% \\
+orders that walk past the touch & 10\% & 10\% & 19\% & 8\% \\
+effective spread, fills at the touch (bps) & 0.12 & 0.42 & 0.17 & 0.92 \\
+effective spread, walked fills (bps) & 2.35 & 3.20 & 3.57 & 5.20 \\
+effective spread, print-weighted / per order (bps) & 0.73 / 0.27 & 1.01 / 0.60 & 1.73 / 0.40 & 1.76 / 1.09 \\
+\addlinespace
+true-mid maker markout, 1 / 10 / 60\,s (bps) & $-0.26$ / $-0.52$ / $-0.51$ & $-0.30$ / $-0.92$ / $-0.38$ & $-0.19$ / $-0.25$ / $-0.10$ & $+0.15$ / $-0.02$ / $+0.05$ \\
+10-s markout, at the touch / walked (bps) & $-0.41$ / $-0.80$ & $-0.56$ / $-2.26$ & $-0.45$ / $-0.01$ & $-0.27$ / $+0.98$ \\
+10-s markout, Oct 8 window (bps) & $-0.33$ & $-0.33$ & $-0.36$ & $-0.30$ \\
+after toxic / after benign, true mid (bps) & $-0.97$ / $-0.27$ & $-0.73$ / $-0.79$ & $-0.65$ / $-0.17$ & $-0.48$ / $-0.01$ \\
 \bottomrule
-\end{tabular}
-\caption{Book statistics, Oct 8 2026, six hours.}\label{tab:l2}
+\end{tabular}}
+\caption{Book statistics at top-of-book resolution, Oct 11--12 2026, six hours (41k / 26k / 47k / 15k marked fills). ``At the touch'': the print is at the best quote of the last book before the trade; ``walked'': beyond it.}\label{tab:l2}
 \end{table}
 
 \subsection{The one-tick queue game (RQ3, first result)}\label{sec:queue}
@@ -288,7 +299,7 @@ $h^C+1$ & 0.99 & 1 / 5 / 20 & 0.11 & 0.22 / 0.20 / 0.19 & 0.24 / 0.23 / 0.23 & 0
 The spread game and the queue game give the same answer through different actions: a quoter who knows who just printed captures the benign flow and leaves the toxic flow to identity-blind rivals---by undercutting selectively where undercutting is possible, by resting selectively where it is not. Learned incumbents in the queue game and the priority fee as the price of a place in line are the next two steps (identity-blind Q-learners fall into a self-fulfilling lock at break-even---nobody rests, so no prints, so no signal, so nobody rests---which is itself a remark about why thin books stay thin).
 
 \subsection{Synthesis}
-The chain the proposal set out to test now reads, with numbers: learning makers earn rent ($\Delta\approx0.8$) that survives a best-responding entrant (the cartel re-forms around it; entrant keeps 79--96\% of the monopoly rent); the entrant's binding problem is fill selection, i.e.\ reading the toxicity regime; on Hyperliquid the regime is readable from the wallet tag $0.5$--$0.9$ bps before the price reveals it; and on the major books, where the spread cannot widen, fill selection is the only place rent can live. The queue game of \S\ref{sec:queue} closes the loop in the simulator: on a book where the spread cannot move, the identity entrant earns the selection rent and the identity-blind makers absorb the toxic flow. What remains to be shown is the same step on real quotes: that makers who select fills (by queue position, cancellation, and identity) earn positive realized spread while the average resting fill loses $0.33$ bps. The data to test it are in hand.
+The chain the proposal set out to test now reads, with numbers: learning makers earn rent ($\Delta\approx0.8$) that survives a best-responding entrant (the cartel re-forms around it; entrant keeps 79--96\% of the monopoly rent); the entrant's binding problem is fill selection, i.e.\ reading the toxicity regime; on Hyperliquid the regime is readable from the wallet tag $0.5$--$0.9$ bps before the price reveals it; and on the major books, where the spread cannot widen, fill selection is the only place rent can live. The queue game of \S\ref{sec:queue} closes the loop in the simulator: on a book where the spread cannot move, the identity entrant earns the selection rent and the identity-blind makers absorb the toxic flow. The book adds the second action the queue model needs: a fill at the touch pays one tick, but one order in ten walks the book and pays twenty, and on BTC and ETH those are the informed ones---depth shown behind the inside is where the toxic flow lands. What remains to be shown is the same step on real quotes: that makers who select fills (by queue position, cancellation, depth, and identity) earn positive realized spread while the fill at the touch loses $0.3$--$0.6$ bps within ten seconds. The data to test it are in hand.
 
 \section{Research questions, restated}
 \paragraph{RQ1 (Executable value of identity).} Under $\Fanon\subset\Fid\subset\For$, what is an entrant's profit, and how does $\pi^{\mathrm{id}}-\pi^{\mathrm{anon}}$ depend on regime persistence $\rho_z$, type dispersion $\kappa$, the mark lag $L$, and the incumbents' quote relative to the toxic-regime break-even? \emph{Prediction (from \S\ref{sec:identity})}: the increment is zero when the toxic state leaves an undercut profitable, and grows with $L$ otherwise. \emph{Empirical counterpart}: the identity-given-anonymous-signal split by coin, against each coin's spread relative to break-even.
@@ -301,8 +312,8 @@ The chain the proposal set out to test now reads, with numbers: learning makers 
 
 \section{Plan to December}
 \begin{enumerate}
-\item \emph{Now.} Ten-seed cluster runs of the three identity grids at the break-even rule (\texttt{slurm/identity.sh}); the October archive tar (contiguity, the cascade); a clean book run with the top-of-book feed; the top-maker realized-spread test.
-\item \emph{Late October.} Queue model for RQ3: makers choose inside/behind and cancel; time priority; priority fee. Calibrate $L$ from inter-arrival vs markout horizon, $\rho_z$ and the regime contrast from the conditional markouts, depth from the book.
+\item \emph{Now.} Ten-seed cluster runs of the three identity grids at the break-even rule (\texttt{slurm/identity.sh}); the October archive tar (contiguity, the cascade); a multi-day book run from an always-on machine, to put intervals on the touch-fill markout by coin and hour and to classify wallets on marked fills; the top-maker realized-spread test.
+\item \emph{Late October.} Queue model for RQ3 extended with depth: makers choose how much to show at the inside and behind it, and cancel; time priority; priority fee; sweeps that walk the book as the informed event (\S\ref{sec:l2}). Calibrate $L$ from inter-arrival vs markout horizon, $\rho_z$ and the regime contrast from the conditional markouts, depth from the book.
 \item \emph{November.} Re-learning and identity-aware incumbents; a steering attacker; held-out attackers; inventory from \texttt{start\_pos}; the December L4 lifecycles for reaction functions $P(\text{requote}\mid\text{rival undercuts})$ and for cancellation-before-toxic-flow.
 \item \emph{December.} Preprint. Rigor throughout: common random numbers, seed intervals, CVaR alongside means, train-at-$\alpha$/test-at-$\alpha'$, chronological splits on data, classification on the first half only.
 \end{enumerate}

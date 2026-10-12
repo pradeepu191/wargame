@@ -739,11 +739,97 @@ gap (laptop lid) in hour 17 UTC on Oct 7.
   trade-price proxy had spread it from −0.15 to −0.83. A resting fill earns the half-spread at
   1 s and is under water by 10 s: on net, resting liquidity on Hyperliquid loses to the mid within
   ten seconds. The identity split survives the true mid unchanged.
+  *Superseded in level by the bbo run below: the sign reproduces on every coin, the uniform
+  −0.33 does not (−0.52 / −0.92 / −0.25 / −0.02), and the +0.3 to +1.4 at 1 s was the stale
+  mid — with a fresh mid the maker is already under water at 1 s on three coins.*
 * **Measurement caveat.** The `l2Book` feed delivered 4,020 snapshots in six hours (one per 5.4 s),
   not one per block. A stale mid inflates the effective spread (0.9–3.6 bps vs the 0.1–0.9 quoted)
   because trade direction is correlated with the move since the last snapshot; the 10-s markouts
   are unaffected. The recorder now also subscribes to `bbo` (top of book on every change);
   `analysis/l2.py` prefers it. Effective-spread numbers from this run should not be quoted.
+
+## The book at top-of-book resolution (`results/live_2026_10/`, six hours of `bbo` on Oct 11–12 2026, 125.8 h of trades)
+
+Recorder with the `bbo` subscription, 21:00 Oct 11 – 04:00 Oct 12 UTC (6.0 h in one session,
+124k top-of-book changes on BTC, median gap 0.125–0.133 s; the 5.4-s `l2Book` throttle is gone).
+Marked fills: 41.0k / 25.7k / 47.3k / 15.3k (BTC / ETH / HYPE / SOL). Two alignment rules were
+needed and are now in `analysis/l2.py` (tests in `tests/test_l2.py`):
+
+1. **The fill's reference mid is the last snapshot strictly before the trade time.** Hyperliquid
+   stamps a trade and the top-of-book update it caused with the same block time, so "at or
+   before" returns the post-trade book. On the first pass that gave an effective spread of
+   −0.02 bps on BTC (a taker paying a negative spread). The check that the rule is right: a fill
+   at the pre-trade touch now pays exactly the quoted spread on every coin (row 5 below).
+2. **Marks exist only inside the recorder's coverage.** Trades run continuously (the long
+   recorder) but the book stream exists only while a `bbo` recorder is alive; a lookup whose
+   latest snapshot is older than 60 s returns NaN instead of a frozen mid. `calibrate` reports
+   `l2_coverage_h` and `l2_sessions`. (On this run every marked fill was already inside the
+   window; the guard changed nothing here and is there for the next run.)
+
+| | BTC | ETH | HYPE | SOL |
+|---|---|---|---|---|
+| quoted spread, median / p90 (bps) | 0.12 / 0.12 | 0.39 / 0.39 | 0.12 / 0.58 | 0.90 / 0.90 |
+| one tick (bps) | 0.12 | 0.39 | 0.11 | 0.86 |
+| top-of-book depth, median (USD) | 611k | 283k | 6.2k | 78k |
+| prints at the pre-trade touch | 73% | 79% | 54% | 80% |
+| effective spread: fills at the touch (bps) | 0.12 | 0.42 | 0.17 | 0.92 |
+| effective spread: fills the order walked to (bps) | 2.35 | 3.20 | 3.57 | 5.20 |
+| effective spread: print-weighted / per order (VWAP) (bps) | 0.73 / 0.27 | 1.01 / 0.60 | 1.73 / 0.40 | 1.76 / 1.09 |
+| orders that walk past the touch; fills per order | 10%; 2.36 | 10%; 1.88 | 19%; 2.57 | 8%; 2.05 |
+| true-mid maker markout 1 / 10 / 60 s (bps) | −0.26 / −0.52 / −0.51 | −0.30 / −0.92 / −0.38 | −0.19 / −0.25 / −0.10 | +0.15 / −0.02 / +0.05 |
+| 10-s markout, fills at the touch / walked fills (bps) | −0.41 / −0.80 | −0.56 / −2.26 | −0.45 / −0.01 | −0.27 / +0.98 |
+| 10-s markout, Oct 8 window, for comparison (bps) | −0.33 | −0.33 | −0.36 | −0.30 |
+| trade-price proxy, 10 s (125.8 h) (bps) | −0.19 | −0.85 | −0.40 | −0.36 |
+| identity split vs true mid: after toxic / after benign (bps) | −0.97 / −0.27 | −0.73 / −0.79 | −0.65 / −0.17 | −0.48 / −0.01 |
+
+### Findings
+* **A fill at the touch pays one tick; the taker's cost is in depth.** 20–46% of prints are not at
+  the pre-trade touch. One order in ten (one in five on HYPE) walks past it, and those prints
+  pay 2.4–5.2 bps — twenty ticks on BTC. Print-weighted, the effective spread is 6× the quoted
+  spread on BTC and 15× on HYPE; equal-weighted across orders (the order's VWAP against the
+  pre-trade mid) it is 1.2–3.4× quoted. "The spread is one tick" is true of the quote and false
+  of what a large taker pays. For the simulator: on a one-tick book the maker's price decision
+  is not the inside quote but *how much to show at the inside and behind it* — depth is the
+  action, and a sweep is the event that reveals it. (Caveat: the pre-trade book is the previous
+  block's; a touch that moved within the block before the fill is counted as a walk, so the
+  walk share is an upper bound. With BTC moving 0.3 bps per 0.13 s this cannot produce twenty
+  ticks.)
+* **The ordinary resting fill loses within ten seconds on every coin, and it is not a sweep
+  artefact.** Fills at the touch — the fill a quiet maker gets — are at −0.41 / −0.56 / −0.45 /
+  −0.27 bps at 10 s against a half-spread earned of 0.06 / 0.20 / 0.06 / 0.45. The adverse move
+  at 10 s is 0.5–0.8 bps on all four books. With a fresh mid the maker is under water at *one*
+  second on BTC, ETH and HYPE; the +0.3 to +1.4 bps "half-spread earned at 1 s" of the Oct 8 run
+  was the stale mid. Sign and ordering (adverse move ≫ half-spread) reproduce across the two
+  windows; the level does not (Oct 8 −0.33 on every coin was a six-hour coincidence). Report as:
+  negative on all four coins in both windows, 0.0–0.9 bps, always larger than the half-spread.
+* **Walked fills split by book.** On the deep BTC and ETH books the makers an order walks to lose
+  *more* than the touch (−0.80, −2.26): an order that pays twenty ticks to walk BTC is informed,
+  and the impact is permanent. On HYPE and SOL walked fills break even or earn (−0.01, +0.98):
+  walking a $6k-deep or 0.9-bps-wide book is cheap and uninformative, the price reverts, and the
+  maker who was resting deep keeps the walk. This is the simulator's regime contrast, measured by
+  depth instead of by wallet: the toxic order is the one that walks a deep book.
+* **Identity vs the true mid** holds on BTC, HYPE and SOL (after toxic − after benign −0.70 /
+  −0.48 / −0.47 bps); on ETH it is +0.06 at 6 h of marked fills (the trades-only split over
+  125.8 h is −0.98 on ETH). Six hours is not enough for the per-wallet classification; the
+  125.8-h trades-only numbers are the ones to quote for identity.
+* **Trades-only statistics at 125.8 h** (Oct 7–12; supersede the 19-h column of the live-vs-
+  archive table): ρ_order 0.025 / 0.036 / 0.049 / 0.050 (baseline 0.004–0.015); type rank corr
+  0.35 / 0.41 / 0.30 / 0.51 (all p < 1e-6); identity given the anonymous signal −0.66 / −1.02 /
+  −0.52 / −0.63 bps, anonymous signal alone −0.31 / −0.29 / −0.10 / −0.47; P(adverse move
+  before the next order) 0.11 / 0.13 / 0.22 / 0.16. All within the ranges of the January archive.
+
+### What this changes in the paper and the model
+* §5.6.1 of the revised deliverable rewritten around this table; the "−0.33 on every coin"
+  sentence and the audit row are replaced; the synthesis's "average resting fill loses 0.33 bps"
+  becomes "the fill at the touch loses 0.3–0.6 bps within ten seconds".
+* The queue game's premise (fixed one-tick spread, value only in selection) is confirmed for the
+  touch. The depth result adds the second action the queue model needs: size shown at and behind
+  the inside. The priority-fee lever buys position *at the touch*; depth behind it is where the
+  informed sweep lands on BTC/ETH.
+* Next book run should be days, not hours, to put intervals on the touch-fill markout by coin
+  and by hour of day, and to run the per-wallet classification on marked fills. The recorder is
+  cheap; the laptop lid is the constraint. A small always-on machine (a $5/month VPS) would
+  remove it.
 
 ---
 
