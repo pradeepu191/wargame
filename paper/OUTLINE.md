@@ -1,8 +1,12 @@
 # Reorganised outline — Workshop 1 (Oct 27) and the paper
 
-Written after Prof. Dahan's reply of Oct 12: *define the jargon; stop introducing things here and
-there; one model; results first; RQ3 (defences) may be the most interesting paper.* This file is
-the plan for the form. `glossary.tex` is the definitions section it refers to.
+Written after Prof. Dahan's replies of Oct 12–13: *define the jargon; stop introducing things here
+and there; one model; results first.* On the research questions his position is: RQ1 and RQ2 are
+the natural paper (one model tackles both); RQ3 (defences) must be tackled for the course project
+regardless, and whether it becomes the paper's primary contribution depends on the results. So the
+security-game framing below organises all three, but the paper's spine is RQ1 + RQ2; RQ3 is built
+because the project requires it and promoted only if its results earn it. This file is the plan
+for the form. `glossary.tex` is the definitions section it refers to.
 
 ## The spine (used by every document from here on)
 
@@ -23,10 +27,11 @@ Two modes of the same environment: spread free (the Glosten–Milgrom tick grid)
 pinned at one tick (the queue game). Never present these as two models.
 
 Numbering, fixed from now on and matching the Oct 6 proposal the professor read:
-- **RQ1** value of information to the adversary (anonymity as the venue lever)
-- **RQ2** rent and exploitability (as a measurement: L_BR and κ_A vs C(π))
-- **RQ3** defences: quoter levers and venue levers, reported as a profit–resilience frontier.
-  The tick-constrained queue game is *inside* RQ3 (the tick lever), not a separate RQ.
+- **RQ1** value of information to the adversary (anonymity as the venue lever) — paper core
+- **RQ2** rent and exploitability (as a measurement: L_BR and κ_A vs C(π)) — paper core
+- **RQ3** defences: quoter levers and venue levers, reported as a profit–resilience frontier —
+  required for the project; a paper section, the headline only if the results say so. The
+  tick-constrained queue game is *inside* RQ3 (the tick lever), not a separate RQ.
 
 Everything else is an appendix.
 
@@ -120,10 +125,9 @@ needs reorganising, not rewriting.
 6. **Information — RQ1** (1½ pp): nested information sets; the identity grids; why persistence
    fails and regime + lag succeeds; the empirical counterpart (identity given the anonymous
    signal, by coin).
-7. **Defences — RQ3** (2½ pp): the tick lever (one-tick books on data; the queue game, learned
-   defenders, identity entrant); the priority fee; quoter defences; the frontier figure. This is
-   the section the professor expects to be the paper's centre; write it last, with the most
-   results.
+7. **Defences — RQ3** (1½–2½ pp): the tick lever (one-tick books on data; the queue game, learned
+   defenders, identity entrant); the priority fee; quoter defences; the frontier figure. Required
+   for the project; its length in the paper follows its results. Write it last.
 8. **Data** (1 p): sources (archive, feed), conventions, the calibration table (ρ_z, regime
    contrast, L, depth, touch-fill markout), the maker realized-spread anchor.
 9. **Discussion and limitations** (¾ p): stylised takers; tabular learners; one venue; what
@@ -149,5 +153,5 @@ section that names the stylisations.
 | Oct 26 | — | — | final read: every term used is in §2; cut anything not on the spine |
 
 Owner suggestion for Miguel (to agree, not assign): the quoter defences and the frontier figure
-(RQ3's second half) — it is self-contained, uses the agents that exist, and is the part of the
-paper the professor pointed at.
+(RQ3's second half) — self-contained, uses the agents that exist, and is the part of the project
+that must be delivered whatever the paper ends up centred on.
