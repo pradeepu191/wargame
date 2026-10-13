@@ -75,9 +75,9 @@ linear in $\alpha$. The competitive half-spread $h^C$ is the first grid point wi
 \subsection{Takers with identity: types, regime, and the mark lag}\label{sec:takers}
 This subsection replaces the ``persistent wallet id'' sentence of Deliverable~1 and is the main modelling change.
 
-\paragraph{Types.} A population of $M$ wallets ($M=50$) with persistent types $\alpha_j$, taken as stratified quantiles of $\mathrm{Beta}(\bar\alpha\kappa,(1-\bar\alpha)\kappa)$ so that the mean is pinned at $\bar\alpha$ and the concentration $\kappa$ sets only the dispersion ($\kappa\to\infty$ recovers the homogeneous model). Wallet $j$'s order is informed with probability $\alpha_j$.
+\paragraph{Types.} A population of $M$ wallets ($M=50$) with persistent types $\alpha_j$, taken as stratified quantiles of $\mathrm{Beta}(\bar\alpha\kappa_\alpha,(1-\bar\alpha)\kappa_\alpha)$ so that the mean is pinned at $\bar\alpha$ and the concentration $\kappa_\alpha$ sets only the dispersion ($\kappa_\alpha\to\infty$ recovers the homogeneous model; the subscript keeps it apart from the fraction of rent destroyed $\kappa_A$). Wallet $j$'s order is informed with probability $\alpha_j$.
 
-\paragraph{Regime.} A latent state $z_t\in\{\text{calm},\text{toxic}\}$, kept with probability $\rho_z$ and otherwise redrawn from a stationary law chosen so the stationary mean toxicity equals $\bar\alpha$. Wallet activity depends on the state: in the toxic state arrival weights are $\propto w_j\alpha_j$, in the calm state $\propto w_j(1-\alpha_j)$. With $\kappa=1$ the two states have toxicity $0.15$ and $0.65$ around $\bar\alpha=0.3$. The identity of the last print is therefore evidence about the regime the \emph{next} arrival shares, whoever it is. (A separate same-wallet persistence parameter $\rho$ remains in the code; the data put it near zero and it is off in all results below.)
+\paragraph{Regime.} A latent state $z_t\in\{\text{calm},\text{toxic}\}$, kept with probability $\rho_z$ and otherwise redrawn from a stationary law chosen so the stationary mean toxicity equals $\bar\alpha$. Wallet activity depends on the state: in the toxic state arrival weights are $\propto w_j\alpha_j$, in the calm state $\propto w_j(1-\alpha_j)$. With $\kappa_\alpha=1$ the two states have toxicity $0.15$ and $0.65$ around $\bar\alpha=0.3$. The identity of the last print is therefore evidence about the regime the \emph{next} arrival shares, whoever it is. (A separate same-wallet persistence parameter $\rho$ remains in the code; the data put it near zero and it is off in all results below.)
 
 \paragraph{Public information and the mark lag.} After commitment, a print is public: event, price, and wallet id. Its \emph{mark}---the ex-post value $V_t$ against which the fill's profit is measured---becomes public $L$ periods later (\texttt{mark\_lag}). Deliverable~1 implicitly had $L=1$, which gives an anonymous observer oracle-quality markouts before the next arrival. On Hyperliquid the next order arrives in $0.4$--$1.8$\,s and markouts realise over seconds to minutes; $L$ is the number of arrivals that elapse before the tape reveals what identity revealed at the print. Information sets are nested:
 \[
@@ -153,17 +153,17 @@ slope on $C$ (OLS, bootstrap 95\% CI) & pooled & $\alpha=0.3$ only & within cell
 \midrule
 $L_{\mathrm{BR}}$, max over attackers & $0.99\ [0.85,1.19]$ & $1.04\ [1.00,1.09]$ & $1.06\ [0.93,1.27]$ \\
 $L_{\mathrm{BR}}$, markout attacker & $0.64\ [0.47,0.87]$ & $0.89\ [0.68,1.09]$ & $0.63\ [0.48,0.88]$ \\
-$\kappa$, markout attacker & $-0.17\ [-0.46,0.23]$ & $0.27\ [-0.01,0.54]$ & $-0.24\ [-0.49,0.17]$ \\
-$\kappa$, undercut attacker & $-0.37\ [-0.97,0.26]$ & $0.25\ [-0.02,0.54]$ & $-0.53\ [-1.21,0.29]$ \\
+$\kappa_A$, markout attacker & $-0.17\ [-0.46,0.23]$ & $0.27\ [-0.01,0.54]$ & $-0.24\ [-0.49,0.17]$ \\
+$\kappa_A$, undercut attacker & $-0.37\ [-0.97,0.26]$ & $0.25\ [-0.02,0.54]$ & $-0.53\ [-1.21,0.29]$ \\
 entrant profit, markout attacker & $0.27\ [0.10,0.50]$ & $0.61\ [0.37,0.94]$ & $0.10\ [-0.10,0.29]$ \\
 \bottomrule
 \end{tabular}
-\caption{Regressions on rent across 120 frozen populations. $\kappa$ is the fraction of rent destroyed.}\label{tab:exploit}
+\caption{Regressions on rent across 120 frozen populations. $\kappa_A$ is the fraction of rent destroyed.}\label{tab:exploit}
 \end{table}
 
 \begin{itemize}
 \item The literal hypothesis holds, by construction. The attacker that minimises incumbent profit is the competitive-GM quoter in 119 of 120 populations, and it pushes the incumbents \emph{below} $\Pi^C$ (frozen incumbents sometimes respond to a quote at $h^C$ by undercutting it and lose), so $L_{\mathrm{BR}}\approx\Pi_{\mathrm{nominal}}$ and the slope is one.
-\item The substantive version is not supported. $\kappa$, the fraction of rent a profit-maximising attacker destroys, is $\approx0.7$--$0.8$ for undercut, markout and oracle attackers across the whole range of $C$, with slopes whose intervals include zero. Higher-rent populations are exploitable in proportion to their rent, not more.
+\item The substantive version is not supported. $\kappa_A$, the fraction of rent a profit-maximising attacker destroys, is $\approx0.7$--$0.8$ for undercut, markout and oracle attackers across the whole range of $C$, with slopes whose intervals include zero. Higher-rent populations are exploitable in proportion to their rent, not more.
 \item Damage and profit are different objectives. The attacker that hurts the incumbents most earns least ($0.08$ rent units); the ones that earn most (markout, oracle: $0.50$) leave the incumbents 30\% of their rent. The markout rule is the attacker's own best response in 68 of 120 populations, the oracle in 36, the undercutter in 16.
 \item Knowing the true $\alpha$ adds nothing over estimating it from own fills ($0.50$ vs $0.51$). In a stationary market the public tape carries the full value of the toxicity \emph{level}. This is the observation that sent us to heterogeneous takers.
 \end{itemize}
@@ -179,32 +179,40 @@ With incumbents that resume learning ($\varepsilon_0=0.3$ decaying to $0$ over 8
 \end{figure}
 
 \subsection{The value of identity in the simulator (RQ1, revised form)}\label{sec:identity}
-Three grids against frozen two-maker cartels, five seeds, entrant profit in rent units.
+Three grids against frozen two-maker cartels, ten seeds (one trained cartel per seed), entrant profit in rent units, break-even quote rule. Differences between information sets are paired within a seed (same cartel, common random numbers) and reported with 95\% intervals over seeds; the level of entrant profit varies by $\pm0.05$--$0.1$ across seeds with the cartel the seed trained, so unpaired comparisons would hide everything below.
 
-\paragraph{(a) Wallet persistence (the Deliverable-1 mechanism).} With same-wallet persistence $\rho$ and dispersion $\kappa$, identity is worth nothing at $\rho=0$ or $\kappa=\infty$ and $+0.16$ to $+0.30$ rent units (26--35\% of entrant profit) at $\rho=0.9$--$0.99$, $\kappa=1$; the identity entrant attains the oracle. The mechanism is fill selection: at $\bar\alpha=0.5$, $\rho=0.99$ it withdraws in 31\% of periods, its fills are 18\% informed against the incumbents' 53\%, and the identity-blind cartel's residual book goes below $\Pi^C$ while market $\Delta$ stays at $0.9$---the rent moved to the entrant (Figure~\ref{fig:as}). Re-run under the break-even quote rule the numbers are $+0.17$ to $+0.24$ at $\rho=0.9$--$0.99$, $\kappa=1$, zero exactly where they should be, oracle $\approx$ id; the result does not depend on the rule.
+\paragraph{(a) Wallet persistence (the Deliverable-1 mechanism).} With same-wallet persistence $\rho$ and type concentration $\kappa_\alpha$, identity is worth exactly nothing at $\rho=0$ or $\kappa_\alpha=\infty$, and $+0.15$ to $+0.30$ rent units at $\rho=0.9$--$0.99$, $\kappa_\alpha=1$, $\bar\alpha\in\{0.3,0.5\}$ (intervals $\pm0.05$ to $\pm0.14$; ten of ten seeds positive at $\rho=0.9$); at $\bar\alpha=0.1$ it is $+0.03$ to $+0.07$ and not distinguishable from zero. The identity entrant attains the oracle (oracle $-$ id within $\pm0.04$). The mechanism is fill selection: at $\bar\alpha=0.5$, $\rho=0.99$ it withdraws in 31\% of periods, its fills are 18\% informed against the incumbents' 53\%, and the identity-blind cartel's residual book goes below $\Pi^C$ while market $\Delta$ stays at $0.9$---the rent moved to the entrant (Figure~\ref{fig:as}). The data put $\rho$ near $0.03$, so this channel is the theory check, not the mechanism.
 
 \begin{figure}[h]\centering
-\includegraphics[width=0.85\textwidth]{fig_cfl_exp2_identity_as.pdf}
-\caption{Adverse-selection shift under wallet persistence: informed share of the identity entrant's fills vs the incumbents', by persistence $\rho$ and dispersion $\kappa$.}\label{fig:as}
+\includegraphics[width=0.85\textwidth]{fig_cfl_exp2_identity_as_10seed.pdf}
+\caption{Adverse-selection shift under wallet persistence: informed share of the identity entrant's fills vs the incumbents', by persistence $\rho$ and concentration $\kappa_\alpha$; ten seeds.}\label{fig:as}
 \end{figure}
 
-\paragraph{(b) Regime, mark revealed immediately ($L=1$).} Replacing wallet persistence by the regime (\S\ref{sec:takers}) with $\rho=0$, identity's increment falls to $+0.01$ to $+0.08$: the anonymous tape already carries the regime because the last print's \emph{outcome} is as good a regime signal as its author. Identity pays only where the toxic state crosses the entrant's decision threshold (at $\kappa=1$, $\bar\alpha=0.5$: oracle $+0.15$).
+\paragraph{(b) Regime, mark revealed immediately ($L=1$).} Replacing wallet persistence by the regime (\S\ref{sec:takers}) with $\rho=0$, identity's increment is $+0.03\pm0.02$ at $\bar\alpha=0.3$ and $+0.06\pm0.02$ at $\bar\alpha=0.5$ ($\kappa_\alpha=1$), and zero at $\bar\alpha=0.1$ and at $\kappa_\alpha=5$: the anonymous tape already carries the regime, because the last print's \emph{outcome} is as good a regime signal as its author, and identity pays only where the toxic state crosses the entrant's decision threshold.
 
-\paragraph{(c) Regime with the mark lag.} Table~\ref{tab:lag}. At $\bar\alpha=0.5$ the anonymous entrant's profit falls as the mark arrives later ($0.97\to0.89$ at $\rho_z=0.99$) while the identity entrant's is flat, so identity's increment grows from $+0.05$ to $+0.13$ (every seed positive at $\rho_z=0.9$, $L=20$). At $\bar\alpha=0.3$ the lag changes nothing, because against $\sim11$-tick incumbents even the toxic state leaves an undercut profitable and the regime is not decision-relevant. The value of the wallet tag to an inside quoter is largest where the resting spread is close to the toxic-regime break-even. That is a prediction about \emph{which} books reward identity-aware quoting.
+\paragraph{(c) Regime with the mark lag.} Table~\ref{tab:lag} and Figure~\ref{fig:lag}. At $\bar\alpha=0.5$ the anonymous entrant's profit falls as the mark arrives later ($0.95\to0.84$ at $\rho_z=0.99$) while the identity entrant's stays at $1.00$--$1.01$, so identity's increment grows from $+0.06$ to $+0.16$ ($\pm0.07$) at $\rho_z=0.99$ and from $+0.06$ to $+0.11$ ($\pm0.05$, peak at $L=20$) at $\rho_z=0.9$; nine or ten of ten seeds positive in every cell. The peak is informative: at $\rho_z=0.9$ a regime lives about ten arrivals, and a mark that is sixty arrivals late is no worse than one twenty late because the tape was already useless at twenty. Identity's value grows with the mark lag as long as the lag is shorter than the regime's lifetime. At $\bar\alpha=0.3$ the increment is $+0.02$ to $+0.04$, distinguishable from zero only at $\rho_z=0.99$ and $L\ge20$ (ten of ten at $L=60$): against $\sim11$-tick incumbents even the toxic state usually leaves an undercut profitable, so the regime is rarely decision-relevant. At $\bar\alpha=0.1$ it is zero or slightly negative. The value of the wallet tag to an inside quoter is largest where the resting spread is close to the toxic-regime break-even---a prediction about \emph{which} books reward identity-aware quoting, and the reason the one-tick books of \S\ref{sec:l2}, where the spread cannot move at all, are where identity should matter most (\S\ref{sec:queue}).
 
-\begin{table}[h]\small\centering
-\begin{tabular}{llccccc}
+\begin{figure}[h]\centering
+\includegraphics[width=0.95\textwidth]{fig_cfl_exp2_marklag_10seed.pdf}
+\caption{Value of identity (id $-$ anon) and of the true regime (oracle $-$ anon) in rent units against the mark lag $L$, paired per seed, $\kappa_\alpha=1$, ten seeds, 95\% intervals.}\label{fig:lag}
+\end{figure}
+
+\begin{table}[h]\footnotesize\centering
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llcccc}
 \toprule
-$\bar\alpha$ & $\rho_z$ & $L$ & anon & id & oracle & id $-$ anon (paired) \\
+$\bar\alpha$ & $\rho_z$ & anon ($L=1/5/20/60$) & id & oracle & id $-$ anon, paired ($\pm$95\%) \\
 \midrule
-0.3 & 0.9 & 1 / 5 / 20 & 0.65 / 0.65 / 0.65 & 0.68 / 0.67 / 0.68 & 0.69 & $+0.03$ / $+0.03$ / $+0.03$ \\
-0.3 & 0.99 & 1 / 5 / 20 & 0.78 / 0.80 / 0.79 & 0.80 / 0.81 / 0.80 & 0.84 & $+0.02$ / $+0.02$ / $+0.01$ \\
-0.5 & 0.9 & 1 / 5 / 20 & 0.68 / 0.68 / 0.65 & 0.76 / 0.75 / 0.79 & 0.75 & $+0.08$ / $+0.07$ / $\mathbf{+0.14}$ \\
-0.5 & 0.99 & 1 / 5 / 20 & 0.97 / 0.94 / 0.89 & 1.02 / 1.00 / 1.02 & 1.11 & $+0.05$ / $+0.06$ / $\mathbf{+0.13}$ \\
+0.3 & 0.9 & 0.65 / 0.65 / 0.64 / 0.66 & 0.68 / 0.68 / 0.67 / 0.67 & 0.69 & $+0.03\pm.02$ / $+0.03\pm.03$ / $+0.03\pm.06$ / $+0.01\pm.06$ \\
+0.3 & 0.99 & 0.76 / 0.77 / 0.75 / 0.72 & 0.78 / 0.78 / 0.78 / 0.76 & 0.80 & $+0.02\pm.02$ / $+0.02\pm.02$ / $+0.03\pm.02$ / $+0.04\pm.02$ \\
+0.5 & 0.9 & 0.71 / 0.69 / 0.66 / 0.68 & 0.76 / 0.76 / 0.77 / 0.76 & 0.76 & $+0.06\pm.02$ / $+0.08\pm.03$ / $\mathbf{+0.11\pm.05}$ / $+0.08\pm.05$ \\
+0.5 & 0.99 & 0.95 / 0.94 / 0.88 / 0.84 & 1.01 / 1.01 / 1.01 / 1.00 & 1.05 & $+0.06\pm.04$ / $+0.07\pm.04$ / $+0.13\pm.07$ / $\mathbf{+0.16\pm.07}$ \\
 \bottomrule
-\end{tabular}
-\caption{Entrant profit in rent units under the regime model with mark lag $L$ ($\kappa=1$, $\rho=0$, break-even quote rule, 5 seeds).}\label{tab:lag}
+\end{tabular}}
+\caption{Entrant profit in rent units under the regime model with mark lag $L$ ($\kappa_\alpha=1$, $\rho=0$, break-even quote rule, ten seeds).}\label{tab:lag}
 \end{table}
+
+\paragraph{(d) Where information hurts.} At $\kappa_\alpha=5$ the types lie within $0.2$ of each other, a wallet's identity carries little regime information, and the mean increment is zero---but the seed distribution has a tail: in three of ten cartels at $\bar\alpha=0.3$, $\rho_z=0.9$, $L=20$ the anonymous entrant out-earns both the identity and the oracle entrant by $0.2$--$0.5$ rent units. In those cartels the anonymous entrant's steady undercut takes 86--99\% of fills and the incumbents earn nothing; the better-informed entrants' quotes move with their regime belief, and the incumbents' learned reaction takes back 26--33\% of the fills. An entrant that uses information naively can provoke the defenders. The reaction function is part of the game---the steering channel of RQ3, met here by accident---and the reason every identity number in this document is reported with its minimum over seeds.
 
 \subsection{Hyperliquid data}\label{sec:data}
 Table~\ref{tab:calib} gives the archive sample and the live sample side by side.
@@ -268,13 +276,13 @@ after toxic / after benign, true mid (bps) & $-0.97$ / $-0.27$ & $-0.73$ / $-0.7
 \end{table}
 
 \subsection{The one-tick queue game (RQ3, first result)}\label{sec:queue}
-Section~\ref{sec:l2} says the spread on the major books cannot move. We therefore built the game in which it does not: the spread is fixed at $h$ ticks; each period every maker chooses to \emph{rest} at the inside or \emph{step out}; resting makers form a time-priority queue; the taker hits the front for one unit; the filled maker's order is consumed and it rejoins at the back if it keeps resting, so fills rotate among those who stay; a maker that steps out and returns joins at the back. Takers, wallet types, regime and mark lag are those of \S\ref{sec:takers}. The expected value of a fill at $h$ against a taker of type $\alpha$ is $(1-q)x-q\mu$ with $q$ the fill-conditional informed probability; at the population break-even $h=h^C$ it is $+0.15$ on average, $+1.10$ in the calm state and $-2.26$ in the toxic one ($\kappa=1$): all the value is in selection. One tick above break-even ($+0.58$ average) a coarse tick leaves the inside slightly supra-competitive and the queue shares that rent.
+Section~\ref{sec:l2} says the spread on the major books cannot move. We therefore built the game in which it does not: the spread is fixed at $h$ ticks; each period every maker chooses to \emph{rest} at the inside or \emph{step out}; resting makers form a time-priority queue; the taker hits the front for one unit; the filled maker's order is consumed and it rejoins at the back if it keeps resting, so fills rotate among those who stay; a maker that steps out and returns joins at the back. Takers, wallet types, regime and mark lag are those of \S\ref{sec:takers}. The expected value of a fill at $h$ against a taker of type $\alpha$ is $(1-q)x-q\mu$ with $q$ the fill-conditional informed probability; at the population break-even $h=h^C$ it is $+0.15$ on average, $+1.10$ in the calm state and $-2.26$ in the toxic one ($\kappa_\alpha=1$): all the value is in selection. One tick above break-even ($+0.58$ average) a coarse tick leaves the inside slightly supra-competitive and the queue shares that rent.
 
 The incumbents are two always-resting makers---the tick-constrained competitive book---and the entrant is the wallet entrant with the decision ``rest iff the fill value against the regime forecast is positive''. Figure~\ref{fig:queue} and Table~\ref{tab:queue}.
 
 \begin{figure}[h]\centering
 \includegraphics[width=\textwidth]{fig_queue_always.pdf}
-\caption{Queue game: entrant profit per period by information set against the mark lag, at break-even (top) and one tick above (bottom), $\rho_z=0.9$ (left) and $0.99$ (right); $\kappa=1$, $\bar\alpha=0.3$, 5 seeds, 95\% intervals.}\label{fig:queue}
+\caption{Queue game: entrant profit per period by information set against the mark lag, at break-even (top) and one tick above (bottom), $\rho_z=0.9$ (left) and $0.99$ (right); $\kappa_\alpha=1$, $\bar\alpha=0.3$, 5 seeds, 95\% intervals.}\label{fig:queue}
 \end{figure}
 
 \begin{table}[h]\footnotesize\centering
@@ -302,9 +310,9 @@ The spread game and the queue game give the same answer through different action
 The chain the proposal set out to test now reads, with numbers: learning makers earn rent ($\Delta\approx0.8$) that survives a best-responding entrant (the cartel re-forms around it; entrant keeps 79--96\% of the monopoly rent); the entrant's binding problem is fill selection, i.e.\ reading the toxicity regime; on Hyperliquid the regime is readable from the wallet tag $0.5$--$0.9$ bps before the price reveals it; and on the major books, where the spread cannot widen, fill selection is the only place rent can live. The queue game of \S\ref{sec:queue} closes the loop in the simulator: on a book where the spread cannot move, the identity entrant earns the selection rent and the identity-blind makers absorb the toxic flow. The book adds the second action the queue model needs: a fill at the touch pays one tick, but one order in ten walks the book and pays twenty, and on BTC and ETH those are the informed ones---depth shown behind the inside is where the toxic flow lands. What remains to be shown is the same step on real quotes: that makers who select fills (by queue position, cancellation, depth, and identity) earn positive realized spread while the fill at the touch loses $0.3$--$0.6$ bps within ten seconds. The data to test it are in hand.
 
 \section{Research questions, restated}
-\paragraph{RQ1 (Executable value of identity).} Under $\Fanon\subset\Fid\subset\For$, what is an entrant's profit, and how does $\pi^{\mathrm{id}}-\pi^{\mathrm{anon}}$ depend on regime persistence $\rho_z$, type dispersion $\kappa$, the mark lag $L$, and the incumbents' quote relative to the toxic-regime break-even? \emph{Prediction (from \S\ref{sec:identity})}: the increment is zero when the toxic state leaves an undercut profitable, and grows with $L$ otherwise. \emph{Empirical counterpart}: the identity-given-anonymous-signal split by coin, against each coin's spread relative to break-even.
+\paragraph{RQ1 (Executable value of identity).} Under $\Fanon\subset\Fid\subset\For$, what is an entrant's profit, and how does $\pi^{\mathrm{id}}-\pi^{\mathrm{anon}}$ depend on regime persistence $\rho_z$, type concentration $\kappa_\alpha$, the mark lag $L$, and the incumbents' quote relative to the toxic-regime break-even? \emph{Prediction (from \S\ref{sec:identity})}: the increment is zero when the toxic state leaves an undercut profitable, and otherwise grows with $L$ up to the regime's lifetime. \emph{Empirical counterpart}: the identity-given-anonymous-signal split by coin, against each coin's spread relative to break-even.
 
-\paragraph{RQ2 (Exploitability, as measurement).} For each incumbent population, report $L_{\mathrm{BR}}$ under the damage-maximising attacker and under the attacker's own best response, and $\kappa$. The claim supported so far: $\kappa\approx0.7$ independent of $C$; a rational entrant captures about two thirds of what it destroys and the rest passes to takers as tighter quotes. Open: whether attackers that target the \emph{reaction function} (steering, \cite{dss,brownmackay}) rather than the quote level break the flatness of $\kappa$.
+\paragraph{RQ2 (Exploitability, as measurement).} For each incumbent population, report $L_{\mathrm{BR}}$ under the damage-maximising attacker and under the attacker's own best response, and $\kappa_A$. The claim supported so far: $\kappa_A\approx0.7$ independent of $C$; a rational entrant captures about two thirds of what it destroys and the rest passes to takers as tighter quotes. Open: whether attackers that target the \emph{reaction function} (steering, \cite{dss,brownmackay}) rather than the quote level break the flatness of $\kappa_A$.
 
 \paragraph{RQ3 (Tick-constrained books; new).} On a one-tick book, model the maker's action as queue position and cancellation at the inside rather than spread width, with the priority fee as the price of position. Does the identity signal translate into realized spread for makers who use it, and is the resulting equilibrium a selection cartel---makers who leave the toxic flow to each other---rather than a spread cartel? \emph{First result} (\S\ref{sec:queue}): against always-resting makers, yes---identity is worth $+0.04$ to $+0.10$ per period at break-even, growing with the mark lag, and the identity-blind makers' fills get dirtier. Open: learned incumbents, the priority fee. \emph{Empirical anchor}: per-wallet realized spread of the top makers vs the average resting fill, from the December L4 lifecycles.
 
@@ -312,7 +320,7 @@ The chain the proposal set out to test now reads, with numbers: learning makers 
 
 \section{Plan to December}
 \begin{enumerate}
-\item \emph{Now.} Ten-seed cluster runs of the three identity grids at the break-even rule (\texttt{slurm/identity.sh}); the October archive tar (contiguity, the cascade); a multi-day book run from an always-on machine, to put intervals on the touch-fill markout by coin and hour and to classify wallets on marked fills; the top-maker realized-spread test.
+\item \emph{Now.} Ten-seed cluster runs of the exploitability grid (the identity grids are done, \S\ref{sec:identity}); the October archive tar (contiguity, the cascade); a multi-day book run from an always-on machine, to put intervals on the touch-fill markout by coin and hour and to classify wallets on marked fills; the top-maker realized-spread test.
 \item \emph{Late October.} Queue model for RQ3 extended with depth: makers choose how much to show at the inside and behind it, and cancel; time priority; priority fee; sweeps that walk the book as the informed event (\S\ref{sec:l2}). Calibrate $L$ from inter-arrival vs markout horizon, $\rho_z$ and the regime contrast from the conditional markouts, depth from the book.
 \item \emph{November.} Re-learning and identity-aware incumbents; a steering attacker; held-out attackers; inventory from \texttt{start\_pos}; the December L4 lifecycles for reaction functions $P(\text{requote}\mid\text{rival undercuts})$ and for cancellation-before-toxic-flow.
 \item \emph{December.} Preprint. Rigor throughout: common random numbers, seed intervals, CVaR alongside means, train-at-$\alpha$/test-at-$\alpha'$, chronological splits on data, classification on the first half only.

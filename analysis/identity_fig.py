@@ -24,9 +24,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
     ap.add_argument("--run", default="cfl_exp2")
+    ap.add_argument("--csv", default=None, help="results file (default <run>_identity.csv)")
+    ap.add_argument("--suffix", default="", help="appended to the figure names, e.g. _10seed")
     args = ap.parse_args()
     results = Path(args.results)
-    df = pd.read_csv(results / f"{args.run}_identity.csv")
+    df = pd.read_csv(results / (args.csv or f"{args.run}_identity.csv"))
     alphas = sorted(df.alpha.unique())
     kappas = [k for k in sorted(df.kappa.unique(), reverse=True) if k < 1e5]   # skip the homogeneous check
     rhos = sorted(df.rho.unique())
@@ -55,7 +57,7 @@ def main():
             if c == 0:
                 ax.set_ylabel(r"entrant profit / $(\Pi^M-\Pi^C)$")
     axes[0, 0].legend(frameon=False, fontsize=7, loc="upper left")
-    out = results / f"fig_{args.run}_identity"
+    out = results / f"fig_{args.run}_identity{args.suffix}"
     fig.savefig(out.with_suffix(".png"), dpi=200); fig.savefig(out.with_suffix(".pdf"))
     print("figure:", out.with_suffix(".png"))
 
@@ -77,7 +79,7 @@ def main():
         if c == 0:
             ax.set_ylabel(r"value of information / $(\Pi^M-\Pi^C)$")
     axes[0, 0].legend(frameon=False, fontsize=7, loc="upper left")
-    out = results / f"fig_{args.run}_identity_value"
+    out = results / f"fig_{args.run}_identity_value{args.suffix}"
     fig.savefig(out.with_suffix(".png"), dpi=200); fig.savefig(out.with_suffix(".pdf"))
     print("figure:", out.with_suffix(".png"))
 
@@ -100,7 +102,7 @@ def main():
         if c == 0:
             ax.set_ylabel("informed share of own fills")
     axes[0, 0].legend(frameon=False, fontsize=7)
-    out = results / f"fig_{args.run}_identity_as"
+    out = results / f"fig_{args.run}_identity_as{args.suffix}"
     fig.savefig(out.with_suffix(".png"), dpi=200); fig.savefig(out.with_suffix(".pdf"))
     print("figure:", out.with_suffix(".png"))
 

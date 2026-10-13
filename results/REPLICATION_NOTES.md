@@ -899,3 +899,74 @@ Entrant numbers against these incumbents measure a near-empty book and are not r
 Monte-Carlo returns instead of one-step bootstrapping; a longer, slower exploration schedule;
 or treat always-rest as the incumbent benchmark (which is what the data say the competitive
 one-tick book is) and reserve learning for the entrant side.
+
+---
+
+# Identity grids at ten seeds (`cfl_exp2_identity_10seed.csv`, `cfl_exp2_identity_regime_10seed.csv`; SuperCloud job 5897441, 70 min on 12 cores)
+
+Same two grids as the 5-seed runs (margin 1, 50 wallets, 1000 evaluation episodes), seeds 0–9,
+one trained two-maker cartel per seed. Everything below is in rent units, paired within seed
+(id − anon on the same cartel with common random numbers), with 95% intervals over seeds and the
+minimum over seeds. Figures: `fig_cfl_exp2_identity{,_value,_as}_10seed.*` (persistence
+channel), `fig_cfl_exp2_marklag_10seed.*` (regime channel, paired). The 5-seed numbers reproduce
+seed for seed (Monte-Carlo noise of the evaluation only); the intervals are what is new.
+
+## Wallet-persistence channel (ρ)
+| ᾱ | κ_α | ρ | anon | id | oracle | id − anon (±95%) | min | seeds > 0 |
+|---|---|---|---|---|---|---|---|---|
+| 0.3 | 1 | 0.9 / 0.99 | 0.61 / 0.64 | 0.76 / 0.86 | 0.76 / 0.84 | +0.15 ± .05 / +0.22 ± .09 | +0.02 / +0.08 | 10 / 10 |
+| 0.5 | 1 | 0.9 / 0.99 | 0.72 / 0.88 | 0.94 / 1.18 | 0.95 / 1.16 | +0.22 ± .08 / +0.30 ± .14 | +0.08 / −0.06 | 10 / 8 |
+| 0.1 | 1 | 0.9 / 0.99 | 0.59 / 0.59 | 0.62 / 0.66 | 0.64 / 0.68 | +0.03 ± .09 / +0.07 ± .13 | −0.23 / −0.15 | 6 / 5 |
+| 0.3 | 5 | 0.9 / 0.99 | 0.65 / 0.66 | 0.69 / 0.74 | 0.69 / 0.74 | +0.04 ± .04 / +0.07 ± .05 | −0.05 / −0.04 | 8 / 8 |
+| 0.5 | 5 | 0.9 / 0.99 | 0.66 / 0.71 | 0.77 / 0.94 | 0.78 / 0.93 | +0.11 ± .04 / +0.23 ± .08 | −0.02 / −0.03 | 9 / 9 |
+| any | any | 0, or κ_α = ∞ | — | — | — | 0.00 exactly | 0.00 | 0 |
+
+Oracle − id within ±0.04 everywhere: the identity entrant attains the oracle on this channel.
+
+## Regime channel (ρ_z, mark lag L), κ_α = 1
+| ᾱ | ρ_z | anon (L = 1/5/20/60) | id | oracle | id − anon (±95%) | seeds > 0 |
+|---|---|---|---|---|---|---|
+| 0.3 | 0.9 | 0.65 / 0.65 / 0.64 / 0.66 | 0.68 / 0.68 / 0.67 / 0.67 | 0.69 | +0.03±.02 / +0.03±.03 / +0.03±.06 / +0.01±.06 | 8 / 9 / 6 / 5 |
+| 0.3 | 0.99 | 0.76 / 0.77 / 0.75 / 0.72 | 0.78 / 0.78 / 0.78 / 0.76 | 0.80 | +0.02±.02 / +0.02±.02 / +0.03±.02 / +0.04±.02 | 8 / 7 / 9 / 10 |
+| 0.5 | 0.9 | 0.71 / 0.69 / 0.66 / 0.68 | 0.76 / 0.76 / 0.77 / 0.76 | 0.76 | +0.06±.02 / +0.08±.03 / **+0.11±.05** / +0.08±.05 | 9 / 10 / 9 / 9 |
+| 0.5 | 0.99 | 0.95 / 0.94 / 0.88 / 0.84 | 1.01 / 1.01 / 1.01 / 1.00 | 1.05 | +0.06±.04 / +0.07±.04 / +0.13±.07 / **+0.16±.07** | 7 / 9 / 9 / 9 |
+| 0.1 | 0.9 / 0.99 | 0.53–0.63 | 0.54–0.60 | 0.59 / 0.66 | −0.03 to +0.01, none significant | 4–6 |
+
+κ_α = 5 (types within 0.2 of each other): id − anon = −0.04 to +0.04 in every cell, none
+significant; minima −0.14 to **−0.53**; 5–7 seeds positive.
+
+## Findings
+* **The persistence channel is robust and large** (+0.15 to +0.30, 10/10 seeds at ρ = 0.9 for
+  ᾱ ≥ 0.3), zero exactly at ρ = 0 or κ_α = ∞, oracle ≈ id. It is the theory check: the data put
+  ρ at 0.02–0.05.
+* **The regime channel is real, smaller, and sharply conditional.** At ᾱ = 0.5 identity's value
+  grows with the mark lag — +0.06 → +0.16 at ρ_z = 0.99 (still rising at L = 60) and
+  +0.06 → +0.11 at ρ_z = 0.9 (peak at L = 20, back to +0.08 at L = 60). The peak is the regime's
+  lifetime: at ρ_z = 0.9 a regime lasts ~10 arrivals, so a mark 60 late is no worse than one 20
+  late — the tape was already useless at 20. *Identity's value grows with the mark lag as long as
+  the lag is shorter than the regime's lifetime.* At ᾱ = 0.3 the increment is +0.02 to +0.04 and
+  significant only at ρ_z = 0.99, L ≥ 20; at ᾱ = 0.1 it is zero or slightly negative. The 5-seed
+  statement "+0.05 → +0.13 at ᾱ = 0.5" survives with intervals; the general "identity's value
+  reappears" must be read as "where the toxic state crosses the undercut threshold".
+* **Why the spread game understates identity.** Against a cartel at 11–17 ticks the entrant's
+  main instrument is the undercut, which captures most of the rent whatever it knows (anon
+  0.65–0.95 rent units). Identity is a few percent on top. On a one-tick book there is no
+  undercut, and identity is the *whole* edge (queue game: 0.14 vs 0.08 vs 0.04 per period for
+  id / anon / always-rest). The two games are consistent: information is worth most where the
+  action space is smallest.
+* **Where information hurts (the reaction function).** At κ_α = 5, ᾱ = 0.3, ρ_z = 0.9, L = 20,
+  seeds 1, 2 and 8 have anon 1.07–1.48 > id 0.94–1.05 ≈ oracle. In those cartels the anonymous
+  entrant undercuts 97–100% of periods with a steady quote, takes 86–99% of fills, and the
+  incumbents earn 0.02–0.27; the id/oracle entrants' quotes move with their regime belief and the
+  incumbents' learned reaction takes back 26–33% of fills (incumbent profit 0.19–0.33). The
+  better-informed entrant provokes the defenders. In seed 0 it is the reverse (anon 0.41, id
+  0.78: the anon entrant's filter believes toxic 29% of the time and gives up fills). Entrant
+  profit against frozen Q-tables is the information effect plus an interaction with the
+  incumbents' reaction function, and when the information effect is small (κ_α = 5) the
+  interaction dominates and has either sign. This is the steering channel of RQ3 observed by
+  accident, the reason the paper reports the minimum over seeds, and an argument for the
+  queue game, where the incumbents have no quote to react with.
+* Level intervals (±0.05–0.1) are dominated by which cartel the seed trained; only paired
+  differences are informative. `analysis/marklag_fig.py` plots the paired differences.
+* `κ` for the concentration is now `κ_α` in all documents (it collided with the fraction of rent
+  destroyed `κ_A`); the CSV column is still `kappa`.
