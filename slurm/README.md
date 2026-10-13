@@ -70,3 +70,11 @@ git add results/cfl_exp2_summary.csv ...   && git commit && git push
 * The `--jobs` count should equal `--cpus-per-task`. Do not exceed 48 on xeon-p8.
 * Walltime: the sweep script asks for 2 h, which is far more than any current grid needs;
   raise it for N = 5 PPO runs later.
+
+## Exploitability at ten seeds (RQ2)
+```bash
+sbatch slurm/exploitability.sh      # trains robust_exp2 seeds 0-9 if missing (~10 min), then attacks
+                                    # every population with 500 episodes; -> results/exploitability_10seed.csv,
+                                    # exploitability_summary_10seed.csv, fig_exploitability_10seed.*
+git add results/exploitability_10seed.csv results/exploitability_summary_10seed.csv results/fig_exploitability_10seed.* && git commit -m "Exploitability, 10 seeds" && git push
+```
