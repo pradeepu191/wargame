@@ -16,12 +16,15 @@ What it writes (one parquet per hour per stream, under data/raw/live/):
 
 Usage:
     python data/record.py --coins BTC,ETH,SOL,HYPE --hours 24
+    python data/record.py --coins BTC,ETH,SOL,HYPE --forever   # unattended (see data/VPS.md)
     python data/record.py --coins BTC --hours 1 --testnet     # for a quick check
 
 Requires: pip install websockets pyarrow      (not in the base install on purpose)
 
-Reconnects on drop. Rate limits: one connection, <= 1000 subscriptions, far under the
-2000 msg/min send cap (we only send subscribe messages).  Reads carry no address-based cost.
+Reconnects on drop; closed hours are flushed every five minutes and the open hour on exit
+(SIGINT/SIGTERM or any crash), so a restart loses nothing but the seconds in flight.  Rate
+limits: one connection, <= 1000 subscriptions, far under the 2000 msg/min send cap (we only
+send subscribe messages).  Reads carry no address-based cost.
 
 Caveat: the public feed gives no inventory or rejected orders; those exist only in the
 Zenodo L4 archive (BTC/ETH/SOL, Dec 2025).  Trade-level identity is enough for the wallet
@@ -79,70 +82,73 @@ class HourlyWriter:
 
 
 async def record(url: str, coins: list[str], hours: float, writer: HourlyWriter, book: bool):
+    """hours <= 0 means run until stopped."""
+    deadline = time.time() + hours * 3600 if hours > 0 else float("inf")
+    counter = [0]                                               # trades so far, across reconnects
+    try:
+        while time.time() < deadline:
+            await _session(url, coins, deadline, writer, book, counter)
+    finally:
+        writer.flush(only_closed_hours=False)                   # the open hour, on any exit
+        print(f"done: {counter[0]} trades", flush=True)
+
+
+async def _session(url: str, coins: list[str], deadline: float, writer: HourlyWriter, book: bool, counter: list):
+    """One connection: subscribe, consume until the deadline or a drop, then return (caller reconnects)."""
     import websockets
-    deadline = time.time() + hours * 3600
-    n_trades = 0
-    while time.time() < deadline:
-        try:
-            async with websockets.connect(url, ping_interval=20, max_size=2**24) as ws:
-                for c in coins:
-                    await ws.send(json.dumps({"method": "subscribe",
-                                              "subscription": {"type": "trades", "coin": c}}))
-                    if book:
-                        await ws.send(json.dumps({"method": "subscribe",
-                                                  "subscription": {"type": "l2Book", "coin": c}}))
-                        await ws.send(json.dumps({"method": "subscribe",
-                                                  "subscription": {"type": "bbo", "coin": c}}))
-                print(f"subscribed to {coins} on {url}", flush=True)
-                last_flush = time.time()
-                while time.time() < deadline:
-                    msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=60))
-                    ch = msg.get("channel")
-                    if ch == "trades":
-                        for t in msg["data"]:
-                            users = t.get("users") or [None, None]
-                            writer.add("trades", t["coin"], {
-                                "time_ms": int(t["time"]), "coin": t["coin"], "side": t["side"],
-                                "px": float(t["px"]), "sz": float(t["sz"]), "tid": int(t["tid"]),
-                                "hash": t.get("hash"), "buyer": users[0], "seller": users[1]})
-                            n_trades += 1
-                    elif ch == "bbo":
-                        d = msg["data"]
-                        b, a = d.get("bbo") or [None, None]
-                        if b and a:
-                            writer.add("bbo", d["coin"], {
-                                "time_ms": int(d["time"]), "coin": d["coin"],
-                                "bid": float(b["px"]), "bid_sz": float(b["sz"]),
-                                "ask": float(a["px"]), "ask_sz": float(a["sz"])})
-                    elif ch == "l2Book":
-                        d = msg["data"]
-                        tms = int(d["time"])
-                        for side, levels in zip(("bid", "ask"), d["levels"]):
-                            for lvl, L in enumerate(levels):
-                                writer.add("l2", d["coin"], {
-                                    "time_ms": tms, "coin": d["coin"], "side": side, "level": lvl,
-                                    "px": float(L["px"]), "sz": float(L["sz"]), "n_orders": int(L["n"])})
-                    if time.time() - last_flush > 300:
-                        writer.flush()
-                        last_flush = time.time()
-                        print(f"... {n_trades} trades so far", flush=True)
-        except (asyncio.TimeoutError, ConnectionError, OSError) as e:
-            print(f"reconnect after {type(e).__name__}: {e}", flush=True)
-            await asyncio.sleep(2)
-        except Exception as e:                                   # websockets-specific closures
-            if "ConnectionClosed" in type(e).__name__:
-                print("reconnect after connection closed", flush=True)
-                await asyncio.sleep(2)
-            else:
-                raise
-    writer.flush(only_closed_hours=False)
-    print(f"done: {n_trades} trades", flush=True)
+    try:
+        async with websockets.connect(url, ping_interval=20, max_size=2**24) as ws:
+            for c in coins:
+                await ws.send(json.dumps({"method": "subscribe", "subscription": {"type": "trades", "coin": c}}))
+                if book:
+                    await ws.send(json.dumps({"method": "subscribe", "subscription": {"type": "l2Book", "coin": c}}))
+                    await ws.send(json.dumps({"method": "subscribe", "subscription": {"type": "bbo", "coin": c}}))
+            print(f"subscribed to {coins} on {url}", flush=True)
+            last_flush = time.time()
+            while time.time() < deadline:
+                msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=60))
+                ch = msg.get("channel")
+                if ch == "trades":
+                    for t in msg["data"]:
+                        users = t.get("users") or [None, None]
+                        writer.add("trades", t["coin"], {
+                            "time_ms": int(t["time"]), "coin": t["coin"], "side": t["side"],
+                            "px": float(t["px"]), "sz": float(t["sz"]), "tid": int(t["tid"]),
+                            "hash": t.get("hash"), "buyer": users[0], "seller": users[1]})
+                        counter[0] += 1
+                elif ch == "bbo":
+                    d = msg["data"]
+                    b, a = d.get("bbo") or [None, None]
+                    if b and a:
+                        writer.add("bbo", d["coin"], {
+                            "time_ms": int(d["time"]), "coin": d["coin"],
+                            "bid": float(b["px"]), "bid_sz": float(b["sz"]),
+                            "ask": float(a["px"]), "ask_sz": float(a["sz"])})
+                elif ch == "l2Book":
+                    d = msg["data"]
+                    tms = int(d["time"])
+                    for side, levels in zip(("bid", "ask"), d["levels"]):
+                        for lvl, L in enumerate(levels):
+                            writer.add("l2", d["coin"], {
+                                "time_ms": tms, "coin": d["coin"], "side": side, "level": lvl,
+                                "px": float(L["px"]), "sz": float(L["sz"]), "n_orders": int(L["n"])})
+                if time.time() - last_flush > 300:
+                    writer.flush()
+                    last_flush = time.time()
+                    print(f"... {counter[0]} trades so far", flush=True)
+    except (asyncio.TimeoutError, ConnectionError, OSError) as e:
+        print(f"reconnect after {type(e).__name__}: {e}", flush=True)
+        await asyncio.sleep(2)
+    except Exception as e:                                       # closures, handshake errors, bad frames
+        print(f"reconnect after {type(e).__name__}: {e}", flush=True)
+        await asyncio.sleep(10)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--coins", default="BTC,ETH,SOL")
     ap.add_argument("--hours", type=float, default=1.0)
+    ap.add_argument("--forever", action="store_true", help="run until stopped (systemd / tmux)")
     ap.add_argument("--no-book", action="store_true", help="trades only (much smaller)")
     ap.add_argument("--testnet", action="store_true")
     ap.add_argument("--out", default=str(RAW))
@@ -150,11 +156,20 @@ def main():
     writer = HourlyWriter(Path(args.out))
     coins = [c.strip() for c in args.coins.split(",")]
     url = TESTNET if args.testnet else MAINNET
-    loop = asyncio.new_event_loop()
-    stop = lambda *_: (writer.flush(only_closed_hours=False), loop.stop())
+    hours = 0.0 if args.forever else args.hours
+    asyncio.run(_run(url, coins, hours, writer, book=not args.no_book))
+
+
+async def _run(url, coins, hours, writer, book):
+    """SIGINT/SIGTERM cancel the task; record()'s finally flushes the open hour."""
+    task = asyncio.ensure_future(record(url, coins, hours, writer, book))
+    loop = asyncio.get_running_loop()
     for s in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(s, stop)
-    loop.run_until_complete(record(url, coins, args.hours, writer, book=not args.no_book))
+        loop.add_signal_handler(s, task.cancel)
+    try:
+        await task
+    except asyncio.CancelledError:
+        print("stopped", flush=True)
 
 
 if __name__ == "__main__":

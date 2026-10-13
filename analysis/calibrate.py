@@ -36,6 +36,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))    # run from anywhere, no install needed
 from analysis.l2 import book_summary, load_l2, sweep_decomposition, true_mid_markouts
+from analysis.makers import maker_summary, maker_table
 from analysis.wallets import (activity_herfindahl, arrival_persistence, collapse_orders,
                               conditional_markout_after_toxic, conditional_markout_two_signals, leader_switch,
                               mid_proxy, pair_matrix, split_half_type_persistence, wallet_features, with_roles)
@@ -103,6 +104,10 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30,
             row[f"mid_realized_{d}_bps"] = float(tm[f"realized_{d}_bps"].mean())
             row[f"proxy_bias_{d}_bps"] = row[f"markout_{d}_bps"] - row[f"mid_markout_{d}_bps"]
         row.update(sweep_decomposition(tm, horizon_s=10))
+        # per-maker realized spread on marked fills (RQ3's empirical anchor); feats is the full-window
+        # classifier, so the top set is chosen on activity, not on the outcome
+        row.update(maker_summary(tm, feats, horizon_s=10, top_k=10, n_min=100, n_half=50))
+        row["_makers"] = maker_table(tm, horizon_s=10, n_min=100)
         # the identity split against the true mid
         mm_tm = tm.rename(columns={"markout_10_bps": "maker_markout"})
         cut = mm_tm.time_ms.iloc[len(mm_tm) // 2]
@@ -165,8 +170,11 @@ def main():
             print(f"{c}: no data"); continue
         book = load_l2(raw, c)
         row, feats = calibrate_coin(tr, n_min=args.n_min, book=book if len(book) else None)
+        makers = row.pop("_makers", None)
         rows.append(row)
         feats.to_csv(out / f"wallets_{c}.csv", index=False)
+        if makers is not None and len(makers):
+            makers.to_csv(out / f"makers_{c}.csv", index=False)
         print(f"{c}: {row['hours']:.1f} h, {row['prints']} prints, {row['orders']} orders, "
               f"rho_order={row['rho_order']:.3f} (baseline {row['rho_order_baseline']:.3f}), "
               f"markout_10s={row['markout_10_bps']:+.2f} bps, type rank corr={row['type_rank_corr']:.2f}, "
@@ -181,7 +189,17 @@ def main():
                  f"{row['effective_order_bps']:.2f}, markout_10 touch/walk {row['mid_markout_10_touch_bps']:+.2f} / "
                  f"{row['mid_markout_10_walk_bps']:+.2f}, {row['fills_per_order']:.2f} fills/order, "
                  f"{row['walk_order_share']:.2f} of orders walk"
-                 if "spread_bps_median" in row else ""), flush=True)
+                 if "spread_bps_median" in row else "")
+              + (f" | MAKERS: all {row['mk_all_markout_bps']:+.2f}±{row['mk_all_se_bps']:.2f}; top-{row.get('mk_top_k', 0)} MM "
+                 f"{row.get('mk_top_markout_bps', float('nan')):+.2f}±{row.get('mk_top_se_bps', float('nan')):.2f} "
+                 f"({row.get('mk_top_fill_share', float('nan')):.2f} of fills, touch {row.get('mk_top_touch_share', float('nan')):.2f}); "
+                 f"other MM {row.get('mk_othermm_markout_bps', float('nan')):+.2f}; non-MM {row.get('mk_nonmm_markout_bps', float('nan')):+.2f}; "
+                 f"at the touch top/rest {row.get('mk_top_touch_markout_bps', float('nan')):+.2f} / {row.get('mk_rest_touch_markout_bps', float('nan')):+.2f}; "
+                 f"{row.get('mk_n_makers', 0)} makers>=100 fills, {row.get('mk_positive_share', float('nan')):.2f} positive "
+                 f"({row.get('mk_positive_fill_share', float('nan')):.2f} of fills), {row.get('mk_sig_positive_n', 0)} significantly; "
+                 f"split-half rank corr {row.get('mk_split_rank_corr', float('nan')):+.2f} (p={row.get('mk_split_rank_corr_p', float('nan')):.3f}, "
+                 f"n={row.get('mk_split_n_makers', 0)})"
+                 if "mk_all_markout_bps" in row else ""), flush=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)
     pd.set_option("display.width", 250)

@@ -1,0 +1,130 @@
+% Definitions and notation.  \input this section before the model in any document for a
+% games / control / security reader; every microstructure term is defined here once, in that
+% vocabulary, and then used freely.  Standalone build: paper/glossary_standalone.tex.
+\section{Definitions and notation}\label{sec:defs}
+
+This project is a security game played on a financial market, and most of its vocabulary comes
+from market microstructure. Each term below is defined once, in the language of games and
+control, and then used without further comment. The cast first; then the one-period interaction;
+then the benchmarks, the adversary, information, the pinned-spread mode, and the quantities we
+measure on real data.
+
+\subsection*{The cast}
+\begin{center}\small
+\begin{tabular}{p{0.21\linewidth}p{0.74\linewidth}}
+\toprule
+\textbf{Role} & \textbf{Who it is, and what it chooses} \\
+\midrule
+Venue (designer) & Sets the rules of the game: the action grid (tick size), what is public (anonymity), and how ties among agents playing the same action are allocated (priority). Hyperliquid in the data; a parameter set in the simulator. \\
+\addlinespace
+Market makers, incumbents (defenders) & $N$ agents who each period post a standing offer to trade at a price and are paid when another agent accepts it. They learn from their own reward (tabular Q-learning) and, once trained, are frozen and evaluated. \\
+\addlinespace
+Takers (nature) & One short-lived agent per period who accepts a standing offer or not. With probability $\alpha$ she is \emph{informed}---she knows the state---otherwise she trades for private reasons unrelated to the state. Takers are not strategic: they are the stochastic environment, with a hidden Markov state (the regime) that governs how often the informed type arrives. \\
+\addlinespace
+Entrant, attacker (adversary) & One additional maker added to a trained population, playing a best response. What it is allowed to observe (its information set) is the treatment variable; what it does to the incumbents' payoff is the exploitability statistic. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{A. The one-period interaction}
+\begin{description}
+\item[Mid $m_t$.] The public reference price at the start of period $t$. The state everyone sees.
+\item[Fundamental $V_t$.] The true value, $V_t=m_t\pm d$ with $d\sim\mathrm{Exp}(\mu)$, redrawn each period. The state only the informed taker sees.
+\item[Quote, half-spread $h$ (the action).] A maker's standing offer: sell at $m_t+h\theta$, buy at $m_t-h\theta$, with $h\in\{1,\dots,K\}$. Symmetric by assumption. The \emph{spread} is $2h\theta$.
+\item[Tick $\theta$.] The discretisation of the action space: the smallest price increment. On Hyperliquid, prices carry five significant figures, so one tick is \$1 on BTC near \$80{,}000 and \$0.001 on a \$90 coin.
+\item[Best quote, inside, touch.] The lowest half-spread among the makers; \emph{at the touch} means at that price. The taker always hits the best quote; ties are split uniformly (or by priority, below).
+\item[Fill, print, trade.] An accepted offer. The \emph{print} is its public record: price, size, side, and on Hyperliquid the wallet on each side.
+\item[Informed fill, adverse selection, toxic flow.] A maker's payoff on a fill is $p-V_t$ on a sale and $V_t-p$ on a purchase. The informed taker accepts only when that is negative for the maker, and with the exponential edge an informed fill costs the maker exactly $\mu$ in expectation at every $h$ (memorylessness). \emph{Adverse selection} is this expected loss from being matched with the informed type; \emph{toxic flow} is order flow with a high informed share; a \emph{toxic wallet} is one whose orders are informed with high probability.
+\item[Payoff function $\Pi(h;\alpha)$.] A maker's expected one-period payoff from quoting $h$ when it holds the best quote, with $x=h\theta$:
+\[
+\Pi(h;\alpha)=(1-\alpha)\,2x\,\bar\Phi(x/\sigma_L)\;-\;\alpha\,\mu\,e^{-x/\mu},
+\]
+the uninformed taker's acceptance probability times the margin, minus the informed type's probability of arriving and accepting times $\mu$. Linear in $\alpha$; closed form.
+\end{description}
+
+\subsection*{B. Benchmarks: the Nash point and the cartel point}
+\begin{description}
+\item[Competitive half-spread $h^C$.] The smallest grid point with $\Pi(h;\alpha)\ge0$: the zero-profit action. It is the Nash equilibrium of the one-shot pricing game---at any $h>h^C$ a maker gains by moving to $h-1$ and taking the whole flow---and the Bertrand outcome of price competition on a grid.
+\item[Monopoly half-spread $h^M$.] $\arg\max_h\Pi(h;\alpha)$: the joint payoff-maximising action, what a single maker or a perfectly coordinated group would play. $\Pi^C,\Pi^M$ are the payoffs at $h^C,h^M$.
+\item[Rent.] Payoff above the Nash benchmark, $\bar\Pi-\Pi^C$. \emph{Rent units} are $\Pi^M-\Pi^C$, the rent available; dividing by them makes $\alpha$ and $N$ comparable.
+\item[Collusion index $\Delta$, rent index $C(\pi)$.] $(\bar\Pi-\Pi^C)/(\Pi^M-\Pi^C)\in[0,1]$: where the population sits between the Nash point (0) and the joint-monopoly point (1). $\Delta$ is the quantity for a learning population \cite{calvano}; $C(\pi)$ the same quantity for a frozen policy profile $\pi$ under evaluation.
+\item[Cartel, tacit collusion.] A profile with $C>0$ sustained by independent learners that never communicate: a payoff-dominant profile that is not a one-shot equilibrium, held up in the repeated game by the learned policies' reactions to deviations.
+\item[Undercutting.] The deviation to $h-1$ when a rival is above $h^C$: a slightly smaller margin on the whole flow instead of a share of it. The myopic best response, and the quantity that decides whether a profile is a one-shot equilibrium.
+\item[Restraint (the mechanism test).] In states where a rival quotes at or inside $h^M$, whether the learner's greedy action is the undercut or not. Reported as the share of such states in which the learner forgoes the undercut, the one-period reward it forgoes, and the Q-value gap. Restraint distinguishes learned coordination from failure to explore.
+\end{description}
+
+\subsection*{C. The adversary and exploitability}
+\begin{description}
+\item[Frozen population $\pi$.] The incumbents' learned policies with learning switched off. The object being attacked.
+\item[Nominal payoff $\Pi_{\mathrm{nominal}}(\pi)$.] The incumbents' payoff alone. With an attacker $A$ in the game their payoff is $J(\pi;A)$.
+\item[Best-response loss $L_{\mathrm{BR}}$.] $L^A_{\mathrm{BR}}(\pi)=\Pi_{\mathrm{nominal}}(\pi)-J(\pi;A)$ and $L_{\mathrm{BR}}=\max_A L^A_{\mathrm{BR}}$: how much the adversary costs the defenders. The game is general-sum, so the defenders' loss---not the attacker's gain---is the exploitability statistic.
+\item[Fraction of rent destroyed $\kappa_A$.] $L^A_{\mathrm{BR}}/(\Pi_{\mathrm{nominal}}-\Pi^C)$. $\kappa_A=1$ means the attacker drives the defenders back to the Nash point.
+\item[Attacker types.] The \emph{one-tick undercutter} (quotes one tick inside the best incumbent); the \emph{markout entrant} (a profit-maximising best responder that learns from its own fills' realized payoffs); the \emph{damage-maximising attacker} (minimises $J$ rather than maximising its own payoff; the worst case); the \emph{steering attacker} (targets the incumbents' reaction function rather than their quote; planned). Held-out attackers: $\mathcal{A}_{\mathrm{train}}\cap\mathcal{A}_{\mathrm{test}}\approx\emptyset$.
+\end{description}
+
+\subsection*{D. Information}
+\begin{description}
+\item[Information set $\mathcal{F}$.] What a policy may condition on. Three nested observation models for the entrant: $\Fanon$ (the public tape and book only) $\subset\Fid$ (plus the wallet identity on every print) $\subset\For$ (plus the hidden state). An upper bound and two implementable policies.
+\item[Wallet, identity.] The persistent public pseudonym on every order and print on Hyperliquid. Not a name; a label that is the same tomorrow.
+\item[Taker type $\alpha_j$.] Wallet $j$'s probability of being informed on any given order. In the simulator, $M$ wallets with types taken as stratified quantiles of $\mathrm{Beta}(\bar\alpha\kappa_\alpha,(1-\bar\alpha)\kappa_\alpha)$: the mean is pinned at $\bar\alpha$ and the concentration $\kappa_\alpha$ sets the dispersion ($\kappa_\alpha\to\infty$ is the homogeneous model).\footnote{Earlier drafts wrote the concentration as $\kappa$, which collides with the fraction of rent destroyed $\kappa_A$. The concentration is $\kappa_\alpha$ from here on.}
+\item[Regime $z_t$.] A hidden Markov state, $z_t\in\{\text{calm},\text{toxic}\}$, kept with probability $\rho_z$ per period and otherwise redrawn. In the toxic state the informed-heavy wallets are the active ones. From the entrant's side this is a partially observed Markov decision process; its policy carries a belief over $z_t$.
+\item[Mark lag $L$.] The number of arrivals before a print's realized payoff (its \emph{mark}) becomes public. The delay before the state is revealed. $L=0$ would mean the tape tells you immediately who was informed; the data say $L$ is several arrivals.
+\item[Regime filter, $\alpha_{\mathrm{next}}$.] The entrant's Bayesian posterior over $z_t$ given what its information set shows, and the implied probability that the \emph{next} taker is informed. The quoting rule acts on $\alpha_{\mathrm{next}}$.
+\item[Value of identity.] $\pi^{\mathrm{id}}-\pi^{\mathrm{anon}}$: the entrant's payoff gain from seeing wallets. Read from the venue's side it is the cost to the defenders of de-anonymisation, so \emph{anonymity} is a venue lever and this difference is its price.
+\end{description}
+
+\subsection*{E. The pinned-spread mode (one-tick books)}
+\begin{description}
+\item[One-tick book.] A market whose best quotes are one tick apart essentially all the time (BTC, ETH and SOL on Hyperliquid). The action $h$ is then degenerate: nobody can undercut. The same environment with the spread fixed is the \emph{queue game}.
+\item[Rest, out.] The binary action at a fixed spread: keep a standing offer at the touch, or withdraw it.
+\item[Queue priority (FIFO).] The venue's allocation rule among agents playing the same action: the earliest standing offer is filled first; a maker that withdraws and returns joins the back of the line. Time priority turns ``when to be present'' into the strategic variable.
+\item[Priority fee (priced priority).] Paying the venue to be allocated ahead of the queue. A venue lever; the price of position.
+\item[Fill value.] $(1-q)\,x-q\,\mu$: the expected payoff of a fill at half-spread $h$ against a taker of type $\alpha$, where $q$ is the probability the fill was informed given that it happened. At the population break-even it is zero on average, positive in the calm regime and negative in the toxic one. \emph{Selection} is choosing which fills to accept; on a one-tick book it is the only source of payoff above zero.
+\item[Selection cartel.] Makers who leave the toxic flow to each other---the analogue, when the spread cannot move, of a cartel that holds the spread above $h^C$.
+\item[Depth; sweep, walk.] Depth is the quantity standing at each price. An order larger than the quantity at the touch is filled at successively worse prices: it \emph{walks} the book (a \emph{sweep}). The makers it reaches were standing behind the inside.
+\end{description}
+
+\subsection*{F. What we measure on real data}
+\begin{description}
+\item[Basis point (bp).] $10^{-4}$ of the price. All payoffs on real data are in basis points of the fill price.
+\item[Maker and taker side.] On every print one wallet had the standing offer (the maker, the defender's role) and one accepted it (the taker, the aggressor).
+\item[Markout at $\tau$.] The maker's ex-post payoff on one fill, scored against the mid $\tau$ seconds later: $-s\,(m_{t+\tau}-p)/p\times10^4$ with $s=+1$ if the maker sold. It includes the half-spread earned at the fill; negative means the fill lost money by $\tau$. The simulator's per-fill reward is the same object with $V_t$ in place of $m_{t+\tau}$.
+\item[Effective spread.] $2s\,(p-m_t)/p\times10^4$ with $m_t$ the mid of the last book \emph{before} the fill: what the taker paid relative to the price she could see. On a one-tick book a fill at the touch has effective spread exactly one tick.
+\item[Realized spread at $\tau$; price impact.] $2s\,(p-m_{t+\tau})/p\times10^4$ is what the maker kept after $\tau$; the difference, effective minus realized, is the \emph{price impact}: how far the mid moved in the taker's direction. Permanent impact is information; transient impact is liquidity (the price reverts).
+\item[Trade-price proxy, bid--ask bounce.] Using the next trade price in place of the mid overstates the maker's payoff because consecutive prints alternate between the bid and the ask. All markouts in this document use the true mid from the recorded book.
+\item[Conditional markout; identity given the anonymous signal.] The next fill's markout conditioned on whether the previous taker was a toxic wallet (the identity signal), and the same conditioned additionally on whether the price has already moved against the previous maker (what an anonymous quoter can see). The second isolates what identity adds beyond the tape.
+\item[Market-maker wallet.] A wallet with maker share $\ge0.7$ and both buys and sells (two-sidedness $\ge0.3$) over the window. The classification uses activity only, never the outcome being measured.
+\end{description}
+
+\subsection*{G. Rigour vocabulary}
+\begin{description}
+\item[Seed intervals.] Every simulator number is a mean over independent training seeds with a 95\% interval; policies compared under common random numbers.
+\item[$\mathrm{CVaR}_{0.05}$.] The mean of the worst 5\% of outcomes; reported with the mean so ``robust'' cannot mean ``withdrew''.
+\item[Train at $\alpha$, test at $\alpha'$.] Policies trained in one environment and evaluated in another, to separate learned structure from overfitting.
+\item[Chronological split.] On data, wallet classification on the first half of the window, measurement on the second.
+\end{description}
+
+\subsection*{Notation}
+\begin{center}\small
+\begin{tabular}{llp{0.5\linewidth}}
+\toprule
+Symbol & Name & Meaning \\
+\midrule
+$\theta,K$ & tick, grid size & action grid $h\in\{1,\dots,K\}$ in ticks \\
+$\alpha,\bar\alpha$ & toxicity & probability a taker is informed; population mean \\
+$\mu$ & informed edge & mean of the exponential edge $d$; the expected cost of an informed fill \\
+$\sigma_L$ & liquidity dispersion & s.d. of the uninformed taker's private valuation \\
+$\Pi(h;\alpha)$ & payoff function & expected one-period payoff of quoting $h$ \\
+$h^C,h^M$; $\Pi^C,\Pi^M$ & Nash, monopoly & competitive and joint-monopoly actions and payoffs \\
+$\Delta$, $C(\pi)$ & rent index & $(\bar\Pi-\Pi^C)/(\Pi^M-\Pi^C)$ for a learning / frozen population \\
+$L_{\mathrm{BR}}$, $\kappa_A$ & exploitability & defenders' loss against attacker $A$; fraction of rent destroyed \\
+$\Fanon\subset\Fid\subset\For$ & information sets & tape and book; plus wallets; plus the hidden state \\
+$\alpha_j$, $\kappa_\alpha$ & wallet types & wallet $j$'s informed probability; concentration of the type distribution \\
+$z_t$, $\rho_z$ & regime & hidden calm/toxic state and its persistence \\
+$L$ & mark lag & arrivals before a print's realized payoff is public \\
+$\alpha_{\mathrm{next}}$ & forecast & entrant's posterior probability that the next taker is informed \\
+$q$ & fill-conditional toxicity & $P(\text{informed}\mid\text{fill at }h)$ \\
+$p$, $m_t$, $m_{t+\tau}$, $s$ & on data & fill price, pre-trade mid, mid $\tau$ s later, $+1$ if the maker sold \\
+\bottomrule
+\end{tabular}
+\end{center}

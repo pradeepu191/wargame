@@ -65,3 +65,20 @@ def test_regime_aware_entrant_beats_always_rest_and_is_less_adversely_selected()
     assert res["oracle"][0] > res["always"][0]                   # selection pays
     assert res["oracle"][1] < res["always"][1]                   # its fills are cleaner
     assert res["oracle"][2] > res["always"][2]                   # the incumbents' fills are dirtier
+
+
+def test_queue_game_cell_with_fringe_runs_and_reports_both_populations():
+    from experiments.queue_game import one_cell, train_q, BASE
+    from sim.queue_agents import QueueQAgent
+    cfg = MarketConfig(**dict(BASE, alpha=0.3, regime_persistence=0.9, mark_lag=1, wallet_seed=0), n_mm=3, seed=0)
+    env = QueueEnv(cfg, ticks_above_breakeven=1)
+    agents = train_q(cfg, env.h, n_episodes=5, seed=0, n_learn=2)
+    assert [type(a).__name__ for a in agents] == ["QueueQAgent", "QueueQAgent", "AlwaysRest"]
+    assert all(a.eval for a in agents[:2])
+    rows = one_cell((0.3, 0.9, 1, 1, 2, 0, "q", 2, 5, 1, 0.95))
+    assert [r["policy"] for r in rows] == ["always", "anon", "id", "oracle"]
+    r = rows[0]
+    assert r["fringe"] == 1 and r["n_inc"] == 2 and np.isfinite(r["fringe_pnl"]) and 0 <= r["incumbent_rest_share"] <= 1
+    assert abs(r["entrant_fill_share"] + r["incumbent_fill_share"] - 1) <= 1 + 1e-9   # plus the fringe's share
+    rows0 = one_cell((0.3, 0.9, 1, 1, 2, 0, "always", 2, 5, 0, 0.95))
+    assert np.isnan(rows0[0]["fringe_pnl"]) and np.isnan(rows0[0]["discount"])
