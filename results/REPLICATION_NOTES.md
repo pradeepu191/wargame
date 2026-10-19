@@ -1026,3 +1026,33 @@ All split-half p < 1e-3.
   loses" holds on ETH, HYPE and SOL and nearly on BTC; identity-blind resting liquidity is the
   counterparty of the selection rent. The statistic to carry forward is the top-vs-rest gap at
   the touch (+0.4 to +1.1 bp) with its persistence.
+
+---
+
+# Exploitability at ten seeds (`exploitability_10seed.csv`, `exploitability_summary_10seed.csv`, `fig_exploitability_10seed.*`; SuperCloud job 5969375)
+
+180 frozen populations (robust_exp2 at seeds 0–9: 120; cfl_exp2: 60), four attackers, 500 episodes,
+common random numbers. C spans 0.42–0.97. Every entry of the 5-seed table moved by less than its
+interval; what changed is the precision.
+
+| | pooled | α = 0.3 | within cell |
+|---|---|---|---|
+| L_BR slope on C, max over attackers | 1.02 [0.90, 1.18] | 1.03 [1.00, 1.07] | 1.07 [0.96, 1.22] |
+| L_BR slope, markout attacker | 0.71 [0.56, 0.90] | 0.86 [0.71, 1.02] | 0.74 [0.59, 0.98] |
+| κ_A slope, markout | −0.06 [−0.31, 0.26] | 0.23 [0.03, 0.43] (ρ 0.08, p 0.33) | −0.07 [−0.33, 0.31] |
+| κ_A slope, undercut | −0.17 [−0.71, 0.30] | 0.25 [0.04, 0.49] (ρ 0.11, p 0.18) | −0.30 [−0.94, 0.35] |
+| κ_A slope, oracle | −0.11 [−0.41, 0.22] | 0.10 [−0.11, 0.34] | −0.07 [−0.46, 0.40] |
+| κ_A slope, competitive (damage-maximiser) | −0.18 [−0.35, 0.02] | −0.10 [−0.14, −0.06] | −0.15 [−0.29, 0.04] |
+
+Means: κ_A = 1.14 (competitive), 0.71 (markout), 0.71 (oracle), 0.73 (undercut). Attacker profit
+0.10 / 0.51 / 0.49 / 0.48 rent units. Damage-maximiser is the competitive quoter in 179/180
+populations; the attacker's own best response is the markout rule in 89, the undercutter in 58, the
+oracle in 33.
+
+* The literal hypothesis holds by construction (slope ≈ 1 for the damage-maximiser); the
+  substantive one — more collusive ⇒ a *larger fraction* lost — is at most weakly supported: at
+  α = 0.3 the OLS slope of κ_A on C for the profit-maximising attackers is +0.23 to +0.25 with
+  intervals just excluding zero, the rank correlations are not significant, and over the observed
+  range of C that is ≤ 0.13 in κ_A; pooled and within-cell slopes include zero. Report as "κ_A ≈ 0.7
+  with at most a weak dependence on C". The damage-maximiser's κ_A *falls* slightly with C.
+* Paper §5.2, Table tab:exploit and the audit row updated to the 180-population numbers.

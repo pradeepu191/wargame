@@ -45,7 +45,7 @@ Table~\ref{tab:changes} is the audit trail. Every row is a claim in the October~
 \toprule
 \textbf{Deliverable 1 said} & \textbf{What we found} & \textbf{Change} \\
 \midrule
-RQ2 hypothesis $\partial L_{\mathrm{BR}}/\partial C>0$: the regularity that sustains rents makes policies easier to manipulate. & Slope of $L_{\mathrm{BR}}$ on $C$ is $\approx1$ by construction (more rent, more to lose); the \emph{fraction} of rent destroyed is flat at $\approx0.7$ (\S\ref{sec:exploit}). & Restated as a measurement; attacker set split into damage-maximising and profit-maximising. \\
+RQ2 hypothesis $\partial L_{\mathrm{BR}}/\partial C>0$: the regularity that sustains rents makes policies easier to manipulate. & Slope of $L_{\mathrm{BR}}$ on $C$ is $\approx1$ by construction (more rent, more to lose); the \emph{fraction} of rent destroyed is $\approx0.7$ with at most a weak dependence on $C$, 180 populations (\S\ref{sec:exploit}). & Restated as a measurement; attacker set split into damage-maximising and profit-maximising. \\
 \addlinespace
 Identity matters because wallet toxicity is a persistent trait (Zhai's ten-day persistence). & Same-wallet repeat rate at the order level is $0.02$--$0.05$; identity's effect on the next fill's markout is $0.5$--$0.9$ bps and survives conditioning on the anonymous tape (\S\ref{sec:data}). & Simulator: latent toxicity regime + mark lag replace wallet persistence (\S\ref{sec:takers}); RQ1 restated. \\
 \addlinespace
@@ -139,11 +139,11 @@ $N$ & $\eta$ & init & half-spread & $\Delta$ & restraint $\mid$ contested & lead
 \end{table}
 
 \subsection{Does rent create vulnerability? (RQ2)}\label{sec:exploit}
-120 frozen populations (the robustness grid plus the main runs at three $\alpha$; $C$ from $0.43$ to $0.97$ at the seed level) each face four attackers for 500 episodes. Figure~\ref{fig:exploit} and Table~\ref{tab:exploit}.
+180 frozen populations (the robustness grid and the main runs at three $\alpha$, ten seeds each; $C$ from $0.42$ to $0.97$ at the seed level) each face four attackers for 500 episodes under common random numbers. Figure~\ref{fig:exploit} and Table~\ref{tab:exploit}.
 
 \begin{figure}[h]\centering
-\includegraphics[width=\textwidth]{fig_exploitability.pdf}
-\caption{Best-response loss, fraction of rent destroyed, and attacker profit against the incumbents' rent $C(\pi)$, 120 populations, one point per population and attacker.}\label{fig:exploit}
+\includegraphics[width=\textwidth]{fig_exploitability_10seed.pdf}
+\caption{Best-response loss, fraction of rent destroyed, and attacker profit against the incumbents' rent $C(\pi)$, 180 populations (ten seeds), one point per population and attacker.}\label{fig:exploit}
 \end{figure}
 
 \begin{table}[h]\small\centering
@@ -151,21 +151,22 @@ $N$ & $\eta$ & init & half-spread & $\Delta$ & restraint $\mid$ contested & lead
 \toprule
 slope on $C$ (OLS, bootstrap 95\% CI) & pooled & $\alpha=0.3$ only & within cell (seeds) \\
 \midrule
-$L_{\mathrm{BR}}$, max over attackers & $0.99\ [0.85,1.19]$ & $1.04\ [1.00,1.09]$ & $1.06\ [0.93,1.27]$ \\
-$L_{\mathrm{BR}}$, markout attacker & $0.64\ [0.47,0.87]$ & $0.89\ [0.68,1.09]$ & $0.63\ [0.48,0.88]$ \\
-$\kappa_A$, markout attacker & $-0.17\ [-0.46,0.23]$ & $0.27\ [-0.01,0.54]$ & $-0.24\ [-0.49,0.17]$ \\
-$\kappa_A$, undercut attacker & $-0.37\ [-0.97,0.26]$ & $0.25\ [-0.02,0.54]$ & $-0.53\ [-1.21,0.29]$ \\
-entrant profit, markout attacker & $0.27\ [0.10,0.50]$ & $0.61\ [0.37,0.94]$ & $0.10\ [-0.10,0.29]$ \\
+$L_{\mathrm{BR}}$, max over attackers & $1.02\ [0.90,1.18]$ & $1.03\ [1.00,1.07]$ & $1.07\ [0.96,1.22]$ \\
+$L_{\mathrm{BR}}$, markout attacker & $0.71\ [0.56,0.90]$ & $0.86\ [0.71,1.02]$ & $0.74\ [0.59,0.98]$ \\
+$\kappa_A$, markout attacker & $-0.06\ [-0.31,0.26]$ & $0.23\ [0.03,0.43]$ & $-0.07\ [-0.33,0.31]$ \\
+$\kappa_A$, undercut attacker & $-0.17\ [-0.71,0.30]$ & $0.25\ [0.04,0.49]$ & $-0.30\ [-0.94,0.35]$ \\
+$\kappa_A$, oracle attacker & $-0.11\ [-0.41,0.22]$ & $0.10\ [-0.11,0.34]$ & $-0.07\ [-0.46,0.40]$ \\
+entrant profit, markout attacker & $0.34\ [0.19,0.54]$ & $0.56\ [0.38,0.76]$ & $0.15\ [-0.01,0.33]$ \\
 \bottomrule
 \end{tabular}
-\caption{Regressions on rent across 120 frozen populations. $\kappa_A$ is the fraction of rent destroyed.}\label{tab:exploit}
+\caption{Regressions on rent across 180 frozen populations, ten seeds. $\kappa_A$ is the fraction of rent destroyed. The five-seed version of this table (120 populations) is in the replication notes; every entry moved by less than its interval.}\label{tab:exploit}
 \end{table}
 
 \begin{itemize}
-\item The literal hypothesis holds, by construction. The attacker that minimises incumbent profit is the competitive-GM quoter in 119 of 120 populations, and it pushes the incumbents \emph{below} $\Pi^C$ (frozen incumbents sometimes respond to a quote at $h^C$ by undercutting it and lose), so $L_{\mathrm{BR}}\approx\Pi_{\mathrm{nominal}}$ and the slope is one.
-\item The substantive version is not supported. $\kappa_A$, the fraction of rent a profit-maximising attacker destroys, is $\approx0.7$--$0.8$ for undercut, markout and oracle attackers across the whole range of $C$, with slopes whose intervals include zero. Higher-rent populations are exploitable in proportion to their rent, not more.
-\item Damage and profit are different objectives. The attacker that hurts the incumbents most earns least ($0.08$ rent units); the ones that earn most (markout, oracle: $0.50$) leave the incumbents 30\% of their rent. The markout rule is the attacker's own best response in 68 of 120 populations, the oracle in 36, the undercutter in 16.
-\item Knowing the true $\alpha$ adds nothing over estimating it from own fills ($0.50$ vs $0.51$). In a stationary market the public tape carries the full value of the toxicity \emph{level}. This is the observation that sent us to heterogeneous takers.
+\item The literal hypothesis holds, by construction. The attacker that minimises incumbent profit is the competitive-GM quoter in 179 of 180 populations, and it pushes the incumbents \emph{below} $\Pi^C$ (frozen incumbents sometimes respond to a quote at $h^C$ by undercutting it and lose), so $L_{\mathrm{BR}}\approx\Pi_{\mathrm{nominal}}$ and the slope is one ($\kappa_A=1.14$ on average, and slightly \emph{decreasing} in $C$: $-0.10\ [-0.14,-0.06]$ at $\alpha=0.3$).
+\item The substantive version is not supported. $\kappa_A$, the fraction of rent a profit-maximising attacker destroys, is $0.71$--$0.73$ for undercut, markout and oracle attackers across the whole range of $C$. Pooled and within-cell slopes include zero; at $\alpha=0.3$ the OLS slope is $+0.23$ to $+0.25$ with intervals that just exclude zero while the rank correlation does not ($\rho=0.08$--$0.11$, $p>0.17$), which over the observed range of $C$ is at most $0.13$ in $\kappa_A$. Higher-rent populations are exploitable in proportion to their rent, with at most a weak excess.
+\item Damage and profit are different objectives. The attacker that hurts the incumbents most earns least ($0.10$ rent units); the ones that earn most (markout $0.51$, oracle $0.49$, undercut $0.48$) leave the incumbents 27--30\% of their rent. The markout rule is the attacker's own best response in 89 of 180 populations, the undercutter in 58, the oracle in 33.
+\item Knowing the true $\alpha$ adds nothing over estimating it from own fills ($0.49$ vs $0.51$). In a stationary market the public tape carries the full value of the toxicity \emph{level}. This is the observation that sent us to heterogeneous takers.
 \end{itemize}
 
 \subsection{Entry: frozen and re-learning incumbents (RQ1, first form)}
@@ -319,7 +320,7 @@ The chain the proposal set out to test now reads, with numbers: learning makers 
 \section{Research questions, restated}
 \paragraph{RQ1 (Executable value of identity).} Under $\Fanon\subset\Fid\subset\For$, what is an entrant's profit, and how does $\pi^{\mathrm{id}}-\pi^{\mathrm{anon}}$ depend on regime persistence $\rho_z$, type concentration $\kappa_\alpha$, the mark lag $L$, and the incumbents' quote relative to the toxic-regime break-even? \emph{Prediction (from \S\ref{sec:identity})}: the increment is zero when the toxic state leaves an undercut profitable, and otherwise grows with $L$ up to the regime's lifetime. \emph{Empirical counterpart}: the identity-given-anonymous-signal split by coin, against each coin's spread relative to break-even.
 
-\paragraph{RQ2 (Exploitability, as measurement).} For each incumbent population, report $L_{\mathrm{BR}}$ under the damage-maximising attacker and under the attacker's own best response, and $\kappa_A$. The claim supported so far: $\kappa_A\approx0.7$ independent of $C$; a rational entrant captures about two thirds of what it destroys and the rest passes to takers as tighter quotes. Open: whether attackers that target the \emph{reaction function} (steering, \cite{dss,brownmackay}) rather than the quote level break the flatness of $\kappa_A$.
+\paragraph{RQ2 (Exploitability, as measurement).} For each incumbent population, report $L_{\mathrm{BR}}$ under the damage-maximising attacker and under the attacker's own best response, and $\kappa_A$. The claim supported so far: $\kappa_A\approx0.7$ with at most a weak dependence on $C$ (180 populations, ten seeds); a rational entrant captures about two thirds of what it destroys and the rest passes to takers as tighter quotes. Open: whether attackers that target the \emph{reaction function} (steering, \cite{dss,brownmackay}) rather than the quote level break the flatness of $\kappa_A$.
 
 \paragraph{RQ3 (Tick-constrained books; new).} On a one-tick book, model the maker's action as queue position and cancellation at the inside rather than spread width, with the priority fee as the price of position. Does the identity signal translate into realized spread for makers who use it, and is the resulting equilibrium a selection cartel---makers who leave the toxic flow to each other---rather than a spread cartel? \emph{First result} (\S\ref{sec:queue}): against always-resting makers, yes---identity is worth $+0.04$ to $+0.10$ per period at break-even, growing with the mark lag, and the identity-blind makers' fills get dirtier. Open: learned incumbents, the priority fee. \emph{Empirical anchor}: per-wallet realized spread of the top makers vs the average resting fill, from the December L4 lifecycles.
 
@@ -327,7 +328,7 @@ The chain the proposal set out to test now reads, with numbers: learning makers 
 
 \section{Plan to December}
 \begin{enumerate}
-\item \emph{Now.} Ten-seed cluster runs of the exploitability grid (the identity grids are done, \S\ref{sec:identity}); the October archive tar (contiguity, the cascade); a multi-day book run from an always-on machine, to put intervals on the touch-fill markout and the per-maker persistence by coin and hour.
+\item \emph{Now.} The October archive tar (contiguity, the cascade); a multi-day book run from an always-on machine, to put intervals on the touch-fill markout and the per-maker persistence by coin and hour.
 \item \emph{Late October.} Queue model for RQ3 extended with depth: makers choose how much to show at the inside and behind it, and cancel; time priority; priority fee; sweeps that walk the book as the informed event (\S\ref{sec:l2}). Calibrate $L$ from inter-arrival vs markout horizon, $\rho_z$ and the regime contrast from the conditional markouts, depth from the book.
 \item \emph{November.} Re-learning and identity-aware incumbents; a steering attacker; held-out attackers; inventory from \texttt{start\_pos}; the December L4 lifecycles for reaction functions $P(\text{requote}\mid\text{rival undercuts})$ and for cancellation-before-toxic-flow.
 \item \emph{December.} Preprint. Rigor throughout: common random numbers, seed intervals, CVaR alongside means, train-at-$\alpha$/test-at-$\alpha'$, chronological splits on data, classification on the first half only.
