@@ -81,6 +81,6 @@ git add results/exploitability_10seed.csv results/exploitability_summary_10seed.
 
 ## Queue game with learned incumbents (RQ3, tick lever)
 ```bash
-sbatch slurm/queue.sh               # ~30 min on 48 cores -> results/queue_q_fringe2.csv, queue_always_fringe2.csv
-git add results/queue_q_fringe2.csv results/queue_always_fringe2.csv && git commit -m "Queue game, learned incumbents + fringe" && git push
+sbatch slurm/queue.sh               # ~30 min on 48 cores -> results/queue_hedge_fringe2.csv (+ queue_always_fringe2.csv if missing)
+git add results/queue_hedge_fringe2.csv results/queue_always_fringe2.csv && git commit -m "Queue game, no-regret incumbents + fringe" && git push
 ```

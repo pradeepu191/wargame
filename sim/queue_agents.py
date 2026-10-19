@@ -8,6 +8,13 @@ QueueWalletEntrant  the WalletEntrant's estimator and regime filter (anon / id /
                  decision "rest iff the expected value of a fill at the fixed spread against the
                  forecast type is positive".  Stepping out costs the place in line; the rule is
                  myopic about that on purpose -- it is the simplest identity-aware quoter.
+QueueHedgeAgent  a no-regret learner (EXP3) over a small set of fixed queue policies -- the
+                 proposal's "no-regret / Hedge" incumbent.  Tabular Q-learning cannot learn to
+                 queue: with time priority the reward of resting arrives only after several
+                 consecutive periods in line, an epsilon-greedy learner breaks the chain, never
+                 reaches the front, sees zero either way and flickers (results/REPLICATION_NOTES.md).
+                 A learner over policies has no such problem: each expert is a complete way of
+                 behaving in the queue and the learner only has to find out which one pays here.
 AlwaysRest / NeverRest  the two trivial benchmarks (break-even round-robin; zero).
 """
 from __future__ import annotations
@@ -33,11 +40,18 @@ class NeverRest(Agent):
 
 
 class QueueQAgent(Agent):
-    N_STATUS, N_SIGNAL = 3, 3
+    """State: own status (out / front / behind -- or, with rank_state, out / front / 2nd / 3rd /
+    deeper), number of other makers resting, anonymous tape signal.  With rank_state the value of
+    staying in line can propagate back along the queue (3rd -> 2nd -> front -> fill), which the
+    three-status encoding cannot represent: a maker that is 'behind' with no idea how far behind
+    sees the same zero reward whether it stays or flickers, and learns to flicker."""
+    N_SIGNAL = 3
 
-    def __init__(self, n_mm: int, qcfg: QConfig, seed: int = 0):
+    def __init__(self, n_mm: int, qcfg: QConfig, seed: int = 0, rank_state: bool = False):
         self.n_mm = n_mm
         self.cfg = qcfg
+        self.rank_state = rank_state
+        self.N_STATUS = 5 if rank_state else 3
         self.rng = np.random.default_rng(seed)
         self.Q = np.full((self.N_STATUS, n_mm, self.N_SIGNAL, 2), qcfg.init_q)
         self.step_count = 0
@@ -50,7 +64,10 @@ class QueueQAgent(Agent):
 
     def _state(self, obs, i):
         rank = int(obs["rank"][i])
-        status = 0 if rank < 0 else (1 if rank == 0 else 2)
+        if self.rank_state:
+            status = 0 if rank < 0 else min(rank + 1, 4)      # out, front, 2nd, 3rd, 4th-or-deeper
+        else:
+            status = 0 if rank < 0 else (1 if rank == 0 else 2)
         others = int(obs["n_resting"]) - (1 if rank >= 0 else 0)
         # anonymous tape signal: the most recent mark released, if it was a print
         for ago, ev, h, price, wallet, V in obs.get("marks", ()):
@@ -101,3 +118,55 @@ class QueueWalletEntrant(WalletEntrant):
         v = fill_value(self.cfg, self.h, a_next)
         self.last_decision = "rest" if v > self.threshold else "out"
         return 1 if v > self.threshold else 0
+
+
+class QueueHedgeAgent(Agent):
+    """EXP3 over fixed policies with per-episode (bandit) feedback.
+
+    experts: list of agents (each with act(obs, i) and reset()).  At each episode start one expert
+    is drawn from the current distribution and plays the whole episode; its scaled episode reward
+    updates the weights with the importance-weighted EXP3 rule.  All experts' act() is called every
+    period so that stateful experts (a regime filter) keep tracking the tape while not in charge.
+    In eval mode the weights are frozen and the draw continues (a mixed strategy)."""
+
+    def __init__(self, experts: list, eta: float = 0.1, explore: float = 0.05, reward_scale: float = 30.0,
+                 seed: int = 0):
+        self.experts = experts
+        self.K = len(experts)
+        self.eta, self.explore, self.scale = eta, explore, reward_scale
+        self.rng = np.random.default_rng(seed)
+        self.logw = np.zeros(self.K)
+        self.eval = False
+        self.choice = 0
+        self.p = np.full(self.K, 1.0 / self.K)
+        self.ep_reward = 0.0
+
+    def set_eval(self, flag: bool):
+        self.eval = flag
+
+    def probs(self) -> np.ndarray:
+        w = np.exp(self.logw - self.logw.max())
+        p = w / w.sum()
+        if not self.eval:
+            p = (1 - self.explore) * p + self.explore / self.K
+        return p
+
+    def reset(self):
+        for e in self.experts:
+            e.reset()
+        self.p = self.probs()
+        self.choice = int(self.rng.choice(self.K, p=self.p))
+        self.ep_reward = 0.0
+
+    def act(self, obs, i):
+        acts = [e.act(obs, i) for e in self.experts]      # keep every expert's state current
+        return int(acts[self.choice])
+
+    def update(self, obs, action, reward, obs_next, done):
+        if self.eval:
+            return
+        self.ep_reward += reward
+        if done:
+            r = self.ep_reward / self.scale
+            self.logw[self.choice] += self.eta * r / self.p[self.choice]
+            self.logw -= self.logw.max()                      # keep the exponent bounded

@@ -82,3 +82,23 @@ def test_queue_game_cell_with_fringe_runs_and_reports_both_populations():
     assert abs(r["entrant_fill_share"] + r["incumbent_fill_share"] - 1) <= 1 + 1e-9   # plus the fringe's share
     rows0 = one_cell((0.3, 0.9, 1, 1, 2, 0, "always", 2, 5, 0, 0.95))
     assert np.isnan(rows0[0]["fringe_pnl"]) and np.isnan(rows0[0]["discount"])
+
+
+def test_hedge_incumbents_learn_to_select_and_keep_expert_state():
+    from experiments.queue_game import BASE, EXPERTS, train_hedge
+    from sim.queue_agents import QueueHedgeAgent, NeverRest
+    cfg = MarketConfig(**dict(BASE, alpha=0.3, regime_persistence=0.9, mark_lag=5, wallet_seed=0), n_mm=4, seed=0)
+    env = QueueEnv(cfg, ticks_above_breakeven=0)
+    inc = train_hedge(cfg, env.h, n_episodes=600, seed=0, n_learn=2)
+    assert all(isinstance(a, QueueHedgeAgent) and a.eval for a in inc[:2])
+    for a in inc[:2]:
+        p = a.probs()
+        assert abs(p.sum() - 1) < 1e-9 and p[EXPERTS.index("never")] < 0.05   # staying out never wins at break-even
+    # a pure bandit check: two experts, one always paid, the other never -> weight goes to the paid one
+    class Paid(AlwaysRest):
+        pass
+    h = QueueHedgeAgent([Paid(), NeverRest()], eta=0.5, explore=0.1, reward_scale=1.0, seed=1)
+    for _ in range(200):
+        h.reset()
+        h.update(None, None, 1.0 if h.choice == 0 else 0.0, None, True)
+    assert h.probs()[0] > 0.85

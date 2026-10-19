@@ -39,7 +39,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sim import MarketConfig, QConfig
-from sim.queue_agents import AlwaysRest, QueueQAgent, QueueWalletEntrant
+from sim.queue_agents import AlwaysRest, NeverRest, QueueHedgeAgent, QueueQAgent, QueueWalletEntrant
 from sim.queue_env import QueueEnv, selection_benchmarks
 
 BASE = dict(sigma_L=8.0, tick=0.5, max_half_spread=24, redraw_v_each_period=True, edge_dist="exponential",
@@ -88,6 +88,35 @@ def play_all(env, agents, n_episodes):
     return pnl / periods, fills, inf, rest / periods, periods
 
 
+EXPERTS = ("always", "never", "anon")                 # the hedge incumbents' policy set
+
+
+def train_hedge(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: int, eta: float = 0.1):
+    """cfg.n_mm makers: the first n_learn are EXP3 learners over EXPERTS, the rest an always-resting
+    fringe.  Returns the agents (eval mode) and each learner's final expert distribution."""
+    env = QueueEnv(cfg, half_spread=h)
+    agents = []
+    for k in range(n_learn):
+        experts = [AlwaysRest(), NeverRest(),
+                   QueueWalletEntrant(cfg, h, "anon", wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)]
+        agents.append(QueueHedgeAgent(experts, eta=eta, seed=seed * 10 + k))
+    agents += [AlwaysRest() for _ in range(cfg.n_mm - n_learn)]
+    for _ in range(n_episodes):
+        obs = env.reset()
+        for a in agents:
+            a.reset()
+        done = False
+        while not done:
+            acts = [a.act(obs, i) for i, a in enumerate(agents)]
+            obs_n, r, done, _ = env.step(acts)
+            for i, a in enumerate(agents[:n_learn]):
+                a.update(obs, acts[i], float(r[i]), obs_n, done)
+            obs = obs_n
+    for a in agents[:n_learn]:
+        a.set_eval(True)
+    return agents
+
+
 def one_cell(args):
     alpha, rho_z, L, above, n_inc, seed, incumbents, n_episodes, n_train, fringe, discount = args
     mk = dict(BASE, alpha=alpha, regime_persistence=rho_z, mark_lag=L, wallet_seed=seed)
@@ -96,8 +125,12 @@ def one_cell(args):
     env_inc = QueueEnv(cfg_inc, ticks_above_breakeven=above)
     h = env_inc.h
     bm = selection_benchmarks(env_inc)
+    expert_p = {}
     if incumbents == "q":
         inc = train_q(cfg_inc, h, n_train, seed, n_learn=n_inc, discount=discount)
+    elif incumbents == "hedge":
+        inc = train_hedge(cfg_inc, h, n_train, seed, n_learn=n_inc)
+        expert_p = {f"p_{e}": float(np.mean([a.probs()[k] for a in inc[:n_inc]])) for k, e in enumerate(EXPERTS)}
     else:
         inc = [AlwaysRest() for _ in range(n_pop)]
     rows = []
@@ -125,7 +158,7 @@ def one_cell(args):
                      "incumbent_informed_share": float(inf[I].sum() / max(fills[I].sum(), 1)),
                      "fringe_informed_share": float(inf[F].sum() / max(fills[F].sum(), 1)) if fringe else np.nan,
                      "entrant_rest_share": float(rest[E]), "incumbent_rest_share": float(rest[I].mean()),
-                     "fill_rate": float(fills.sum() / periods)})
+                     "fill_rate": float(fills.sum() / periods), **expert_p})
     return rows
 
 
@@ -137,9 +170,9 @@ def main():
     ap.add_argument("--mark-lags", default="1,5,20")
     ap.add_argument("--above", default="0,1", help="ticks above the population break-even for the fixed spread")
     ap.add_argument("--n-inc", type=int, default=2)
-    ap.add_argument("--incumbents", default="always", choices=["always", "q"])
+    ap.add_argument("--incumbents", default="always", choices=["always", "q", "hedge"])
     ap.add_argument("--n-episodes", type=int, default=300)
-    ap.add_argument("--n-train", type=int, default=12000)
+    ap.add_argument("--n-train", type=int, default=12000, help="training episodes for q / hedge incumbents")
     ap.add_argument("--fringe", type=int, default=0, help="always-resting makers added to the incumbent population")
     ap.add_argument("--discount", type=float, default=0.95, help="Q-learner discount (incumbents=q)")
     ap.add_argument("--jobs", type=int, default=1)
