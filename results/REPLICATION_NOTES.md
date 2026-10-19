@@ -1056,3 +1056,54 @@ oracle in 33.
   range of C that is ≤ 0.13 in κ_A; pooled and within-cell slopes include zero. Report as "κ_A ≈ 0.7
   with at most a weak dependence on C". The damage-maximiser's κ_A *falls* slightly with C.
 * Paper §5.2, Table tab:exploit and the audit row updated to the 180-population numbers.
+
+---
+
+# Queue game with learned incumbents (`queue_hedge_fringe2.csv`, `queue_always_fringe2.csv`, `queue_q_fringe2.csv`; `fig_queue_incumbents.*`; SuperCloud jobs 5969376 and the resubmit)
+
+## Two failures of tabular Q-learning, and the fix
+1. **The lock** (first attempt, no fringe): two learners that both step out in a toxic spell leave
+   an empty book → no prints → frozen tape signal → nobody rests. Fixed by a *fringe* of two
+   always-resting makers (retail orders, the vault), which is also the realistic population.
+2. **The flicker** (`queue_q_fringe2.csv`, 12k episodes, fringe 2): the learners rest 40–60% of
+   periods but hold 0–4% of fills and earn ≈ 0. With time priority the reward of resting arrives
+   only after several consecutive periods in line; ε-greedy breaks the chain, the learner never
+   reaches the front, sees zero reward whether it stays or leaves, and alternates. Tested on one
+   cell at 12k episodes: three-status state, rank-in-state (out/front/2nd/3rd/deeper),
+   optimistic init 5.0, and both together — fill share 0.00 in every variant. (The one-seed
+   diagnostic at 4k episodes that looked healthy was ε = 0.45 random resting.) Conclusion:
+   *identity-blind tabular Q-learners cannot learn to queue.* Kept as a result, not as an
+   incumbent.
+3. **The fix**: the proposal's no-regret incumbent — EXP3 over complete queue policies
+   {always rest, never rest, anonymous selector}, per-episode bandit feedback, η = 0.1, 5%
+   exploration, rewards scaled by 30 (`QueueHedgeAgent`). Converges in a few hundred episodes.
+
+## No-regret incumbents (2 EXP3 + 2 fringe), 5 seeds, ᾱ = 0.3, κ_α = 1
+| spread | ρ_z | L | weight on anon-selector / always | incumbent pnl | fringe pnl (always entrant) | always | anon | id | oracle | id − anon (paired, ±95%) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| h^C | 0.9 | 1 / 5 / 20 / 60 | 1.0 / .9 / .66 / .59 vs 0 / .1 / .34 / .42 | .06 / .05 / .04 / .03 | .00 / .02 / .02 / .03 | .01 | .05 / .04 / .03 / .03 | .10 / .10 / .09 / .08 | .10 / .11 / .10 / .10 | +.053±.01 / +.057±.02 / +.053±.01 / +.056±.02 (5/5 each) |
+| h^C | 0.99 | 1 / 5 / 20 / 60 | 1.0 at every L | .10 / .10 / .08 / .05 | −.04 / −.04 / −.02 / .00 | −.04 / −.02 / −.02 / .00 | .09 / .09 / .07 / .05 | .10 / .10 / .11 / .11 | .11 / .11 / .12 / .13 | +.003 / +.015 / +.039 / **+.063** (±.01) |
+| h^C+1 | 0.9 | 1 / 5 / 20 / 60 | .9 / .47 / .46 / .58 vs .1 / .53 / .54 / .42 | .10 / .09 / .09 / .09 | .08 / .09 / .08 / .08 | .08 | .09 / .08 / .08 / .08 | .13 / .13 / .12 / .11 | .14 / .13 / .13 / .13 | +.041 / +.043 / +.036 / +.032 (±.01–.02) |
+| h^C+1 | 0.99 | 1 / 5 / 20 / 60 | 1.0 / 1.0 / 1.0 / .9 | .15 / .14 / .12 / .10 | .04 / .04 / .05 / .07 | .03 / .04 / .05 / .06 | .13 / .13 / .12 / .09 | .15 / .15 / .16 / .15 | .15 / .16 / .16 / .17 | +.014 / +.019 / +.043 / +.052 (±.01) |
+
+Same grid with always-resting incumbents + the same fringe (`queue_always_fringe2.csv`): id − anon
++.03 to +.04 at h^C, ρ_z = 0.9; 0.01 → 0.05 with L at ρ_z = 0.99.
+
+## Findings
+* **What incumbents learn.** Fresh tape (L ≤ 5, or ρ_z = 0.99): both become anonymous selectors.
+  Stale tape (L ≥ 20 at ρ_z = 0.9): a third to 40% of weight moves to always-rest. One tick above
+  at ρ_z = 0.9: half always-rest — the rotation rent of the tick beats selecting. Never-rest is
+  never chosen. Learned incumbents earn 2–3× the fringe with 15–26% informed fills vs 26–31%.
+* **Identity is worth more against incumbents that select.** +0.05 to +0.06 per period at
+  break-even, ρ_z = 0.9, every L, 5/5 seeds — vs +0.03 to +0.04 against always-resters. The
+  anonymous entrant's edge over always-rest shrinks with L (+0.04 → +0.01): once the incumbents
+  read the tape, a tape-reading entrant is one more of them; the wallet tag is what is left. At
+  ρ_z = 0.99 the increment grows with L from 0.00 to +0.06 — the mark-lag mechanism, again.
+* **The fringe pays.** Fringe profit at break-even: +0.00 to +0.03 with an always-resting
+  entrant, −0.02 to −0.04 with a selecting one, −0.10 at ρ_z = 0.99. Against no-regret
+  incumbents at ρ_z = 0.99 even the always-resting *entrant* is under water (−0.04 at L = 1).
+  Identity-blind resting liquidity is the counterparty of the selection rent — the structure in
+  the per-maker Hyperliquid data (non-MM −0.3 to −2.0 bp; top-10 MM ≥ 0).
+* Paper §5.7 rewritten around this; `fig_queue_incumbents` (break-even, both incumbent types);
+  RQ3 restated. Open: priority fee; identity-aware incumbents (an "id" expert in the hedge set
+  is a one-line change and is the identity-aware-control defence of RQ3).

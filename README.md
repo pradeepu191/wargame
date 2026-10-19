@@ -131,7 +131,9 @@ tests/          pytest (38)
       alignment, coverage guard, touch-vs-walked decomposition), identity split on real data
 - [ ] 10-seed cluster runs of the identity grids at the break-even rule (`slurm/identity.sh`)
 - [ ] October archive (the Oct 10 cascade); multi-day book run; top-maker realized spread
-- [ ] Queue-position model for one-tick books (RQ3); priority fee as the price of position
+- [x] Queue-position model for one-tick books (RQ3): always-resting and no-regret incumbents,
+      fringe; identity worth +0.05–0.06/period against incumbents that select
+- [ ] Priority fee as the price of position; identity-aware incumbents
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow
 - [ ] Defences and the profit–resilience frontier (RQ4); preprint by mid-December
