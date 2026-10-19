@@ -78,3 +78,9 @@ sbatch slurm/exploitability.sh      # trains robust_exp2 seeds 0-9 if missing (~
                                     # exploitability_summary_10seed.csv, fig_exploitability_10seed.*
 git add results/exploitability_10seed.csv results/exploitability_summary_10seed.csv results/fig_exploitability_10seed.* && git commit -m "Exploitability, 10 seeds" && git push
 ```
+
+## Queue game with learned incumbents (RQ3, tick lever)
+```bash
+sbatch slurm/queue.sh               # ~30 min on 48 cores -> results/queue_q_fringe2.csv, queue_always_fringe2.csv
+git add results/queue_q_fringe2.csv results/queue_always_fringe2.csv && git commit -m "Queue game, learned incumbents + fringe" && git push
+```
