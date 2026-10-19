@@ -970,3 +970,59 @@ significant; minima −0.14 to **−0.53**; 5–7 seeds positive.
   differences are informative. `analysis/marklag_fig.py` plots the paired differences.
 * `κ` for the concentration is now `κ_α` in all documents (it collided with the fraction of rent
   destroyed `κ_A`); the CSV column is still `kappa`.
+
+---
+
+# Who earns the spread: per-maker realized spread on marked fills (`live_2026_10/makers_<COIN>.csv`, `fig_makers_live_2026_10.*`)
+
+RQ3's empirical anchor. Same six hours of top-of-book data; every marked fill carries the
+maker's wallet. `analysis/makers.py`: 10-s true-mid markout per maker with a 5-minute-cluster SE;
+the top-10 MM wallets by **full-window** volume as a fixed set (chosen on activity over 125 h,
+not on the six hours being scored); "at the touch" splits by where the print landed.
+
+| | BTC | ETH | HYPE | SOL |
+|---|---|---|---|---|
+| all marked fills (bp) | −0.52 ± .06 | −0.92 ± .38 | −0.25 ± .09 | −0.02 ± .23 |
+| top-10 MM wallets: markout; fill share; touch share | −0.14 ± .06; 9%; 0.79 | +0.09 ± .10; 23%; 0.88 | +0.04 ± .08; 19%; 0.70 | +0.58 ± .10; 21%; 0.94 |
+| other MM wallets | −0.44 ± .05; 68%; 0.73 | −0.74 ± .20; 46%; 0.79 | −0.11 ± .10; 57%; 0.43 | −0.13 ± .31; 50%; 0.77 |
+| not classified as MM | −0.90 ± .11; 23%; 0.68 | −1.97 ± .91; 30%; 0.73 | −0.81 ± .15; 24%; 0.66 | −0.26 ± .24; 29%; 0.77 |
+| **fills at the touch only: top-10 / everyone else** | −0.04 ± .05 / −0.45 ± .04 | +0.24 ± .08 / −0.84 ± .26 | +0.01 ± .07 / −0.60 ± .08 | +0.60 ± .09 / −0.54 ± .08 |
+| makers with ≥ 100 fills; share with mean > 0; significantly > 0 | 77; 21%; 5 | 52; 23%; 3 | 77; 38%; 5 | 40; 55%; 8 |
+| fill share of the significantly-positive makers | 7% | 16% | 8% | 22% |
+| split-half rank corr of per-maker markout (n makers) | 0.86 (61) | 0.64 (36) | 0.57 (63) | 0.76 (32) |
+
+All split-half p < 1e-3.
+
+## Findings
+* **The hierarchy the simulator predicts is in the data.** Makers the classifier does not call
+  MMs (retail limit orders) lose most (−0.26 to −1.97 bp per fill at 10 s); the other MMs lose
+  less (−0.11 to −0.74); the top-10 MMs break even or earn (−0.14 to +0.58). The toxic flow lands
+  on the slow and the identity-blind. This is the "selection cartel" structure: not a spread held
+  above competitive, but a fill distribution in which the toxic fills go to those who do not
+  select.
+* **Same action, different outcome — so it is selection.** Restricting to fills *at the touch*
+  (the same price, the same tick) the top-10 earn 0.4–1.1 bp per fill more than everyone else:
+  −0.04 / +0.24 / +0.01 / +0.60 against −0.45 / −0.84 / −0.60 / −0.54. The figure makes it
+  visible: at touch share ≈ 1 the per-maker markouts run from −1.8 to +0.9 bp, with the top-10 at
+  the top of the column. Makers resting at the same price get different fills; the difference is
+  *when* they are at the front — queue position and cancellation, i.e. selection.
+* **Part of the edge is not being swept.** Top-10 touch share 0.70–0.94 vs 0.43–0.79 for other
+  MMs: the top makers show less behind the inside. Two styles are visible on BTC/ETH/HYPE: the
+  touch-only makers (touch share ≈ 1, effective ≈ one tick) and the depth makers (touch share
+  0.05–0.5, effective 1.5–5 bp); on HYPE the depth makers earn (+0.03 to +0.81, the "walked fills
+  earn on thin books" result from the maker's side), on ETH they lose (−0.44 to −1.07).
+* **Skill is persistent, not luck.** Split-half (first 3 h vs last 3 h) Spearman of per-maker
+  markout: 0.57–0.86, all p < 1e-3. The same makers are at the top in both halves. Caveat: six
+  hours; part of this persistence is persistent *position* (the same wallets at the front
+  throughout), which is the mechanism rather than a confound, but a multi-day window is needed
+  to separate skill from a single calm spell.
+* **Few makers select, and they take a fifth of the fills.** 3–8 makers per coin have a
+  significantly positive 10-s markout; they take 7–22% of all fills. The rest of the book — most
+  wallets, most fills — loses to the mid within ten seconds.
+* **BTC is the hard book.** Even the top-10 are slightly under water at the touch (−0.04 ± .05)
+  and hold only 9% of fills; the deepest book with the finest tick (0.12 bp) leaves the least
+  room. SOL (0.9-bp tick) is the easy one: +0.60 at the touch for the top-10.
+* For the paper: "makers who select earn a positive realized spread while the fill at the touch
+  loses" holds on ETH, HYPE and SOL and nearly on BTC; identity-blind resting liquidity is the
+  counterparty of the selection rent. The statistic to carry forward is the top-vs-rest gap at
+  the touch (+0.4 to +1.1 bp) with its persistence.
