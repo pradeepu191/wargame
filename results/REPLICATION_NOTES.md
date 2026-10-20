@@ -1446,3 +1446,86 @@ No cartel earns below the competitive benchmark on any market on its own (0 of 1
   toxicity; the vulnerable case is a cartel caught by a toxicity regime it was not trained for —
   which is the regime-shift of §takers at the scale of the whole training distribution, and one
   more reason the regime filter (identity-aware control) is the lever that matters.
+
+---
+
+# Who is at the touch when the flow turns toxic, and what the earning makers condition on (`stress_*.csv`, `stress_scale.csv`, `stress_fill.csv`; two nights, Oct 8 and Oct 16; Mac)
+
+`analysis/stress.py`.  Top-10 MM wallets fixed by full-window volume as in the maker table.
+Fills at the pre-trade touch, marked against the true mid.
+
+## 1. No withdrawal after stress, at any timescale
+
+The anonymity lever (§anonymity) predicts that incumbents who read the regime step out of the
+inside after toxic flow and the fringe absorbs it.  Tested as: top-10 share of touch fills in a
+block vs the mid's absolute 10 s move per fill in the PREVIOUS block (30 s, 60 s, 300 s blocks;
+lag only across contiguous blocks), and at fill level vs the mid's move over the 10 s / 60 s
+before each fill.
+
+| | BTC | ETH | SOL | HYPE |
+|---|---|---|---|---|
+| Spearman, top share vs lagged vol, 30 s / 60 s / 300 s blocks | +.13 / +.13 / +.12 | −.02 / −.01 / −.03 | +.03 / −.00 / −.07 | +.01 / −.02 / +.03 |
+| fill-level, vs move over previous 10 s / 60 s | +.04 / +.04 (p<.001) | −.01 / −.05 | −.00 / −.01 | +.03 / −.00 |
+| top share, calm / mid / stress tercile of previous 10 s move | .097 / .095 / .123 | .248 / .272 / .247 | .282 / .290 / .275 | .212 / .246 / .240 |
+
+Flat on ETH/SOL/HYPE; on BTC the top makers' share RISES after a move.  The earning makers do
+not leave the touch when the tape turns.
+
+## 2. But their selection is real, contemporaneous, and not the tape's
+
+* Within the same block the top share falls as that block's realized toxicity (adverse selection
+  of everyone else's fills, excluding the top makers' own) rises: ETH −.09 / −.13 / −.28 at
+  30 / 60 / 300 s (p<.001), SOL −.12 / −.15 / −.20, HYPE −.05 / −.06 / −.01, BTC ≈ 0.  They are
+  absent from the fills that turn out toxic without having left the touch.
+* Their markout edge over the rest holds or widens in stress (previous-10 s move terciles, top
+  minus rest, calm → stress): ETH 0.94 → 0.99 bp, SOL 0.95 → 1.31, HYPE 0.55 → 0.73; BTC narrows
+  0.56 → 0.26 (BTC is where they lean in).
+* Nothing in the public tape's recent move predicts when.  So the `anon` policy of the queue game
+  (read the stale tape, step out) is not what the earning makers do.
+
+## 3. Identity selection: typed on night 1, measured on night 2
+
+Every taker with ≥ 30 touch fills on the first night is typed by the mean markout it inflicted
+(rank terciles: benign / middle / toxic); every touch fill of the second night is tagged with its
+taker's type, or "unseen".  The typing holds up: on night 2 the toxic takers cost the maker
+1.0 / 1.7 / 2.3 / 1.2 bp more than the benign ones (BTC/ETH/SOL/HYPE).  Toxic typed takers are
+20–27% of all touch fills; benign typed takers 1–4%; unseen 67–77%.
+
+Top-10 share of touch fills from:
+
+| | benign | unseen | toxic | benign / toxic | Spearman(top, past toxicity), p |
+|---|---|---|---|---|---|
+| BTC | .121 | .133 | .027 | 4.5× | −.21, <.001 |
+| ETH | .383 | .308 | .059 | 6.5× | −.33, <.001 |
+| SOL | .422 | .388 | .121 | 3.5× | −.17, <.001 |
+| HYPE | .301 | .253 | .118 | 2.6× | −.26, <.001 |
+
+Within calm tape (previous-10 s move, bottom tercile) benign / toxic: .158/.027, .350/.049,
+.471/.116, .263/.115; within stressed tape: .115/.036, .400/.072, .387/.132, .302/.112.  The gap
+is the same inside calm and inside stressed tape — it is the wallet, not the moment.
+
+**Speed or identity.**  A stale quote hit by a fast taker moves the mid within a second.  Among
+fills after which the mid did NOT move within 1 s (37–61% of fills), the top makers' share of
+toxic takers' fills is still below their share of benign takers' fills: BTC .087 vs .141 (1.6×),
+ETH .151 vs .424 (2.8×), SOL .180 vs .478 (2.7×), HYPE .238 vs .300 (1.3×).  On pick-offs the
+gap is larger (BTC .006 vs .067, ETH .038 vs .259, SOL .106 vs .273, HYPE .094 vs .302): never
+being stale is most of the avoidance, and avoiding the wallet is the rest.  Those quiet toxic
+fills still lose 0.3–0.8 bp at 10 s, so the wallet's information plays out over seconds and the
+wallet tag is worth having before the tape shows it — the mark-lag mechanism of §identity.
+
+Even when they do fill a toxic taker the top makers lose less than the rest (BTC −0.44 vs −1.35,
+ETH −0.28 vs −1.58, SOL −1.36 vs −1.83, HYPE −0.03 vs −1.35).
+
+## For the paper
+* RQ1's empirical anchor: the makers who earn the spread take 3–12% of last night's toxic
+  wallets' fills against 12–42% of the benign wallets' and 13–39% of unseen wallets', on every
+  coin, at every level of the tape, and on fills that were not pick-offs.  Identity-conditioned
+  fill selection is operating on the real book.
+* The anonymity lever's "withdraw in stress" is NOT the mechanism: the earning makers do not
+  leave the touch after a move; they are absent from the wallet.  §anonymity's result stands as
+  a statement about incumbents whose only regime signal is the tape (and about what anonymity
+  would do to a book of such makers); the data say the top makers have a better one.
+* Figures: `fig_identity_selection.png`, `fig_stress_withdrawal.png`.
+* Caveats: two nights; types from ≥ 30 fills so the typed set is the high-volume takers;
+  "quiet" = mid exactly unmoved at 1 s on the bbo feed.  A cross-venue price lead (Binance) is
+  not excluded as the top makers' signal on pick-offs; it cannot produce the quiet-fill gap.

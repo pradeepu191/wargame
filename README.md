@@ -129,6 +129,11 @@ tests/          pytest (38)
 - [x] Data: Zenodo archive converter, live recorder (trades, L2, bbo), calibration pipeline,
       archive-vs-feed agreement, true-mid markouts at top-of-book resolution (pre-trade
       alignment, coverage guard, touch-vs-walked decomposition), identity split on real data
+- [x] Who earns the spread (per-maker realized spread, persistent across nights) and how: the
+      top makers never withdraw from the touch after a stressful spell at any timescale, but take
+      2.6–6.5× fewer of last night's toxic wallets' fills than of everyone else's, inside calm and
+      stressed tape and on fills that were not pick-offs (`analysis/stress.py`) — identity
+      selection on the real book, RQ1's empirical anchor
 - [ ] 10-seed cluster runs of the identity grids at the break-even rule (`slurm/identity.sh`)
 - [ ] October archive (the Oct 10 cascade); multi-day book run; top-maker realized spread
 - [x] Queue-position model for one-tick books (RQ3): always-resting and no-regret incumbents,

@@ -124,7 +124,10 @@ needs reorganising, not rewriting.
    across 120 populations and three attackers; re-learning incumbents.
 6. **Information — RQ1** (1½ pp): nested information sets; the identity grids; why persistence
    fails and regime + lag succeeds; the empirical counterpart (identity given the anonymous
-   signal, by coin).
+   signal, by coin) and the empirical anchor: the makers who earn the spread take 2.6–6.5× fewer
+   of last night's toxic wallets' fills, at every level of the tape and on non-pick-off fills,
+   while never withdrawing from the touch after a move (fig_identity_selection). This is the
+   figure that closes RQ1 on data; it goes in the RQ1 section, not RQ3.
 7. **Defences — RQ3** (1½–2½ pp): the tick lever (one-tick books on data; the queue game, learned
    defenders, identity entrant); the priority fee; quoter defences; the frontier figure. Required
    for the project; its length in the paper follows its results. Write it last.
