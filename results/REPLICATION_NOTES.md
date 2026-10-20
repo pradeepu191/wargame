@@ -1181,3 +1181,51 @@ not already first in time priority, pay iff P(fill) · v(α_next) > f. Incumbent
 * For the frontier: the fee is a venue lever that raises venue revenue and the informed entrant's
   profit while lowering identity-blind makers' profit and leaving taker welfare unchanged — i.e. it
   is not a defence of the incumbents; it is a tax on selection whose burden the selectors pass on.
+
+## Full grid (`queue_hedge_always_never_anon{,_id}_fringe{0,2}.csv`; SuperCloud job 5971218; 5 seeds, 4k training episodes, 300 evaluation episodes; `fig_liquidity_identity.*`)
+
+Supersedes the preliminary table above. Break-even, no fringe, identity entrant present — the
+venue-design numbers (95% seed intervals in the figure):
+
+| incumbents see | ρ_z | L = 1 / 5 / 20 / 60: nobody resting in toxic state | uninformed taker filled in toxic state | incumbent pnl |
+|---|---|---|---|---|
+| tape only | 0.9 | .54 / .09 / .06 / .12 | .36 / **.73** / **.75** / **.71** | .08 / .00 / .00 / .01 |
+| wallet ids | 0.9 | .54 / .62 / .72 / .69 | .37 / .30 / **.23** / **.25** | .10 / .12 / .14 / .14 |
+| tape only | 0.99 | .86 / .83 / .75 / .64 | .11 / .14 / .20 / .30 | .14 / .13 / .10 / .06 |
+| wallet ids | 0.99 | .87 / .85 / .84 / .86 | .11 / .12 / .13 / .11 | .16 / .14 / .14 / .17 |
+
+Always-resting (identity-blind) maker among those incumbents, no fringe: tape-only incumbents at
+ρ_z = 0.9: −.07 / +.02 / +.03 / +.03; identity incumbents: **−.13 / −.16 / −.18 / −.18**; at ρ_z = 0.99:
+−.24 → −.09 (tape) vs **−.27 to −.29** (ids). With the fringe present (fringe 2): the fringe earns
+−.03 → +.02 (ρ_z = 0.9) and −.10 → −.05 (0.99) under tape-only incumbents, **−.06** and **−.12** under
+identity incumbents, at every lag. Expert weights: identity incumbents choose the identity expert
+0.70–1.0; tape-only incumbents at ρ_z = 0.9 move to always-rest as the tape goes stale (0.43–0.57
+at L = 5–20 without a fringe, 0.77 at L = 60 with one).
+
+### Findings
+* **Under anonymity, the mark lag is what keeps liquidity in the toxic state.** With the tape
+  only and a lag of five or more arrivals, the incumbents cannot tell a toxic spell from a calm
+  one in time; they stay (many learn to always rest), an uninformed taker is filled 71–75% of the
+  time in the toxic state, and the incumbents earn nothing — they are the counterparty. At L = 1
+  they withdraw as sharply as identity-aware makers (0.36 vs 0.37).
+* **Identity removes the lag, and the liquidity with it.** With wallet ids the incumbents withdraw
+  in 62–72% of toxic-state periods at any lag; the uninformed taker's fill probability in the
+  toxic state is 0.23–0.30 against 0.71–0.75 under anonymity (ρ_z = 0.9, L ≥ 5), and the
+  incumbents earn 0.12–0.14 instead of ≈ 0. At ρ_z = 0.99 regimes last long enough for even a
+  stale tape to catch them, and the two converge (0.11–0.13 either way at L ≤ 5; anonymity
+  recovers to 0.30 only at L = 60). The venue's choice is therefore sharpest exactly where the
+  entrant's identity edge is: short regimes relative to the lag.
+* **Whoever is identity-blind on an identity book is the sole counterparty.** An always-resting
+  maker earns −0.13 to −0.29 per period among identity-aware incumbents, against +0.02 to +0.03
+  among anonymous incumbents with a stale tape. With a fringe present, the fringe's loss doubles
+  (−0.06 vs −0.03; −0.12 vs −0.10) once the incumbents can see identities.
+* **The entrant's own identity edge survives identity-aware incumbents** and is larger, not
+  smaller: id − anon = +0.04 to +0.07 per period (fringe 2, break-even, 5/5 seeds, min +0.04),
+  growing with L; against anonymous incumbents +0.05 (ρ_z = 0.9) and 0.00 → +0.06 (0.99). The
+  anonymous entrant is the worst-informed selector on the book.
+* One tick above break-even the same pattern holds with more liquidity overall (tape-only,
+  ρ_z = 0.9, L ≥ 20: 0.74 filled; ids: 0.38–0.48).
+* **For the frontier.** Anonymity is a transfer from makers to uninformed takers in stress:
+  takers keep access (0.7 vs 0.25) and the makers who provide it earn nothing. Public identity is
+  the reverse. Neither is a defence of the incumbents' rent; the lever decides who holds the toxic
+  flow when nobody wants it. This is the venue-side statement of the mark-lag mechanism.
