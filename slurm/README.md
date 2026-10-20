@@ -108,3 +108,9 @@ git add results/defences.csv && git commit -m "Quoter defences" && git pull --no
 sbatch slurm/alpha_shift.sh         # ~20 min on 48 cores -> results/exploitability_alpha_shift.csv
 git add results/exploitability_alpha_shift.csv && git commit -m "Alpha shift" && git pull --no-rebase && git push
 ```
+
+## The exact best response and the double oracle (RQ2)
+```bash
+sbatch slurm/best_response.sh       # ~40 min on 48 cores -> results/best_response.csv, best_response_relearn.csv
+git add results/best_response*.csv && git commit -m "Exact best response" && git pull --no-rebase && git push
+```
