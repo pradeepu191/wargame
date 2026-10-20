@@ -14,7 +14,11 @@ alone and against each adversary.  Defences:
                     (anon) or on wallet identities (id)
 
 Adversaries: competitive (quotes h^C), undercut (one tick inside), markout (own-fill inference),
-anon / id / oracle (the wallet entrant's regime filter with each information set).
+anon / id / oracle (the wallet entrant's regime filter with each information set), and `learned`:
+a tabular Q-learner (the incumbents' own algorithm, state = own and best rival quote) trained
+against the defended, frozen incumbents for --n-train episodes and then frozen -- the learned best
+response, which is the adversary that can exploit a reaction function and the one randomisation
+and hysteresis are meant to blunt.
 
 Per (population, defence, adversary): the defenders' profit alone (Pi_nominal), under attack
 (E and the 5% CVaR over episodes of the defenders' per-episode profit), L_BR and kappa_A, the
@@ -38,11 +42,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sim import BenchmarkTable, GlostenMilgromEnv, MarketConfig
-from sim.agents import Agent
+from sim.agents import Agent, QConfig, QLearningAgent
 from sim.entrants import CompetitiveEntrant, MarkoutEntrant, UndercutEntrant, WalletEntrant, hC_function
 from experiments.entry import FrozenQ
 
-ADVERSARIES = ("competitive", "undercut", "markout", "anon", "id", "oracle")
+ADVERSARIES = ("competitive", "undercut", "markout", "anon", "id", "oracle", "learned")
 DEFENCES = ("none", "random:0.1", "random:0.3", "hold:2", "hold:5", "floor:anon", "floor:id")
 HET = dict(n_wallets=50, wallet_concentration=1.0, wallet_persistence=0.0, regime_persistence=0.9, mark_lag=5)
 
@@ -87,6 +91,27 @@ class Defended(Agent):
         return a
 
 
+def train_learned(env_factory, inc_factory, K, N, n_train, seed):
+    """A Q-learning entrant trained against the (defended, frozen) incumbents; returns it frozen."""
+    qc = QConfig(learning_rate=0.15, discount=0.95, exploration_decay=4e-6, inventory_buckets=1, init_q=0.0)
+    ent = QLearningAgent(K, N + 1, qc, seed=seed)
+    env = env_factory()
+    inc = inc_factory(env)
+    for _ in range(n_train):
+        obs = env.reset()
+        for ag in inc:
+            ag.reset()
+        ent.reset()
+        done = False
+        while not done:
+            actions = [ag.act(obs, i) for i, ag in enumerate(inc)] + [ent.act(obs, N)]
+            obs_n, r, done, _ = env.step(actions)
+            ent.update(obs, actions[N], float(r[N]), obs_n, done)
+            obs = obs_n
+    ent.set_eval(True)
+    return ent
+
+
 def make_adversary(name, hC, hC_fn, alpha, cfg, env):
     if name == "competitive":
         return CompetitiveEntrant(hC)
@@ -128,7 +153,7 @@ def play(env, agents, n_episodes, N, E=None):
 
 
 def one_population(args):
-    d, n_episodes, defences, adversaries = args
+    d, n_episodes, defences, adversaries, n_train = args
     d = Path(d)
     cfg = yaml.safe_load((d / "config.yaml").read_text())
     mk = cfg["market"]
@@ -154,8 +179,13 @@ def one_population(args):
                 "nominal_requotes": float(np.mean([a.changes for a in inc0]) / r0["periods"])}
         for aname in adversaries:
             env = GlostenMilgromEnv(m_entry)
-            inc = [Defended(FrozenQ(Q[i], K, N + 1), dname, K, hC_fn, m_entry, env, seed * 10 + i) for i in range(N)]
-            adv = make_adversary(aname, hC, hC_fn, alpha, m_entry, env)
+            inc_factory = lambda e, dn=dname: [Defended(FrozenQ(Q[i], K, N + 1), dn, K, hC_fn, m_entry, e, seed * 10 + i) for i in range(N)]
+            inc = inc_factory(env)
+            if aname == "learned":
+                adv = train_learned(lambda: GlostenMilgromEnv(MarketConfig(**{**m_entry.__dict__, "seed": 20_000 + seed})),
+                                    inc_factory, K, N, n_train, seed=30_000 + seed)
+            else:
+                adv = make_adversary(aname, hC, hC_fn, alpha, m_entry, env)
             r = play(env, inc + [adv], n_episodes, N, E=N)
             J = float(r["pnl"][:N].sum())
             rows.append({**base, "adversary": aname, "J_attack": J, "J_attack_norm": J / (PiM - PiC),
@@ -180,6 +210,7 @@ def main():
     ap.add_argument("--defences", default=",".join(DEFENCES))
     ap.add_argument("--adversaries", default=",".join(ADVERSARIES))
     ap.add_argument("--n-episodes", type=int, default=300)
+    ap.add_argument("--n-train", type=int, default=12000, help="training episodes for the learned adversary")
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--out", default="results/defences.csv")
     args = ap.parse_args()
@@ -194,7 +225,7 @@ def main():
         raise SystemExit("no trained populations found")
     defences = tuple(args.defences.split(",")); adversaries = tuple(args.adversaries.split(","))
     print(f"{len(dirs)} populations x {len(defences)} defences x {len(adversaries)} adversaries, {args.n_episodes} episodes", flush=True)
-    jobs = [(str(d), args.n_episodes, defences, adversaries) for d in dirs]
+    jobs = [(str(d), args.n_episodes, defences, adversaries, args.n_train) for d in dirs]
     rows = []
     with ProcessPoolExecutor(args.jobs) as ex:
         for k, out in enumerate(ex.map(one_population, jobs)):

@@ -1306,3 +1306,43 @@ All p < 1e-3. Marked fills 112k / 55k / 106k / 29k.
   (−0.26 to −0.46 bp). This is the version to quote.
 * The identity split at 327 h: −0.59 to −1.01 bp given the anonymous signal — stable since 125 h.
 * `mk_session_*` in `calibrate.py` cuts at the largest gap > 1 h between marked fills.
+
+---
+
+# Quoter-side defences (preliminary: 6 cfl_exp2 cartels at ᾱ ∈ {0.3, 0.5}, 150 episodes, hand-crafted adversaries; `slurm/defences.sh` is the full grid with the learned adversary)
+
+`experiments/defences.py`. Frozen cartels wrapped in a defence, evaluated on the heterogeneous
+market (κ_α = 1, ρ_z = 0.9, L = 5) alone and against competitive / undercut / markout / anon / id /
+oracle entrants. Rent units; "worst" = minimum over the profit-maximising adversaries.
+
+| defence | Π_nominal | worst J under attack | worst 5% CVaR | ΔJ vs none: anon / id / oracle / markout / undercut |
+|---|---|---|---|---|
+| none | 0.98 | 0.13 | −0.59 | — |
+| random (ε = 0.1 / 0.3, ±2 ticks) | 0.96 / 0.97 | 0.13 / 0.14 | −0.59 / −0.72 | ≈0 / +.02 / ≈0 / **−.06 to −.09** / **−.09 to −.10** |
+| hold (requote every 2 / 5 periods) | 1.00 / 1.00 | **0.03 / −0.04** | −0.60 / −0.73 | −.12 / −.09 / −.10 / **−.33** / **−.33** (m = 2); worse at m = 5 |
+| floor on the tape's forecast (anon) | 0.99 | 0.16 | −0.51 | +.06 / +.04 / +.05 / ≈0 / −.01 |
+| floor on the identity forecast (id) | **1.02** | **0.18** | **−0.51** | +.06 / **+.07** / +.06 / +.01 / −.01 |
+
+Quoted spread and fill rate are unchanged by every defence (no withdrawal).
+
+* **Speed is necessary.** A cartel that requotes every other period loses essentially all its rent
+  to any entrant (κ_A ≈ 1.05–1.15): the only response to an undercut is to undercut back, and a
+  slow responder sits with the residual flow. The opposite of the Brown–MacKay coercion logic,
+  because the entrant here takes flow rather than disciplining a rival.
+* **Noise is a cost without a benefit** against these adversaries: randomising the quote lowers
+  nominal profit and loses 0.06–0.10 rent units to the undercutter and the markout entrant (a
+  randomly wide quote hands them the flow; a randomly tight one undercuts the cartel partner).
+  Whether it blunts an adversary that *learns* the reaction function is the point of the learned
+  adversary in the full grid.
+* **Identity-aware control is the one lever that improves both axes**, modestly: nominal profit
+  0.98 → 1.02 (the floor avoids toxic fills when alone) and the worst-case profit under attack
+  0.13 → 0.18, i.e. +0.05 rent units, with the worst-case CVaR −0.59 → −0.51. Most of it is the
+  floor itself (the tape's forecast gives 0.16); identity adds 0.02–0.03. It does nothing against
+  the undercutter: a floor cannot stop someone quoting inside you.
+* **The makers' levers barely move the frontier.** The best of them leaves the entrant with
+  ~80% of the rent it took before. The defenders' problem is not that the adversary reads their
+  reaction function; it is that the adversary undercuts, and the only answer to an undercut
+  destroys the rent. The rent is not defensible by the makers; the venue's levers (tick,
+  anonymity, fee) decide its incidence. (Hand-crafted adversaries; the learned one is pending.)
+* Learned adversary, one cartel, 600 training episodes (smoke test): J = 0.20 vs 0.48 under the
+  undercutter — a Q-learning entrant already hurts the cartel more than the best hand-crafted rule.
