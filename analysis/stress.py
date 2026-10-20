@@ -153,6 +153,68 @@ def fill_level_stress(tm: pd.DataFrame, book: pd.DataFrame, top: list[str], hori
     return out
 
 
+def identity_selection(tm: pd.DataFrame, book: pd.DataFrame | None, top: list[str], horizon_s: int = 10,
+                       n_min_taker: int = 30, window_s: int = 10, block_ms: int = BLOCK_MS) -> dict:
+    """Do the top makers avoid the takers who were toxic LAST night?  Takers are typed on the
+    first session (cut at the largest gap > 1 h, else the median fill) by the mean markout they
+    inflicted on whoever filled them; every touch fill of the later session is then tagged with
+    its taker's type tercile (benign / middle / toxic) or 'new' (unseen, or < n_min_taker fills).
+    Reported: the top makers' share of fills from each type, the top and rest markouts by type,
+    the Spearman correlation of 'filled by a top maker' with the taker's past toxicity, and --
+    when the book is given -- the same share split by the mid's move over the previous window_s
+    seconds, so that identity selection can be told from tape-reading.  If identity is what the
+    top makers condition on, their share of the toxic takers' fills is lower than their share of
+    the benign takers' fills at every level of the recent move."""
+    mk = f"markout_{horizon_s}_bps"
+    t = tm.dropna(subset=[mk])
+    t = t[t.at_touch.astype(bool)].copy()
+    if t.empty:
+        return {}
+    t["is_top"] = t.maker.isin(set(top)).astype(float)
+    t["block"] = (t.time_ms.to_numpy() // block_ms).astype(np.int64)
+    gaps = np.diff(t.time_ms.to_numpy())
+    cut = t.time_ms.iloc[int(gaps.argmax()) + 1] if len(gaps) and gaps.max() > 3_600_000 else t.time_ms.iloc[len(t) // 2]
+    a, b = t[t.time_ms < cut], t[t.time_ms >= cut].copy()
+    typed = a.groupby("taker")[mk].agg(["mean", "size"])
+    typed = typed[typed["size"] >= n_min_taker]
+    out = {"id_n_typed_takers": int(len(typed)), "id_n_fills_later": int(len(b)), "id_cut_is_session": bool(len(gaps) and gaps.max() > 3_600_000)}
+    if len(typed) < 9:
+        return out
+    tox = -typed["mean"]  # positive = toxic to the maker
+    terc = pd.Series(_terciles(tox.to_numpy()), index=tox.index)
+    b["taker_tox"] = b.taker.map(tox)
+    b["type"] = b.taker.map(terc).map({0: "benign", 1: "middle", 2: "toxic"}).fillna("new")
+    from analysis.makers import cluster_se
+    for name in ("benign", "middle", "toxic", "new"):
+        g = b[b.type == name]
+        gt, gr = g[g.is_top > 0], g[g.is_top == 0]
+        out[f"id_{name}_fill_share"] = float(len(g) / len(b))
+        out[f"id_{name}_top_share"] = float(g.is_top.mean()) if len(g) else np.nan
+        out[f"id_{name}_top_markout_bps"] = float(gt[mk].mean()) if len(gt) else np.nan
+        out[f"id_{name}_top_se_bps"] = cluster_se(gt[mk].to_numpy(), gt.block.to_numpy()) if len(gt) > 1 else np.nan
+        out[f"id_{name}_rest_markout_bps"] = float(gr[mk].mean()) if len(gr) else np.nan
+        out[f"id_{name}_rest_se_bps"] = cluster_se(gr[mk].to_numpy(), gr.block.to_numpy()) if len(gr) > 1 else np.nan
+        out[f"id_{name}_past_tox_bps"] = float(g.taker_tox.mean()) if name != "new" and len(g) else np.nan
+    known = b.dropna(subset=["taker_tox"])
+    r, p, n = _spearman(known.taker_tox.to_numpy(), known.is_top.to_numpy())
+    out["id_top_vs_past_tox"], out["id_top_vs_past_tox_p"], out["id_n_known"] = r, p, n
+    # the realized toxicity of the later session by type: did the typing hold up?
+    out["id_type_holds_bps"] = float(known[known.type == "benign"][mk].mean() - known[known.type == "toxic"][mk].mean())
+    if book is not None and len(book):
+        from analysis.l2 import mid_at
+        past = mid_at(book, known.time_ms.to_numpy() - window_s * 1000, strict=False, max_stale_ms=60_000)
+        move = np.abs(known.mid_0.to_numpy() - past) / known.mid_0.to_numpy() * 1e4
+        ok = np.isfinite(move)
+        k = known[ok].assign(mterc=_terciles(move[ok]))
+        for mi, mname in enumerate(("calm", "stress")):
+            h = k[k.mterc == (0 if mi == 0 else 2)]
+            for name in ("benign", "toxic"):
+                g = h[h.type == name]
+                out[f"id_{mname}_{name}_top_share"] = float(g.is_top.mean()) if len(g) else np.nan
+                out[f"id_{mname}_{name}_n"] = int(len(g))
+    return out
+
+
 def main():
     import argparse
     import sys
@@ -194,6 +256,7 @@ def main():
                   f"{s.get('st_calm_rest_markout_bps', float('nan')):+.2f} / {s.get('st_mid_rest_markout_bps', float('nan')):+.2f} / "
                   f"{s.get('st_stress_rest_markout_bps', float('nan')):+.2f}", flush=True)
         f = fill_level_stress(tm, book, top, horizon_s=10, windows_s=windows)
+        f.update(identity_selection(tm, book, top, horizon_s=10, window_s=windows[0]))
         fill_rows.append({"coin": c, **f})
         for w in windows:
             print(f"{c} fill-level, move over previous {w:>3d}s ({f.get(f'fl{w}_n', 0)} touch fills): corr(top, move) {f.get(f'fl{w}_top_vs_move', float('nan')):+.3f} "
@@ -204,6 +267,16 @@ def main():
                   f"{f.get(f'fl{w}_mid_top_markout_bps', float('nan')):+.2f} / {f.get(f'fl{w}_stress_top_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_stress_top_se_bps', float('nan')):.2f}, "
                   f"rest {f.get(f'fl{w}_calm_rest_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_calm_rest_se_bps', float('nan')):.2f} / "
                   f"{f.get(f'fl{w}_mid_rest_markout_bps', float('nan')):+.2f} / {f.get(f'fl{w}_stress_rest_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_stress_rest_se_bps', float('nan')):.2f}", flush=True)
+        if "id_top_vs_past_tox" in f:
+            print(f"{c} identity selection ({f['id_n_typed_takers']} takers typed on the {'first night' if f['id_cut_is_session'] else 'first half'}, "
+                  f"{f['id_n_fills_later']} later touch fills): corr(top, taker's past toxicity) {f['id_top_vs_past_tox']:+.3f} (p={f['id_top_vs_past_tox_p']:.3f}); "
+                  f"top share of benign/middle/toxic/new takers' fills {f['id_benign_top_share']:.3f} / {f['id_middle_top_share']:.3f} / "
+                  f"{f['id_toxic_top_share']:.3f} / {f['id_new_top_share']:.3f} (fill shares {f['id_benign_fill_share']:.2f} / {f['id_middle_fill_share']:.2f} / "
+                  f"{f['id_toxic_fill_share']:.2f} / {f['id_new_fill_share']:.2f}); top markout benign/toxic {f['id_benign_top_markout_bps']:+.2f}±{f['id_benign_top_se_bps']:.2f} / "
+                  f"{f['id_toxic_top_markout_bps']:+.2f}±{f['id_toxic_top_se_bps']:.2f}, rest {f['id_benign_rest_markout_bps']:+.2f}±{f['id_benign_rest_se_bps']:.2f} / "
+                  f"{f['id_toxic_rest_markout_bps']:+.2f}±{f['id_toxic_rest_se_bps']:.2f}; typing held up by {f['id_type_holds_bps']:+.2f} bps"
+                  + (f"; within calm tape: benign/toxic {f['id_calm_benign_top_share']:.3f} / {f['id_calm_toxic_top_share']:.3f}, within stressed tape: "
+                     f"{f['id_stress_benign_top_share']:.3f} / {f['id_stress_toxic_top_share']:.3f}" if "id_calm_benign_top_share" in f else ""), flush=True)
     pd.DataFrame(scale_rows).to_csv(res / "stress_scale.csv", index=False)
     pd.DataFrame(fill_rows).to_csv(res / "stress_fill.csv", index=False)
     print("wrote", res / "stress_scale.csv", "and", res / "stress_fill.csv")

@@ -90,3 +90,31 @@ def test_fill_level_stress_sees_a_reaction_to_the_last_ten_seconds():
     assert abs(out["fl60_top_vs_move"]) < 0.5 * abs(out["fl10_top_vs_move"])
     # the rest loses in every tercile, the top makers earn in every tercile
     assert out["fl10_stress_rest_markout_bps"] < 0 < out["fl10_stress_top_markout_bps"]
+
+
+def test_identity_selection_finds_makers_who_avoid_last_nights_toxic_takers():
+    """Two nights.  Takers t0..t29 have fixed toxicity (markout they inflict from +0.5 down to
+    -1.5 bps).  Night 1: everyone fills everyone.  Night 2: top makers take 50% of benign takers'
+    fills and 10% of toxic takers' fills, with no relation to the mid's recent move."""
+    from analysis.stress import identity_selection
+    rng = np.random.default_rng(5)
+    t0 = 1_760_000_100_000 // 300_000 * 300_000
+    tox = np.linspace(-0.5, 1.5, 30)  # toxicity to the maker; markout = -tox
+    rows = []
+    for night, start in ((1, t0), (2, t0 + 8 * 3_600_000)):
+        for i in range(6000):
+            tk = int(rng.integers(0, 30))
+            if night == 1:
+                is_top = rng.random() < 0.3
+            else:
+                is_top = rng.random() < (0.5 if tox[tk] < 0.2 else (0.3 if tox[tk] < 0.8 else 0.1))
+            rows.append({"time_ms": start + i * 1000, "maker": f"top{rng.integers(0, 10)}" if is_top else f"rest{rng.integers(0, 40)}",
+                         "taker": f"t{tk}", "px": 100.0, "mid_0": 100.0, "at_touch": True,
+                         "markout_10_bps": -tox[tk] + rng.normal(0, 0.5)})
+    tm = pd.DataFrame(rows)
+    out = identity_selection(tm, None, [f"top{i}" for i in range(10)])
+    assert out["id_cut_is_session"] and out["id_n_typed_takers"] == 30
+    assert out["id_top_vs_past_tox"] < -0.2 and out["id_top_vs_past_tox_p"] < 1e-6
+    assert out["id_toxic_top_share"] < 0.2 < 0.4 < out["id_benign_top_share"]
+    assert out["id_type_holds_bps"] > 1.0
+    assert out["id_new_fill_share"] == 0.0
