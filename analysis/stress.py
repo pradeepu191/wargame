@@ -155,7 +155,9 @@ def fill_level_stress(tm: pd.DataFrame, book: pd.DataFrame, top: list[str], hori
 
 def main():
     import argparse
+    import sys
     from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))    # run from anywhere, no install needed
     from analysis.calibrate import load_trades
     from analysis.l2 import load_l2, true_mid_markouts
     from analysis.wallets import with_roles
