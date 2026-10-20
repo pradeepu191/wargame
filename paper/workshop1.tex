@@ -31,7 +31,7 @@ Independent learning agents that post prices settle on payoffs above the competi
 \item Learning defenders coordinate above the competitive point in every configuration tried (rent index $0.71$--$0.87$, ten seeds), by restraint, not by failing to explore (\S\ref{sec:r1}).
 \item Rent is exploitable in proportion to its size, not more: a profit-maximising adversary destroys a fraction $\approx0.7$ of it whatever the rent, with at most a weak dependence on it, across 180 defender populations (\S\ref{sec:r2}). The hypothesis of the proposal holds only in its trivial form.
 \item Identity pays not because wallets repeat (they almost never do) but because informed flow clusters in time and a wallet's trade reveals the hidden state before the price does; its value grows with the delay before outcomes become public, up to the lifetime of the state (\S\ref{sec:r3}).
-\item On Hyperliquid the quoted spread on the major books is one tick essentially always, so rent cannot live in the price; the average fill at the best price loses within ten seconds; and the ten most active makers break even or earn at the same price where everyone else loses, persistently (\S\ref{sec:r4}).
+\item On Hyperliquid the quoted spread on the major books is one tick essentially always, so rent cannot live in the price; the average fill at the best price loses within ten seconds; and the ten most active makers break even or earn at the same price where everyone else loses, persistently across days (\S\ref{sec:r4}).
 \item In the game where the price cannot move, identity is worth more against defenders that learn to select, not less, and the identity-blind resting liquidity absorbs the informed flow (\S\ref{sec:r5}).
 \end{enumerate}
 Code, results and a running findings log: \url{https://github.com/pradeepu191/wargame}.
@@ -51,7 +51,7 @@ Every market term used below is defined here once, in the language of games and 
 \end{description}
 
 \section{Model}
-One contract, discrete periods, $N$ makers on a tick grid ($\theta=0.5$, $K=24$, $\sigma_L=8$, $\mu=5$), one taker per period, $T=100$ periods per episode. Benchmarks are closed-form: $(h^C,h^M)=(2,13),(4,14),(8,17)$ and $\Pi^M-\Pi^C=1.90,1.38,0.66$ at $\bar\alpha=0.1,0.3,0.5$: less rent is available where flow is more toxic. Takers are drawn from $M=50$ wallets with types $\alpha_j$, under the regime $z_t$ (at $\kappa_\alpha=1$ the two states have toxicity $0.15$ and $0.65$ around $\bar\alpha=0.3$) and the mark lag $L$. Incumbents are tabular Q-learners (state: own and best rival's last quote) trained for $12{,}000$ episodes and then frozen; the entrant observes one of $\Fanon,\Fid,\For$, runs an exact Bayesian filter over the regime, and quotes the break-even for $\alpha_{\mathrm{next}}$, undercutting the incumbents when that leaves at least one tick. Two modes of the same environment: the spread free (above), or pinned at one tick (the queue game, \S\ref{sec:r5}). Every number is a mean over independently trained seeds with a 95\% interval; comparisons between information sets are paired within a seed under common random numbers. Data: 125 hours of signed trades on BTC, ETH, SOL and HYPE from the public feed (October 7--12, 2026), six hours of top-of-book at every change, and the January 2026 archive of \cite{albers} for the archive-vs-feed check.
+One contract, discrete periods, $N$ makers on a tick grid ($\theta=0.5$, $K=24$, $\sigma_L=8$, $\mu=5$), one taker per period, $T=100$ periods per episode. Benchmarks are closed-form: $(h^C,h^M)=(2,13),(4,14),(8,17)$ and $\Pi^M-\Pi^C=1.90,1.38,0.66$ at $\bar\alpha=0.1,0.3,0.5$: less rent is available where flow is more toxic. Takers are drawn from $M=50$ wallets with types $\alpha_j$, under the regime $z_t$ (at $\kappa_\alpha=1$ the two states have toxicity $0.15$ and $0.65$ around $\bar\alpha=0.3$) and the mark lag $L$. Incumbents are tabular Q-learners (state: own and best rival's last quote) trained for $12{,}000$ episodes and then frozen; the entrant observes one of $\Fanon,\Fid,\For$, runs an exact Bayesian filter over the regime, and quotes the break-even for $\alpha_{\mathrm{next}}$, undercutting the incumbents when that leaves at least one tick. Two modes of the same environment: the spread free (above), or pinned at one tick (the queue game, \S\ref{sec:r5}). Every number is a mean over independently trained seeds with a 95\% interval; comparisons between information sets are paired within a seed under common random numbers. Data: 327 hours of signed trades on BTC, ETH, SOL and HYPE from the public feed (October 7--20, 2026), fifteen hours of top-of-book at every change in two sessions eight days apart, and the January 2026 archive of \cite{albers} for the archive-vs-feed check.
 
 \section{Results}
 \subsection{Learners coordinate above the Nash point}\label{sec:r1}
@@ -87,7 +87,7 @@ The proposal's mechanism---wallet toxicity is a persistent trait, so the last wa
 \end{figure}
 
 \subsection{Hyperliquid: the price cannot move, and someone still earns the spread}\label{sec:r4}
-Table~\ref{tab:data}. The quoted spread on BTC, ETH and SOL is one tick essentially all the time (the 90th percentile equals the median), so on those books a rent cannot appear as a wider quote. A fill at the touch pays exactly that tick---the check that the book is aligned to the trade---and then loses $0.3$--$0.6$ bps to the mid within ten seconds on every coin; the taker's cost is in depth, not the quote: one order in ten walks the book and pays twenty ticks, and on the deep books those are the informed ones (walked fills lose $-0.8$ / $-2.3$ bps on BTC/ETH, earn on HYPE/SOL). Every print carries the maker's wallet, so the RQ3 anchor can be read directly (Figure~\ref{fig:makers}): the ten most active market-maker wallets (chosen on activity over the full window, not on the outcome) break even or earn at ten seconds where the other market makers and, most of all, the makers that are not market makers lose; at the \emph{same price}, fills at the touch, they earn $0.4$--$1.1$ bps per fill more than everyone else, and their ranking persists across halves of the window (rank correlation $0.57$--$0.86$, $p<10^{-3}$). Makers playing the same action get different fills; the difference is when they are at the front of the line. Makers who select earn the spread; identity-blind resting liquidity is the counterparty.
+Table~\ref{tab:data}. The quoted spread on BTC, ETH and SOL is one tick essentially all the time (the 90th percentile equals the median), so on those books a rent cannot appear as a wider quote. A fill at the touch pays exactly that tick---the check that the book is aligned to the trade---and then loses $0.3$--$0.6$ bps to the mid within ten seconds on every coin; the taker's cost is in depth, not the quote: one order in ten walks the book and pays twenty ticks, and on the deep books those are the informed ones (walked fills lose $-0.8$ / $-2.3$ bps on BTC/ETH, earn on HYPE/SOL). Every print carries the maker's wallet, so the RQ3 anchor can be read directly (Figure~\ref{fig:makers}): the ten most active market-maker wallets (chosen on activity over the full window, not on the outcome) break even or earn at ten seconds where the other market makers and, most of all, the makers that are not market makers lose; at the \emph{same price}, fills at the touch, they earn $0.4$--$1.1$ bps per fill more than everyone else, and their ranking persists across two recording nights eight days apart (rank correlation $0.43$--$0.75$, $p<10^{-3}$). Makers playing the same action get different fills; the difference is when they are at the front of the line. Makers who select earn the spread; identity-blind resting liquidity is the counterparty.
 
 \begin{table}[h]\footnotesize\centering
 \resizebox{\linewidth}{!}{%
@@ -95,21 +95,21 @@ Table~\ref{tab:data}. The quoted spread on BTC, ETH and SOL is one tick essentia
 \toprule
  & BTC & ETH & HYPE & SOL \\
 \midrule
-quoted spread, median / p90 (bps); one tick & 0.12 / 0.12; 0.12 & 0.39 / 0.39; 0.39 & 0.12 / 0.58; 0.11 & 0.90 / 0.90; 0.86 \\
-effective spread: fills at the touch / walked / per order & 0.12 / 2.35 / 0.27 & 0.42 / 3.20 / 0.60 & 0.17 / 3.57 / 0.40 & 0.92 / 5.20 / 1.09 \\
-10-s markout, all fills; at the touch; walked (bps) & $-0.52$; $-0.41$; $-0.80$ & $-0.92$; $-0.56$; $-2.26$ & $-0.25$; $-0.45$; $-0.01$ & $-0.02$; $-0.27$; $+0.98$ \\
-identity given the anonymous signal, next fill (bps, 125 h) & $-0.66$ & $-1.02$ & $-0.52$ & $-0.63$ \\
-10-s markout: top-10 MM / other MM / non-MM makers & $-0.14$ / $-0.44$ / $-0.90$ & $+0.09$ / $-0.74$ / $-1.97$ & $+0.04$ / $-0.11$ / $-0.81$ & $+0.58$ / $-0.13$ / $-0.26$ \\
-at the touch: top-10 / everyone else & $-0.04$ / $-0.45$ & $+0.24$ / $-0.84$ & $+0.01$ / $-0.60$ & $+0.60$ / $-0.54$ \\
-split-half rank correlation of per-maker markout & 0.86 & 0.64 & 0.57 & 0.76 \\
+quoted spread, median (bps); one tick & 0.12; 0.12 & 0.42; 0.39 & 0.13; 0.11 & 0.96; 0.86 \\
+effective spread: fills at the touch / walked / per order & 0.13 / 2.35 / 0.27 & 0.43 / 3.20 / 0.60 & 0.18 / 3.57 / 0.40 & 0.95 / 5.20 / 1.09 \\
+10-s markout, all fills; at the touch; walked (bps) & $-0.45$; $-0.37$; $-0.64$ & $-0.61$; $-0.46$; $-1.26$ & $-0.20$; $-0.41$; $+0.04$ & $-0.08$; $-0.26$; $+0.70$ \\
+identity given the anonymous signal, next fill (bps, 327 h) & $-0.64$ & $-1.01$ & $-0.59$ & $-0.59$ \\
+10-s markout: top-10 MM / other MM / non-MM makers & $-0.10$ / $-0.36$ / $-0.88$ & $+0.19$ / $-0.53$ / $-1.25$ & $+0.11$ / $-0.12$ / $-0.71$ & $+0.52$ / $-0.17$ / $-0.41$ \\
+at the touch: top-10 / everyone else & $-0.02$ / $-0.41$ & $+0.24$ / $-0.70$ & $+0.09$ / $-0.56$ & $+0.52$ / $-0.56$ \\
+rank correlation of per-maker markout, night vs night ($n$) & 0.75 (108) & 0.50 (65) & 0.43 (68) & 0.56 (45) \\
 \bottomrule
 \end{tabular}}
-\caption{Hyperliquid, October 2026: six hours of top-of-book (41k / 26k / 47k / 15k marked fills) and 125 hours of signed trades. SEs cluster by five-minute block; all top-10 vs rest gaps exceed four SEs.}\label{tab:data}
+\caption{Hyperliquid, October 2026: two top-of-book sessions eight days apart (15 hours; 112k / 55k / 106k / 29k marked fills) and 327 hours of signed trades. The walked-fill and per-order effective spreads are from the first session. SEs cluster by five-minute block; all top-10 vs rest gaps exceed four SEs; all rank correlations $p<10^{-3}$.}\label{tab:data}
 \end{table}
 
 \begin{figure}[h]\centering
 \includegraphics[width=\textwidth]{fig_makers_live_2026_10.pdf}
-\caption{Per-maker 10-s markout (bps, mean $\pm$ 95\% cluster interval) against the share of the maker's fills at the touch; one dot per maker with $\ge100$ marked fills; dashed line: all fills.}\label{fig:makers}
+\caption{Per-maker 10-s markout (bps, mean $\pm$ 95\% cluster interval) against the share of the maker's fills at the touch; one dot per maker with $\ge100$ marked fills over the two sessions; dashed line: all fills.}\label{fig:makers}
 \end{figure}
 
 \subsection{The queue game: identity when the price cannot move (RQ3, tick lever)}\label{sec:r5}

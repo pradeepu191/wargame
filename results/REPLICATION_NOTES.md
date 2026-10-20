@@ -1277,3 +1277,32 @@ A non-paying identity entrant among paying identity-aware incumbents at f ≤ 0.
   below the venue's optimum. Mechanism-design reading: a pay-for-priority queue converts a
   time-priority rationing of the selection rent into a price, and the price is set by the
   uninformed makers' losses.
+
+---
+
+# Two book sessions (`results/live_2026_10/`, Oct 11–12 and Oct 19–20 2026: 15.0 h of top-of-book in two sessions eight days apart, 327 h of trades)
+
+Every number from the six-hour run holds, and the maker persistence is now across nights.
+
+| | BTC | ETH | HYPE | SOL |
+|---|---|---|---|---|
+| quoted spread, median (bps) | 0.12 | 0.42 | 0.13 | 0.96 |
+| effective spread, fills at the touch | 0.13 | 0.43 | 0.18 | 0.95 |
+| 10-s markout: all / at the touch / walked (bps) | −0.45 / −0.37 / −0.64 | −0.61 / −0.46 / −1.26 | −0.20 / −0.41 / +0.04 | −0.08 / −0.26 / +0.70 |
+| identity given the anonymous signal, next fill (bps, 327 h) | −0.64 | −1.01 | −0.59 | −0.59 |
+| makers with ≥ 100 marked fills | 180 | 107 | 135 | 67 |
+| top-10 MM / other MM / non-MM makers, 10 s (bps) | −0.10 / −0.36 / −0.88 | +0.19 / −0.53 / −1.25 | +0.11 / −0.12 / −0.71 | +0.52 / −0.17 / −0.41 |
+| at the touch: top-10 / everyone else | −0.02 / −0.41 | +0.24 / −0.70 | +0.09 / −0.56 | +0.52 / −0.56 |
+| significantly positive makers; their fill share | 8; 8% | 9; 20% | 9; 13% | 15; 30% |
+| rank corr of per-maker markout, median split (n) | 0.76 (128) | 0.58 (66) | 0.42 (77) | 0.59 (45) |
+| **rank corr, night vs night, eight days apart (n)** | **0.75 (108)** | **0.50 (65)** | **0.43 (68)** | **0.56 (45)** |
+
+All p < 1e-3. Marked fills 112k / 55k / 106k / 29k.
+
+* **Persistence is across days, not a calm spell.** Makers with ≥ 50 marked fills on each of two
+  nights eight days apart keep their ranking: Spearman 0.43–0.75. The top-vs-rest gap at the
+  touch is unchanged (0.4–1.1 bp), the number of significantly positive makers roughly doubled
+  with the sample (8–15 per coin, 8–30% of fills), and the touch-fill loss is unchanged
+  (−0.26 to −0.46 bp). This is the version to quote.
+* The identity split at 327 h: −0.59 to −1.01 bp given the anonymous signal — stable since 125 h.
+* `mk_session_*` in `calibrate.py` cuts at the largest gap > 1 h between marked fills.

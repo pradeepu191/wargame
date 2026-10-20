@@ -36,8 +36,8 @@ Hyperliquid data (the open L4 archive and our own live recorder).
   it shows behind the inside.
 * Who earns it: the top-10 market-maker wallets break even or profit at 10 s while everyone
   else loses; at the same price (fills at the touch) they earn 0.4–1.1 bps per fill more, and
-  the ranking persists across halves of the window. Makers who select earn the spread;
-  identity-blind resting liquidity is the counterparty.
+  the ranking persists across two recording nights eight days apart (Spearman 0.43–0.75).
+  Makers who select earn the spread; identity-blind resting liquidity is the counterparty.
 
 Paper: `paper/deliverable1.tex` (as submitted, Oct 6), `paper/deliverable1_revised.tex`
 (revised, no page limit, Oct 12). From-scratch explainer: `paper/companion.tex`.
