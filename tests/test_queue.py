@@ -75,12 +75,12 @@ def test_queue_game_cell_with_fringe_runs_and_reports_both_populations():
     agents = train_q(cfg, env.h, n_episodes=5, seed=0, n_learn=2)
     assert [type(a).__name__ for a in agents] == ["QueueQAgent", "QueueQAgent", "AlwaysRest"]
     assert all(a.eval for a in agents[:2])
-    rows = one_cell((0.3, 0.9, 1, 1, 2, 0, "q", 2, 5, 1, 0.95))
+    rows = one_cell((0.3, 0.9, 1, 1, 2, 0, "q", 2, 5, 1, 0.95, ("always", "never", "anon")))
     assert [r["policy"] for r in rows] == ["always", "anon", "id", "oracle"]
     r = rows[0]
     assert r["fringe"] == 1 and r["n_inc"] == 2 and np.isfinite(r["fringe_pnl"]) and 0 <= r["incumbent_rest_share"] <= 1
     assert abs(r["entrant_fill_share"] + r["incumbent_fill_share"] - 1) <= 1 + 1e-9   # plus the fringe's share
-    rows0 = one_cell((0.3, 0.9, 1, 1, 2, 0, "always", 2, 5, 0, 0.95))
+    rows0 = one_cell((0.3, 0.9, 1, 1, 2, 0, "always", 2, 5, 0, 0.95, ("always", "never", "anon")))
     assert np.isnan(rows0[0]["fringe_pnl"]) and np.isnan(rows0[0]["discount"])
 
 

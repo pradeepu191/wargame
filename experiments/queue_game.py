@@ -68,10 +68,14 @@ def train_q(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: int 
     return agents
 
 
-def play_all(env, agents, n_episodes):
-    """Like play() but returns per-agent rest shares."""
+def play_all(env, agents, n_episodes, stats: dict | None = None):
+    """Per-agent profit per period, fills, informed fills, rest shares.  If `stats` is given it is
+    filled with regime-conditional liquidity statistics: for each regime, the share of periods with
+    nobody resting (`noliq`), and the fill probability of an uninformed arrival (the liquidity an
+    ordinary taker actually finds)."""
     n = env.cfg.n_mm
     pnl = np.zeros(n); fills = np.zeros(n); inf = np.zeros(n); rest = np.zeros(n); periods = 0
+    reg_periods = np.zeros(2); reg_noliq = np.zeros(2); reg_uninf = np.zeros(2); reg_uninf_fill = np.zeros(2)
     for _ in range(n_episodes):
         obs = env.reset()
         for ag in agents:
@@ -85,21 +89,40 @@ def play_all(env, agents, n_episodes):
             f = info["filled"]
             if f >= 0:
                 fills[f] += 1; inf[f] += info["informed"]
+            z = int(info["regime"]) if info.get("regime") is not None else 0
+            reg_periods[z] += 1
+            if info["event"] == "noliq":
+                reg_noliq[z] += 1
+            if not info["informed"]:
+                reg_uninf[z] += 1
+                reg_uninf_fill[z] += f >= 0
+    if stats is not None:
+        for z, name in ((0, "calm"), (1, "toxic")):
+            stats[f"noliq_{name}"] = float(reg_noliq[z] / max(reg_periods[z], 1))
+            stats[f"uninformed_fill_{name}"] = float(reg_uninf_fill[z] / max(reg_uninf[z], 1))
+            stats[f"share_{name}"] = float(reg_periods[z] / periods)
     return pnl / periods, fills, inf, rest / periods, periods
 
 
-EXPERTS = ("always", "never", "anon")                 # the hedge incumbents' policy set
+EXPERTS = ("always", "never", "anon")                 # the default hedge incumbents' policy set
 
 
-def train_hedge(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: int, eta: float = 0.1):
-    """cfg.n_mm makers: the first n_learn are EXP3 learners over EXPERTS, the rest an always-resting
-    fringe.  Returns the agents (eval mode) and each learner's final expert distribution."""
+def make_expert(name: str, cfg: MarketConfig, h: int, env: QueueEnv):
+    if name == "always":
+        return AlwaysRest()
+    if name == "never":
+        return NeverRest()
+    return QueueWalletEntrant(cfg, h, name, wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)   # anon / id / oracle
+
+
+def train_hedge(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: int, eta: float = 0.1,
+                experts: tuple = EXPERTS):
+    """cfg.n_mm makers: the first n_learn are EXP3 learners over `experts`, the rest an always-resting
+    fringe.  Returns the agents (eval mode); each learner's final expert distribution is .probs()."""
     env = QueueEnv(cfg, half_spread=h)
     agents = []
     for k in range(n_learn):
-        experts = [AlwaysRest(), NeverRest(),
-                   QueueWalletEntrant(cfg, h, "anon", wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)]
-        agents.append(QueueHedgeAgent(experts, eta=eta, seed=seed * 10 + k))
+        agents.append(QueueHedgeAgent([make_expert(e, cfg, h, env) for e in experts], eta=eta, seed=seed * 10 + k))
     agents += [AlwaysRest() for _ in range(cfg.n_mm - n_learn)]
     for _ in range(n_episodes):
         obs = env.reset()
@@ -118,7 +141,7 @@ def train_hedge(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: 
 
 
 def one_cell(args):
-    alpha, rho_z, L, above, n_inc, seed, incumbents, n_episodes, n_train, fringe, discount = args
+    alpha, rho_z, L, above, n_inc, seed, incumbents, n_episodes, n_train, fringe, discount, experts = args
     mk = dict(BASE, alpha=alpha, regime_persistence=rho_z, mark_lag=L, wallet_seed=seed)
     n_pop = n_inc + fringe                        # learners (or always-resters) + fringe
     cfg_inc = MarketConfig(**mk, n_mm=n_pop, seed=seed)
@@ -129,8 +152,8 @@ def one_cell(args):
     if incumbents == "q":
         inc = train_q(cfg_inc, h, n_train, seed, n_learn=n_inc, discount=discount)
     elif incumbents == "hedge":
-        inc = train_hedge(cfg_inc, h, n_train, seed, n_learn=n_inc)
-        expert_p = {f"p_{e}": float(np.mean([a.probs()[k] for a in inc[:n_inc]])) for k, e in enumerate(EXPERTS)}
+        inc = train_hedge(cfg_inc, h, n_train, seed, n_learn=n_inc, experts=experts)
+        expert_p = {f"p_{e}": float(np.mean([a.probs()[k] for a in inc[:n_inc]])) for k, e in enumerate(experts)}
     else:
         inc = [AlwaysRest() for _ in range(n_pop)]
     rows = []
@@ -144,10 +167,12 @@ def one_cell(args):
             ent = AlwaysRest()
         else:
             ent = QueueWalletEntrant(cfg_e, h, name, wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)
-        pnl, fills, inf, rest, periods = play_all(env, inc + [ent], n_episodes)
+        liq = {}
+        pnl, fills, inf, rest, periods = play_all(env, inc + [ent], n_episodes, stats=liq)
         rows.append({"alpha": alpha, "rho_z": rho_z, "mark_lag": L, "above": above, "h": h, "n_inc": n_inc,
                      "fringe": fringe, "discount": discount if incumbents == "q" else np.nan,
-                     "seed": seed, "incumbents": incumbents, "policy": name,
+                     "experts": "+".join(experts) if incumbents == "hedge" else "",
+                     "seed": seed, "incumbents": incumbents, "policy": name, **liq,
                      "fill_value_avg": bm["fill_value_avg"], "fill_value_calm": bm.get("fill_value_calm"),
                      "fill_value_toxic": bm.get("fill_value_toxic"),
                      "entrant_pnl": float(pnl[E]), "incumbent_pnl": float(pnl[I].mean()),
@@ -175,12 +200,14 @@ def main():
     ap.add_argument("--n-train", type=int, default=12000, help="training episodes for q / hedge incumbents")
     ap.add_argument("--fringe", type=int, default=0, help="always-resting makers added to the incumbent population")
     ap.add_argument("--discount", type=float, default=0.95, help="Q-learner discount (incumbents=q)")
+    ap.add_argument("--experts", default="always,never,anon", help="hedge incumbents' policy set (always, never, anon, id, oracle)")
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--out", default="results/queue.csv")
     args = ap.parse_args()
     a_, b_ = map(int, args.seeds.split("-"))
+    experts = tuple(e.strip() for e in args.experts.split(","))
     jobs = [(float(a), float(rz), int(L), int(ab), args.n_inc, s, args.incumbents, args.n_episodes, args.n_train,
-             args.fringe, args.discount)
+             args.fringe, args.discount, experts)
             for a in args.alphas.split(",") for rz in args.rhos_z.split(",") for L in args.mark_lags.split(",")
             for ab in args.above.split(",") for s in range(a_, b_ + 1)]
     print(f"{len(jobs)} cells x {len(POLICIES)} policies, incumbents={args.incumbents}", flush=True)
@@ -195,7 +222,7 @@ def main():
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out, index=False)
     pd.set_option("display.width", 250)
-    g = df.groupby(["alpha", "above", "rho_z", "mark_lag", "policy"])[["entrant_pnl", "incumbent_pnl", "fringe_pnl", "entrant_informed_share", "incumbent_informed_share", "fringe_informed_share", "entrant_rest_share", "incumbent_rest_share", "fill_rate"]].mean()
+    g = df.groupby(["alpha", "above", "rho_z", "mark_lag", "policy"])[["entrant_pnl", "incumbent_pnl", "fringe_pnl", "entrant_informed_share", "incumbent_informed_share", "fringe_informed_share", "entrant_rest_share", "incumbent_rest_share", "fill_rate", "noliq_toxic", "uninformed_fill_toxic", "uninformed_fill_calm"]].mean()
     print(g.round(3).to_string())
     print("wrote", args.out)
 
