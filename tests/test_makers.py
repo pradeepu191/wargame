@@ -62,3 +62,13 @@ def test_maker_summary_finds_the_selector():
     assert set(tab.wallet) == {"avg", "sel", "swept"} and (tab.volume.diff().dropna() <= 0).all()   # volume order
     assert tab.set_index("wallet").loc["swept", "touch_share"] == 0.0
     assert (tab.se_bps > 0).all() and (tab.se_bps < 0.1).all()
+
+
+def test_session_split_is_reported_only_with_a_gap():
+    tm, feats = marked_fills()
+    s = maker_summary(tm, feats, horizon_s=10, n_min=100, n_half=50)
+    assert "mk_session_rank_corr" not in s                      # one continuous window
+    tm2 = tm.copy()
+    tm2.loc[tm2.time_ms >= tm2.time_ms.median(), "time_ms"] += 24 * 3600_000   # second night
+    s2 = maker_summary(tm2, feats, horizon_s=10, n_min=100, n_half=50)
+    assert s2["mk_session_n_makers"] == 3 and np.isnan(s2["mk_session_rank_corr"])   # < 8 makers: no test

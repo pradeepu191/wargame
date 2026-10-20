@@ -198,7 +198,8 @@ def main():
                  f"{row.get('mk_n_makers', 0)} makers>=100 fills, {row.get('mk_positive_share', float('nan')):.2f} positive "
                  f"({row.get('mk_positive_fill_share', float('nan')):.2f} of fills), {row.get('mk_sig_positive_n', 0)} significantly; "
                  f"split-half rank corr {row.get('mk_split_rank_corr', float('nan')):+.2f} (p={row.get('mk_split_rank_corr_p', float('nan')):.3f}, "
-                 f"n={row.get('mk_split_n_makers', 0)})"
+                 f"n={row.get('mk_split_n_makers', 0)}); across sessions {row.get('mk_session_rank_corr', float('nan')):+.2f} "
+                 f"(p={row.get('mk_session_rank_corr_p', float('nan')):.3f}, n={row.get('mk_session_n_makers', 0)})"
                  if "mk_all_markout_bps" in row else ""), flush=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)

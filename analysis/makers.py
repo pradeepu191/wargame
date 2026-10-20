@@ -118,17 +118,26 @@ def maker_summary(tm: pd.DataFrame, feats: pd.DataFrame, horizon_s: int = 10, to
         out["mk_best_markout_bps"] = float(table.markout_bps.max())
         out["mk_best_n_fills"] = int(table.loc[table.markout_bps.idxmax(), "n_fills"])
         out["mk_markout_sd_bps"] = float(table.markout_bps.std()) if len(table) > 1 else np.nan
-    # persistence: first half vs second half
-    cut = t.time_ms.iloc[len(t) // 2]
+    # persistence: first half vs second half (median cut), and, when the marked fills come from
+    # more than one recording session, first session vs the rest (cut at the largest gap > 1 h) --
+    # the across-nights version, which cannot be a single calm spell
+    out.update(_persistence(t, mk, n_half, cut=t.time_ms.iloc[len(t) // 2], prefix="mk_split"))
+    gaps = np.diff(t.time_ms.to_numpy())
+    if len(gaps) and gaps.max() > 3_600_000:
+        out.update(_persistence(t, mk, n_half, cut=t.time_ms.iloc[int(gaps.argmax()) + 1], prefix="mk_session"))
+    return out
+
+
+def _persistence(t: pd.DataFrame, mk: str, n_half: int, cut: int, prefix: str) -> dict:
     a = t[t.time_ms < cut].groupby("maker")[mk].agg(["mean", "size"])
     b = t[t.time_ms >= cut].groupby("maker")[mk].agg(["mean", "size"])
     both = a.join(b, lsuffix="_a", rsuffix="_b", how="inner")
     both = both[(both.size_a >= n_half) & (both.size_b >= n_half)]
-    out["mk_split_n_makers"] = int(len(both))
+    out = {f"{prefix}_n_makers": int(len(both))}
     if len(both) >= 8:
         from scipy.stats import spearmanr
         r, p = spearmanr(both.mean_a, both.mean_b)
-        out["mk_split_rank_corr"], out["mk_split_rank_corr_p"] = float(r), float(p)
+        out[f"{prefix}_rank_corr"], out[f"{prefix}_rank_corr_p"] = float(r), float(p)
     else:
-        out["mk_split_rank_corr"], out["mk_split_rank_corr_p"] = np.nan, np.nan
+        out[f"{prefix}_rank_corr"], out[f"{prefix}_rank_corr_p"] = np.nan, np.nan
     return out
