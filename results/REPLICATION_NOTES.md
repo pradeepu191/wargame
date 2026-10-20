@@ -1415,3 +1415,34 @@ The ordering is the same on adversaries the choice never saw; at ᾱ = 0.5 the f
 every cartel and keeps 93% of its hindsight gain out of sample, positive in every cartel. At
 ᾱ = 0.3 the choice is split among defences that are all within noise of each other, which is the
 "nothing helps here" conclusion restated out of sample.
+
+---
+
+# Train at ᾱ, test at ᾱ′ (`exploitability_alpha_shift.csv`; SuperCloud; 60 cfl_exp2 cartels × 3 evaluation toxicities × 4 attackers, 500 episodes)
+
+Frozen cartels trained at ᾱ ∈ {0.1, 0.3, 0.5} (N = 2, 3; ten seeds) evaluated on markets of
+toxicity ᾱ′ ∈ {0.1, 0.3, 0.5}; benchmarks and rent units are the evaluation market's.
+
+| trained at ᾱ | C on ᾱ′ = 0.1 / 0.3 / 0.5 | κ_A, profit-maximisers, on 0.1 / 0.3 / 0.5 | attacker profit (rent units) on 0.1 / 0.3 / 0.5 |
+|---|---|---|---|
+| 0.1 | .82 / .72 / **.23** | .75–.79 / .71–.76 / **2.0–2.5** | .52 / .33–.37 / −.12 to .20 |
+| 0.3 | .84 / .86 / .69 | .73–.75 / .68–.69 / .88–.95 | .65 / .55–.57 / .39–.51 |
+| 0.5 | .80 / .84 / .80 | .72–.73 / .65–.69 / .78–.84 | .62 / .54–.57 / .45–.57 |
+
+No cartel earns below the competitive benchmark on any market on its own (0 of 180 cells).
+
+* **Robust in one direction.** A cartel trained on more toxic flow quotes wide, and a wide quote is
+  still a collusive quote on a calmer market: C stays 0.80–0.86 and κ_A 0.65–0.75 when ᾱ′ ≤ ᾱ.
+  Training toxicity does not matter for the rent or its exploitability as long as the market is
+  no more toxic than the training one.
+* **Degrades gracefully, then becomes over-exploitable, in the other.** As toxicity rises past the
+  training level the fixed quote approaches the new break-even: the 0.3-cartel keeps C = 0.69 on
+  the 0.5 market, the 0.1-cartel only 0.23 — but never negative. The entrant's undercut then
+  pushes a thin-rent cartel *below* the competitive benchmark: κ_A = 2.0–2.5 for the 0.1-cartel on
+  the 0.5 market (the attacker destroys more than the rent that was there), 0.9 for the
+  0.3-cartel. The attacker earns less too (the undercutter loses on the most mismatched cell): a
+  wide quote on a toxic market leaves little for anyone.
+* For the paper: κ_A ≈ 0.7 is a property of cartels whose rent is intact, not of the training
+  toxicity; the vulnerable case is a cartel caught by a toxicity regime it was not trained for —
+  which is the regime-shift of §takers at the scale of the whole training distribution, and one
+  more reason the regime filter (identity-aware control) is the lever that matters.

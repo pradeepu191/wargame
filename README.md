@@ -139,7 +139,9 @@ tests/          pytest (38)
 - [x] Quoter-side defences and the frontier (20 cartels, 7 adversaries incl. a learned one): speed
       is necessary, noise is a cost, identity-aware control is the one lever that improves both
       axes (ᾱ = 0.5: worst case 0.08 → 0.19); nothing in the game defends the rent
-- [ ] A stronger learned adversary (PSRO from the hand-crafted rules); train-at-ᾱ / test-at-ᾱ′; held-out attackers
+- [x] Robustness: train-at-ᾱ / test-at-ᾱ′ (κ_A ≈ 0.7 holds whenever the rent is intact; a cartel
+      caught by a more toxic regime than it trained on becomes over-exploitable), held-out adversaries
+- [ ] A stronger learned adversary (PSRO from the hand-crafted rules)
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow
 - [ ] Defences and the profit–resilience frontier (RQ4); preprint by mid-December
