@@ -37,6 +37,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))    # run from anywhere, no install needed
 from analysis.l2 import book_summary, load_l2, sweep_decomposition, true_mid_markouts
 from analysis.makers import maker_summary, maker_table
+from analysis.stress import stress_summary
 from analysis.wallets import (activity_herfindahl, arrival_persistence, collapse_orders,
                               conditional_markout_after_toxic, conditional_markout_two_signals, leader_switch,
                               mid_proxy, pair_matrix, split_half_type_persistence, wallet_features, with_roles)
@@ -108,6 +109,10 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30,
         # classifier, so the top set is chosen on activity, not on the outcome
         row.update(maker_summary(tm, feats, horizon_s=10, top_k=10, n_min=100, n_half=50))
         row["_makers"] = maker_table(tm, horizon_s=10, n_min=100)
+        # who is at the touch after a stressful spell (the anonymity lever's empirical counterpart)
+        st = stress_summary(tm, feats, horizon_s=10, top_k=10)
+        row["_stress"] = st.pop("_stress_blocks", None)
+        row.update(st)
         # the identity split against the true mid
         mm_tm = tm.rename(columns={"markout_10_bps": "maker_markout"})
         cut = mm_tm.time_ms.iloc[len(mm_tm) // 2]
@@ -171,10 +176,13 @@ def main():
         book = load_l2(raw, c)
         row, feats = calibrate_coin(tr, n_min=args.n_min, book=book if len(book) else None)
         makers = row.pop("_makers", None)
+        stress = row.pop("_stress", None)
         rows.append(row)
         feats.to_csv(out / f"wallets_{c}.csv", index=False)
         if makers is not None and len(makers):
             makers.to_csv(out / f"makers_{c}.csv", index=False)
+        if stress is not None and len(stress):
+            stress.to_csv(out / f"stress_{c}.csv", index=False)
         print(f"{c}: {row['hours']:.1f} h, {row['prints']} prints, {row['orders']} orders, "
               f"rho_order={row['rho_order']:.3f} (baseline {row['rho_order_baseline']:.3f}), "
               f"markout_10s={row['markout_10_bps']:+.2f} bps, type rank corr={row['type_rank_corr']:.2f}, "
@@ -200,7 +208,19 @@ def main():
                  f"split-half rank corr {row.get('mk_split_rank_corr', float('nan')):+.2f} (p={row.get('mk_split_rank_corr_p', float('nan')):.3f}, "
                  f"n={row.get('mk_split_n_makers', 0)}); across sessions {row.get('mk_session_rank_corr', float('nan')):+.2f} "
                  f"(p={row.get('mk_session_rank_corr_p', float('nan')):.3f}, n={row.get('mk_session_n_makers', 0)})"
-                 if "mk_all_markout_bps" in row else ""), flush=True)
+                 if "mk_all_markout_bps" in row else "")
+              + (f" | STRESS ({row['st_n_blocks']} blocks): top share vs lagged vol {row.get('st_top_share_vs_vol_lag', float('nan')):+.2f} "
+                 f"(p={row.get('st_top_share_vs_vol_lag_p', float('nan')):.3f}), vs lagged toxicity {row.get('st_top_share_vs_tox_rest_lag', float('nan')):+.2f} "
+                 f"(p={row.get('st_top_share_vs_tox_rest_lag_p', float('nan')):.3f}), contemporaneous vol {row.get('st_top_share_vs_vol', float('nan')):+.2f}; "
+                 f"top makers active vs lagged vol {row.get('st_n_top_active_vs_vol_lag', float('nan')):+.2f}; "
+                 f"calm/mid/stress terciles: top share {row.get('st_calm_top_share', float('nan')):.2f} / {row.get('st_mid_top_share', float('nan')):.2f} / "
+                 f"{row.get('st_stress_top_share', float('nan')):.2f}, active {row.get('st_calm_n_top_active', float('nan')):.1f} / "
+                 f"{row.get('st_mid_n_top_active', float('nan')):.1f} / {row.get('st_stress_n_top_active', float('nan')):.1f}, "
+                 f"top markout {row.get('st_calm_top_markout_bps', float('nan')):+.2f} / {row.get('st_mid_top_markout_bps', float('nan')):+.2f} / "
+                 f"{row.get('st_stress_top_markout_bps', float('nan')):+.2f}, rest markout {row.get('st_calm_rest_markout_bps', float('nan')):+.2f} / "
+                 f"{row.get('st_mid_rest_markout_bps', float('nan')):+.2f} / {row.get('st_stress_rest_markout_bps', float('nan')):+.2f}, "
+                 f"vol {row.get('st_calm_vol_bps', float('nan')):.2f} / {row.get('st_mid_vol_bps', float('nan')):.2f} / {row.get('st_stress_vol_bps', float('nan')):.2f} bps"
+                 if "st_n_blocks" in row else ""), flush=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)
     pd.set_option("display.width", 250)
