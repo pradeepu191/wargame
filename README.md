@@ -134,8 +134,9 @@ tests/          pytest (38)
 - [x] Queue-position model for one-tick books (RQ3): always-resting and no-regret incumbents,
       fringe; identity worth +0.05–0.06/period against incumbents that select
 - [x] Anonymity as a venue lever: identity-aware incumbents withdraw in stress (uninformed taker
-      filled 0.25 vs 0.73 in the toxic state); priority fee = all-pay auction for position (preliminary)
-- [ ] Priority fee at five seeds; quoter-side defences; the profit–resilience frontier
+      filled 0.25 vs 0.73 in the toxic state); priority fee = all-pay auction for position whose
+      revenue-maximising level dissipates all maker rent, incidence on the identity-blind (5 seeds)
+- [ ] Quoter-side defences; the profit–resilience frontier
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow
 - [ ] Defences and the profit–resilience frontier (RQ4); preprint by mid-December
