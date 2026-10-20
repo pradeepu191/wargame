@@ -1107,3 +1107,38 @@ Same grid with always-resting incumbents + the same fringe (`queue_always_fringe
 * Paper §5.7 rewritten around this; `fig_queue_incumbents` (break-even, both incumbent types);
   RQ3 restated. Open: priority fee; identity-aware incumbents (an "id" expert in the hedge set
   is a one-line change and is the identity-aware-control defence of RQ3).
+
+---
+
+# Identity-aware defenders and liquidity in stress (preliminary: 2 seeds, 3k training episodes, L = 5, break-even; `slurm/queue_identity.sh` is the full grid)
+
+Add an identity expert to the no-regret incumbents' policy set, with and without the fringe.
+
+| ρ_z | incumbents' set, fringe | they choose | incumbent pnl | entrant: always / anon / id | fringe pnl (id entrant) | nobody resting in toxic state (id entrant) | uninformed taker's fill prob, toxic: always / anon / id entrant |
+|---|---|---|---|---|---|---|---|
+| 0.9 | anon, fringe 2 | anon 1.0 | .03–.05 | .01 / .04 / .11 | −.02 | 0 | .81 / .81 / .81 |
+| 0.9 | anon+id, fringe 2 | id .99 | .09–.11 | −.03 / .03 / .08 | −.06 | 0 | .81 / .81 / .81 |
+| 0.9 | anon, fringe 0 | anon 1.0 | .04–.07 | .01 / .07 / .17 | — | .43 | .81 / .45 / .47 |
+| 0.9 | anon+id, fringe 0 | id 1.0 | .12–.15 | **−.16** / −.06 / .10 | — | **.70** | .81 / .50 / **.25** |
+| 0.99 | anon, fringe 0 | anon 1.0 | .14–.19 | −.10 / .14 / .12 | — | .77 | .82 / .15 / .18 |
+| 0.99 | anon+id, fringe 0 | id 1.0 | .14–.22 | **−.16** / .11 / .07 | — | .84 (oracle entrant .97) | .82 / .17 / **.13** (oracle .02) |
+
+* **Defenders that can see identities use them** (weight on the identity expert 0.75–1.0) and
+  earn 2–3× what anonymous selectors earn.
+* **Liquidity disappears in the toxic state when every maker can see it coming.** Without an
+  uninformed fringe, the share of toxic-state periods with nobody at the inside is 0.70 (ρ_z = 0.9)
+  to 0.84–0.97 (ρ_z = 0.99); an uninformed taker's fill probability in the toxic state falls from
+  0.81 to 0.25 (ρ_z = 0.9) and 0.02–0.13 (ρ_z = 0.99). Anonymous selectors withdraw too (they read
+  the tape) but later and less: 0.45–0.47 at ρ_z = 0.9. Identity makes the withdrawal faster and
+  sharper where regimes are short relative to the mark lag — the same lag mechanism as the
+  entrant's edge, seen from the venue's side. Uninformed takers in the toxic state (a third of its
+  flow) are the collateral damage: *public identity reduces liquidity provision in stress.*
+* **Whoever still rests is the sole counterparty.** An identity-blind always-resting entrant among
+  identity-aware incumbents earns −0.16 per period at both persistences; with a fringe present the
+  fringe's loss doubles (−0.02 → −0.06) when the incumbents become identity-aware.
+* **The entrant's identity edge survives identity-aware incumbents** at ρ_z = 0.9 (+0.05 over the
+  anonymous entrant with the fringe; the anonymous entrant is now the second-worst-informed agent
+  on the book) and shrinks at ρ_z = 0.99 (+0.02).
+* Caveat: 2 seeds, 200 evaluation episodes, one lag; the cluster grid (5 seeds, four lags, both
+  spreads) is the reference. Metrics added to `experiments/queue_game.py`: `noliq_{calm,toxic}`,
+  `uninformed_fill_{calm,toxic}`, `share_toxic`.
