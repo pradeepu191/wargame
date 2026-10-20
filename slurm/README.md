@@ -96,3 +96,9 @@ git add results/queue_hedge_always_never_anon*_fringe*.csv && git commit -m "Ide
 sbatch slurm/queue_fee.sh           # ~1.5 h on 48 cores -> results/queue_fee_anon.csv, queue_fee_id.csv
 git add results/queue_fee_*.csv && git commit -m "Priority fee sweep" && git pull --no-rebase && git push
 ```
+
+## Quoter-side defences and the frontier (RQ3)
+```bash
+sbatch slurm/defences.sh            # ~1 h on 48 cores -> results/defences.csv
+git add results/defences.csv && git commit -m "Quoter defences" && git pull --no-rebase && git push
+```
