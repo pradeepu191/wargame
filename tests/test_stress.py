@@ -62,3 +62,31 @@ def test_no_withdrawal_is_flat():
     s = stress_summary(tm, feats)
     assert abs(s["st_top_share_vs_vol_lag"]) < 0.35
     assert abs(s["st_stress_top_share"] - s["st_calm_top_share"]) < 0.12
+
+
+def test_fill_level_stress_sees_a_reaction_to_the_last_ten_seconds():
+    """A random-walk mid with a 20 s burst of volatility each minute.  Top makers take 10% of the
+    touch fills that arrive when the mid moved more than 3 bps over the previous 10 s and 50%
+    otherwise.  The 10 s look-back recovers the rule; a 60 s look-back, which sees a burst behind
+    almost every fill, is much weaker."""
+    from analysis.stress import fill_level_stress
+    rng = np.random.default_rng(3)
+    t0 = 1_760_000_100_000 // 300_000 * 300_000
+    secs = np.arange(3600)
+    sigma = np.where((secs % 60) < 20, 2.0, 0.3)  # bps per second
+    mid = 100.0 * np.exp(np.cumsum(rng.normal(0, sigma) * 1e-4))
+    book = pd.DataFrame({"time_ms": t0 + secs * 1000, "bid": mid * (1 - 5e-5), "ask": mid * (1 + 5e-5), "mid": mid})
+    rows = []
+    for s in secs[10:]:
+        move10 = abs(mid[s] - mid[s - 10]) / mid[s] * 1e4
+        for _ in range(3):
+            is_top = rng.random() < (0.1 if move10 > 3.0 else 0.5)
+            rows.append({"time_ms": t0 + s * 1000 + 500, "maker": f"top{rng.integers(0, 10)}" if is_top else f"rest{rng.integers(0, 40)}",
+                         "px": mid[s], "mid_0": mid[s], "at_touch": True, "markout_10_bps": (0.3 if is_top else -0.4) + rng.normal(0, 0.2)})
+    tm = pd.DataFrame(rows)
+    out = fill_level_stress(tm, book, [f"top{i}" for i in range(10)], windows_s=(10, 60))
+    assert out["fl10_top_vs_move_p"] < 1e-6 and out["fl10_top_vs_move"] < -0.15
+    assert out["fl10_stress_top_share"] < out["fl10_calm_top_share"] - 0.15
+    assert abs(out["fl60_top_vs_move"]) < 0.5 * abs(out["fl10_top_vs_move"])
+    # the rest loses in every tercile, the top makers earn in every tercile
+    assert out["fl10_stress_rest_markout_bps"] < 0 < out["fl10_stress_top_markout_bps"]
