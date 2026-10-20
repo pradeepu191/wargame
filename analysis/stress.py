@@ -195,6 +195,19 @@ def identity_selection(tm: pd.DataFrame, book: pd.DataFrame | None, top: list[st
         out[f"id_{name}_rest_markout_bps"] = float(gr[mk].mean()) if len(gr) else np.nan
         out[f"id_{name}_rest_se_bps"] = cluster_se(gr[mk].to_numpy(), gr.block.to_numpy()) if len(gr) > 1 else np.nan
         out[f"id_{name}_past_tox_bps"] = float(g.taker_tox.mean()) if name != "new" and len(g) else np.nan
+    # speed or identity?  A pick-off moves the mid within a second.  Among fills the mid did NOT
+    # move after within 1 s (not pick-offs), a maker avoiding the WALLET still shows a lower share
+    # of the toxic type's fills; a maker that is merely never stale does not.
+    if "impact_1_bps" in b:
+        quiet = b.impact_1_bps.abs() < 1e-9
+        out["id_quiet_share"] = float(quiet.mean())
+        for name in ("benign", "toxic", "new"):
+            g = b[(b.type == name) & quiet]
+            out[f"id_{name}_quiet_top_share"] = float(g.is_top.mean()) if len(g) else np.nan
+            out[f"id_{name}_quiet_n"] = int(len(g))
+            out[f"id_{name}_quiet_markout_bps"] = float(g[mk].mean()) if len(g) else np.nan
+            g = b[(b.type == name) & ~quiet]
+            out[f"id_{name}_pickoff_top_share"] = float(g.is_top.mean()) if len(g) else np.nan
     known = b.dropna(subset=["taker_tox"])
     r, p, n = _spearman(known.taker_tox.to_numpy(), known.is_top.to_numpy())
     out["id_top_vs_past_tox"], out["id_top_vs_past_tox_p"], out["id_n_known"] = r, p, n
@@ -241,7 +254,7 @@ def main():
             print(f"{c}: missing trades, book or wallets_{c}.csv"); continue
         feats = pd.read_csv(res / f"wallets_{c}.csv")
         top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
-        tm = true_mid_markouts(with_roles(tr), book, horizons_s=(10,))
+        tm = true_mid_markouts(with_roles(tr), book, horizons_s=(1, 10))
         for b in blocks:
             s = stress_summary(tm, feats, horizon_s=10, top_k=args.top_k, block_ms=b * 1000,
                                n_min_block=max(8, round(20 * b / 300)))
@@ -276,7 +289,12 @@ def main():
                   f"{f['id_toxic_top_markout_bps']:+.2f}±{f['id_toxic_top_se_bps']:.2f}, rest {f['id_benign_rest_markout_bps']:+.2f}±{f['id_benign_rest_se_bps']:.2f} / "
                   f"{f['id_toxic_rest_markout_bps']:+.2f}±{f['id_toxic_rest_se_bps']:.2f}; typing held up by {f['id_type_holds_bps']:+.2f} bps"
                   + (f"; within calm tape: benign/toxic {f['id_calm_benign_top_share']:.3f} / {f['id_calm_toxic_top_share']:.3f}, within stressed tape: "
-                     f"{f['id_stress_benign_top_share']:.3f} / {f['id_stress_toxic_top_share']:.3f}" if "id_calm_benign_top_share" in f else ""), flush=True)
+                     f"{f['id_stress_benign_top_share']:.3f} / {f['id_stress_toxic_top_share']:.3f}" if "id_calm_benign_top_share" in f else "")
+                  + (f"; QUIET fills (mid unmoved 1 s later, {f['id_quiet_share']:.2f} of fills): top share benign/toxic/new "
+                     f"{f['id_benign_quiet_top_share']:.3f} / {f['id_toxic_quiet_top_share']:.3f} / {f['id_new_quiet_top_share']:.3f} "
+                     f"(n {f['id_benign_quiet_n']} / {f['id_toxic_quiet_n']} / {f['id_new_quiet_n']}), markout_10 on quiet fills benign/toxic "
+                     f"{f['id_benign_quiet_markout_bps']:+.2f} / {f['id_toxic_quiet_markout_bps']:+.2f}; pick-offs: top share benign/toxic "
+                     f"{f['id_benign_pickoff_top_share']:.3f} / {f['id_toxic_pickoff_top_share']:.3f}" if "id_quiet_share" in f else ""), flush=True)
     pd.DataFrame(scale_rows).to_csv(res / "stress_scale.csv", index=False)
     pd.DataFrame(fill_rows).to_csv(res / "stress_fill.csv", index=False)
     print("wrote", res / "stress_scale.csv", "and", res / "stress_fill.csv")

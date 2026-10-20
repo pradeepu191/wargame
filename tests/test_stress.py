@@ -112,8 +112,11 @@ def test_identity_selection_finds_makers_who_avoid_last_nights_toxic_takers():
                          "taker": f"t{tk}", "px": 100.0, "mid_0": 100.0, "at_touch": True,
                          "markout_10_bps": -tox[tk] + rng.normal(0, 0.5)})
     tm = pd.DataFrame(rows)
+    # half the toxic takers' fills are pick-offs (mid moves within 1 s); identity avoidance shows on the quiet half too
+    tm["impact_1_bps"] = np.where((tm.taker.str[1:].astype(int) >= 20) & (rng.random(len(tm)) < 0.5), 2.0, 0.0)
     out = identity_selection(tm, None, [f"top{i}" for i in range(10)])
     assert out["id_cut_is_session"] and out["id_n_typed_takers"] == 30
+    assert out["id_toxic_quiet_top_share"] < 0.2 < 0.4 < out["id_benign_quiet_top_share"]
     assert out["id_top_vs_past_tox"] < -0.2 and out["id_top_vs_past_tox_p"] < 1e-6
     assert out["id_toxic_top_share"] < 0.2 < 0.4 < out["id_benign_top_share"]
     assert out["id_type_holds_bps"] > 1.0
