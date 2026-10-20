@@ -75,12 +75,12 @@ def test_queue_game_cell_with_fringe_runs_and_reports_both_populations():
     agents = train_q(cfg, env.h, n_episodes=5, seed=0, n_learn=2)
     assert [type(a).__name__ for a in agents] == ["QueueQAgent", "QueueQAgent", "AlwaysRest"]
     assert all(a.eval for a in agents[:2])
-    rows = one_cell((0.3, 0.9, 1, 1, 2, 0, "q", 2, 5, 1, 0.95, ("always", "never", "anon")))
+    rows = one_cell((0.3, 0.9, 1, 1, 2, 0, "q", 2, 5, 1, 0.95, ("always", "never", "anon"), 0.0))
     assert [r["policy"] for r in rows] == ["always", "anon", "id", "oracle"]
     r = rows[0]
     assert r["fringe"] == 1 and r["n_inc"] == 2 and np.isfinite(r["fringe_pnl"]) and 0 <= r["incumbent_rest_share"] <= 1
     assert abs(r["entrant_fill_share"] + r["incumbent_fill_share"] - 1) <= 1 + 1e-9   # plus the fringe's share
-    rows0 = one_cell((0.3, 0.9, 1, 1, 2, 0, "always", 2, 5, 0, 0.95, ("always", "never", "anon")))
+    rows0 = one_cell((0.3, 0.9, 1, 1, 2, 0, "always", 2, 5, 0, 0.95, ("always", "never", "anon"), 0.0))
     assert np.isnan(rows0[0]["fringe_pnl"]) and np.isnan(rows0[0]["discount"])
 
 
@@ -102,3 +102,29 @@ def test_hedge_incumbents_learn_to_select_and_keep_expert_state():
         h.reset()
         h.update(None, None, 1.0 if h.choice == 0 else 0.0, None, True)
     assert h.probs()[0] > 0.85
+
+
+def test_priority_fee_serves_payers_first_and_charges_them():
+    from sim.queue_agents import NeverRest
+    cfg = MarketConfig(alpha=0.3, n_mm=3, seed=0, horizon=50, sigma_L=8.0, tick=0.5, max_half_spread=24,
+                       redraw_v_each_period=True, edge_dist="exponential", edge_mean=5.0,
+                       n_wallets=50, wallet_concentration=1.0, regime_persistence=0.9, mark_lag=1)
+    env = QueueEnv(cfg, half_spread=4, priority_fee=0.3)
+    env.reset()
+    # 0 and 1 rest first (time priority 0 < 1); then 2 joins and pays: it must be served first
+    env.step([1, 1, 0]); env.step([1, 1, 0])
+    obs, r, done, info = env.step([1, 1, 2])
+    # fills in the first two steps may have rotated 0 and 1; the payer is first, the rest in time priority
+    assert env.serving[0] == 2 and env.serving[1:] == [i for i in env.queue if i != 2]
+    assert obs["rank"][2] == 0 and obs["fifo_rank"][2] == 2
+    assert info["paying"] == [2] and abs(info["venue_fee"] - 0.3) < 1e-12
+    assert r[2] <= -0.3 + 10 and r[2] != 0.0           # charged whether or not filled
+    if info["filled"] >= 0:
+        assert info["filled"] == 2 and info["filled_paid"]
+    # the fee rule: a selector pays only when not already first in time priority
+    e = QueueWalletEntrant(cfg, 4, "oracle", pay=True, wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)
+    o = env.observation(); o["fifo_rank"] = np.array([0, 1, 2]); o["priority_fee"] = 0.3
+    e._ingest = lambda obs: None; e.alpha_next = lambda: 0.1       # calm forecast: a fill is worth paying for
+    assert e.act(o, 2) == 2 and e.act(o, 0) == 1
+    e.alpha_next = lambda: 0.9                                      # toxic forecast: out, never pay
+    assert e.act(o, 2) == 0

@@ -68,14 +68,15 @@ def train_q(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: int 
     return agents
 
 
-def play_all(env, agents, n_episodes, stats: dict | None = None):
-    """Per-agent profit per period, fills, informed fills, rest shares.  If `stats` is given it is
-    filled with regime-conditional liquidity statistics: for each regime, the share of periods with
-    nobody resting (`noliq`), and the fill probability of an uninformed arrival (the liquidity an
-    ordinary taker actually finds)."""
+def play_all(env, agents, n_episodes, stats: dict | None = None, E: int | None = None):
+    """Per-agent profit per period (net of fees), fills, informed fills, rest shares.  If `stats` is
+    given it is filled with regime-conditional statistics: the share of periods with nobody resting
+    (`noliq`), the fill probability of an uninformed arrival (the liquidity an ordinary taker finds),
+    the venue's fee revenue per period, the share of periods in which someone paid for priority,
+    and -- with E, the entrant's index -- the share of periods the entrant paid, by regime."""
     n = env.cfg.n_mm
     pnl = np.zeros(n); fills = np.zeros(n); inf = np.zeros(n); rest = np.zeros(n); periods = 0
-    reg_periods = np.zeros(2); reg_noliq = np.zeros(2); reg_uninf = np.zeros(2); reg_uninf_fill = np.zeros(2)
+    reg = {k: np.zeros(2) for k in ("periods", "noliq", "uninf", "uninf_fill", "paid", "ent_paid", "venue")}
     for _ in range(n_episodes):
         obs = env.reset()
         for ag in agents:
@@ -83,24 +84,31 @@ def play_all(env, agents, n_episodes, stats: dict | None = None):
         done = False
         while not done:
             acts = [ag.act(obs, i) for i, ag in enumerate(agents)]
-            rest += acts
+            rest += [a >= 1 for a in acts]
             obs, r, done, info = env.step(acts)
             pnl += r; periods += 1
             f = info["filled"]
             if f >= 0:
                 fills[f] += 1; inf[f] += info["informed"]
             z = int(info["regime"]) if info.get("regime") is not None else 0
-            reg_periods[z] += 1
-            if info["event"] == "noliq":
-                reg_noliq[z] += 1
+            reg["periods"][z] += 1
+            reg["noliq"][z] += info["event"] == "noliq"
             if not info["informed"]:
-                reg_uninf[z] += 1
-                reg_uninf_fill[z] += f >= 0
+                reg["uninf"][z] += 1
+                reg["uninf_fill"][z] += f >= 0
+            reg["paid"][z] += len(info.get("paying", ())) > 0
+            reg["venue"][z] += info.get("venue_fee", 0.0)
+            if E is not None:
+                reg["ent_paid"][z] += acts[E] == 2
     if stats is not None:
         for z, name in ((0, "calm"), (1, "toxic")):
-            stats[f"noliq_{name}"] = float(reg_noliq[z] / max(reg_periods[z], 1))
-            stats[f"uninformed_fill_{name}"] = float(reg_uninf_fill[z] / max(reg_uninf[z], 1))
-            stats[f"share_{name}"] = float(reg_periods[z] / periods)
+            m = max(reg["periods"][z], 1)
+            stats[f"noliq_{name}"] = float(reg["noliq"][z] / m)
+            stats[f"uninformed_fill_{name}"] = float(reg["uninf_fill"][z] / max(reg["uninf"][z], 1))
+            stats[f"share_{name}"] = float(reg["periods"][z] / periods)
+            stats[f"pay_share_{name}"] = float(reg["paid"][z] / m)
+            stats[f"entrant_pay_{name}"] = float(reg["ent_paid"][z] / m)
+        stats["venue_rev"] = float(reg["venue"].sum() / periods)
     return pnl / periods, fills, inf, rest / periods, periods
 
 
@@ -108,18 +116,20 @@ EXPERTS = ("always", "never", "anon")                 # the default hedge incumb
 
 
 def make_expert(name: str, cfg: MarketConfig, h: int, env: QueueEnv):
+    """always / never / anon / id / oracle, or <info>_pay for the selector that uses the priority fee."""
     if name == "always":
         return AlwaysRest()
     if name == "never":
         return NeverRest()
-    return QueueWalletEntrant(cfg, h, name, wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)   # anon / id / oracle
+    info, pay = (name[:-4], True) if name.endswith("_pay") else (name, False)
+    return QueueWalletEntrant(cfg, h, info, pay=pay, wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)
 
 
 def train_hedge(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: int, eta: float = 0.1,
-                experts: tuple = EXPERTS):
+                experts: tuple = EXPERTS, fee: float = 0.0):
     """cfg.n_mm makers: the first n_learn are EXP3 learners over `experts`, the rest an always-resting
     fringe.  Returns the agents (eval mode); each learner's final expert distribution is .probs()."""
-    env = QueueEnv(cfg, half_spread=h)
+    env = QueueEnv(cfg, half_spread=h, priority_fee=fee)
     agents = []
     for k in range(n_learn):
         agents.append(QueueHedgeAgent([make_expert(e, cfg, h, env) for e in experts], eta=eta, seed=seed * 10 + k))
@@ -141,18 +151,18 @@ def train_hedge(cfg: MarketConfig, h: int, n_episodes: int, seed: int, n_learn: 
 
 
 def one_cell(args):
-    alpha, rho_z, L, above, n_inc, seed, incumbents, n_episodes, n_train, fringe, discount, experts = args
+    alpha, rho_z, L, above, n_inc, seed, incumbents, n_episodes, n_train, fringe, discount, experts, fee = args
     mk = dict(BASE, alpha=alpha, regime_persistence=rho_z, mark_lag=L, wallet_seed=seed)
     n_pop = n_inc + fringe                        # learners (or always-resters) + fringe
     cfg_inc = MarketConfig(**mk, n_mm=n_pop, seed=seed)
-    env_inc = QueueEnv(cfg_inc, ticks_above_breakeven=above)
+    env_inc = QueueEnv(cfg_inc, ticks_above_breakeven=above, priority_fee=fee)
     h = env_inc.h
     bm = selection_benchmarks(env_inc)
     expert_p = {}
     if incumbents == "q":
         inc = train_q(cfg_inc, h, n_train, seed, n_learn=n_inc, discount=discount)
     elif incumbents == "hedge":
-        inc = train_hedge(cfg_inc, h, n_train, seed, n_learn=n_inc, experts=experts)
+        inc = train_hedge(cfg_inc, h, n_train, seed, n_learn=n_inc, experts=experts, fee=fee)
         expert_p = {f"p_{e}": float(np.mean([a.probs()[k] for a in inc[:n_inc]])) for k, e in enumerate(experts)}
     else:
         inc = [AlwaysRest() for _ in range(n_pop)]
@@ -161,16 +171,18 @@ def one_cell(args):
     E = n_pop
     I = slice(0, n_inc)                           # the incumbents proper; fringe is n_inc:n_pop
     F = slice(n_inc, n_pop)
-    for name in POLICIES:
-        env = QueueEnv(cfg_e, half_spread=h)
+    # with a fee the selecting entrants use it; "id" without paying is kept for comparison
+    policies = POLICIES if fee <= 0 else ("always", "anon_pay", "id_pay", "oracle_pay", "id")
+    for name in policies:
+        env = QueueEnv(cfg_e, half_spread=h, priority_fee=fee)
         if name == "always":
             ent = AlwaysRest()
         else:
-            ent = QueueWalletEntrant(cfg_e, h, name, wallet_alpha=env.wallet_alpha, alpha_eff=env.alpha_eff)
+            ent = make_expert(name, cfg_e, h, env)
         liq = {}
-        pnl, fills, inf, rest, periods = play_all(env, inc + [ent], n_episodes, stats=liq)
+        pnl, fills, inf, rest, periods = play_all(env, inc + [ent], n_episodes, stats=liq, E=E)
         rows.append({"alpha": alpha, "rho_z": rho_z, "mark_lag": L, "above": above, "h": h, "n_inc": n_inc,
-                     "fringe": fringe, "discount": discount if incumbents == "q" else np.nan,
+                     "fringe": fringe, "fee": fee, "discount": discount if incumbents == "q" else np.nan,
                      "experts": "+".join(experts) if incumbents == "hedge" else "",
                      "seed": seed, "incumbents": incumbents, "policy": name, **liq,
                      "fill_value_avg": bm["fill_value_avg"], "fill_value_calm": bm.get("fill_value_calm"),
@@ -200,29 +212,30 @@ def main():
     ap.add_argument("--n-train", type=int, default=12000, help="training episodes for q / hedge incumbents")
     ap.add_argument("--fringe", type=int, default=0, help="always-resting makers added to the incumbent population")
     ap.add_argument("--discount", type=float, default=0.95, help="Q-learner discount (incumbents=q)")
-    ap.add_argument("--experts", default="always,never,anon", help="hedge incumbents' policy set (always, never, anon, id, oracle)")
+    ap.add_argument("--experts", default="always,never,anon", help="hedge incumbents' policy set (always, never, anon, id, oracle, <info>_pay)")
+    ap.add_argument("--fees", default="0", help="priority fee per period of priority (venue lever); 0 = off")
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--out", default="results/queue.csv")
     args = ap.parse_args()
     a_, b_ = map(int, args.seeds.split("-"))
     experts = tuple(e.strip() for e in args.experts.split(","))
     jobs = [(float(a), float(rz), int(L), int(ab), args.n_inc, s, args.incumbents, args.n_episodes, args.n_train,
-             args.fringe, args.discount, experts)
+             args.fringe, args.discount, experts, float(fee))
             for a in args.alphas.split(",") for rz in args.rhos_z.split(",") for L in args.mark_lags.split(",")
-            for ab in args.above.split(",") for s in range(a_, b_ + 1)]
+            for ab in args.above.split(",") for fee in args.fees.split(",") for s in range(a_, b_ + 1)]
     print(f"{len(jobs)} cells x {len(POLICIES)} policies, incumbents={args.incumbents}", flush=True)
     rows = []
     with ProcessPoolExecutor(args.jobs) as ex:
         for k, out in enumerate(ex.map(one_cell, jobs)):
             rows.extend(out)
             r0 = out[0]
-            print(f"[{k + 1}/{len(jobs)}] a={r0['alpha']} rho_z={r0['rho_z']} L={r0['mark_lag']} above={r0['above']} h={r0['h']} seed={r0['seed']}  "
+            print(f"[{k + 1}/{len(jobs)}] a={r0['alpha']} rho_z={r0['rho_z']} L={r0['mark_lag']} above={r0['above']} h={r0['h']} fee={r0['fee']} seed={r0['seed']}  "
                   + "  ".join(f"{r['policy']}:{r['entrant_pnl']:.3f}" for r in out), flush=True)
     df = pd.DataFrame(rows)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out, index=False)
     pd.set_option("display.width", 250)
-    g = df.groupby(["alpha", "above", "rho_z", "mark_lag", "policy"])[["entrant_pnl", "incumbent_pnl", "fringe_pnl", "entrant_informed_share", "incumbent_informed_share", "fringe_informed_share", "entrant_rest_share", "incumbent_rest_share", "fill_rate", "noliq_toxic", "uninformed_fill_toxic", "uninformed_fill_calm"]].mean()
+    g = df.groupby(["alpha", "above", "rho_z", "mark_lag", "fee", "policy"])[["entrant_pnl", "incumbent_pnl", "fringe_pnl", "venue_rev", "entrant_informed_share", "incumbent_informed_share", "fringe_informed_share", "entrant_rest_share", "incumbent_rest_share", "fill_rate", "noliq_toxic", "uninformed_fill_toxic", "entrant_pay_calm", "entrant_pay_toxic"]].mean()
     print(g.round(3).to_string())
     print("wrote", args.out)
 

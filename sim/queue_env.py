@@ -20,6 +20,12 @@ fills a maker gets.  This environment makes that the whole game.
   * Public information is the same as in GlostenMilgromEnv (print now, mark later) plus the
     depth at the inside (how many are resting), which an L2 feed shows.  A maker also knows its
     own rank.  Nobody sees who else is in the queue.
+  * PRIORITY FEE (venue lever).  With `priority_fee` f > 0 a third action, REST-AND-PAY (2), is
+    available: the maker pays f this period and is served ahead of every maker that did not pay;
+    among payers, and among non-payers, time priority holds.  The fee is charged whether or not
+    the maker is filled (one period = one order; Hyperliquid charges per order).  The venue's
+    revenue is the sum of fees.  `obs["fifo_rank"]` is the maker's place in time priority alone,
+    `obs["rank"]` its place in the serving order of the last period.
 
 Expected profit of a fill at half-spread x against a taker of type alpha is
     (1 - q) x - q mu,   q = alpha e^{-x/mu} / (alpha e^{-x/mu} + (1 - alpha) 2 Phibar(x/sigma))
@@ -51,20 +57,24 @@ def fill_prob(cfg: MarketConfig, half_spread: int, alpha: float) -> float:
 
 
 class QueueEnv(GlostenMilgromEnv):
-    """Call reset(); then step(actions) with actions[i] in {0 = out, 1 = rest}."""
+    """Call reset(); then step(actions) with actions[i] in {0 = out, 1 = rest, 2 = rest and pay}."""
 
-    def __init__(self, cfg: MarketConfig, half_spread: Optional[int] = None, ticks_above_breakeven: int = 1):
+    def __init__(self, cfg: MarketConfig, half_spread: Optional[int] = None, ticks_above_breakeven: int = 1,
+                 priority_fee: float = 0.0):
         super().__init__(cfg)
         if half_spread is None:
             hC, _, _, _ = type_benchmarks(cfg, self.alpha_eff)
             half_spread = hC + ticks_above_breakeven  # a coarse tick leaves the inside above break-even
         self.h = int(half_spread)
-        self.queue: list[int] = []                   # maker ids, front first
+        self.fee = float(priority_fee)
+        self.queue: list[int] = []                   # maker ids in time priority, front first
+        self.serving: list[int] = []                 # last period's serving order (payers first)
         self.last_half_spreads = np.full(cfg.n_mm, self.h, dtype=np.int64)
 
     def reset(self, V=None) -> dict:
         obs = super().reset(V)
         self.queue = []
+        self.serving = []
         self.last_half_spreads[:] = self.h
         return self.observation()
 
@@ -72,10 +82,15 @@ class QueueEnv(GlostenMilgromEnv):
         obs = super().observation()
         n = self.cfg.n_mm
         rank = np.full(n, -1, dtype=np.int64)
-        for r, i in enumerate(self.queue):
+        for r, i in enumerate(self.serving):
             rank[i] = r
-        obs["rank"] = rank                           # -1 = out; 0 = front
+        fifo = np.full(n, -1, dtype=np.int64)
+        for r, i in enumerate(self.queue):
+            fifo[i] = r
+        obs["rank"] = rank                           # serving order last period: -1 = out; 0 = front
+        obs["fifo_rank"] = fifo                      # time priority alone (what you get without paying)
         obs["n_resting"] = len(self.queue)
+        obs["priority_fee"] = self.fee
         obs["last_half_spreads"] = np.full(n, self.h, dtype=np.int64)   # the fixed one-tick spread
         return obs
 
@@ -83,12 +98,15 @@ class QueueEnv(GlostenMilgromEnv):
         c = self.cfg
         n = c.n_mm
         a = [int(x) for x in actions]
-        assert len(a) == n and all(x in (0, 1) for x in a)
+        assert len(a) == n and all(x in (0, 1, 2) for x in a)
         # ---- queue update: leavers drop out, newcomers join at the back, stayers keep their place
-        self.queue = [i for i in self.queue if a[i] == 1]
+        self.queue = [i for i in self.queue if a[i] >= 1]
         for i in range(n):
-            if a[i] == 1 and i not in self.queue:
+            if a[i] >= 1 and i not in self.queue:
                 self.queue.append(i)
+        # ---- serving order: payers (in time priority) ahead of non-payers (in time priority)
+        paying = [i for i in self.queue if a[i] == 2]
+        self.serving = paying + [i for i in self.queue if a[i] != 2]
         mid = self.mid
         best_ask = mid + self.h * c.tick
         best_bid = mid - self.h * c.tick
@@ -99,12 +117,19 @@ class QueueEnv(GlostenMilgromEnv):
             event = "noliq"                          # nobody at the inside: no trade, no print, and the
                                                      # absence of a print says nothing about the regime
 
-        # ---- matching: front of the queue, then it rejoins at the back if it keeps resting
+        # ---- fees: charged per period of priority, filled or not
         reward = np.zeros(n)
+        venue = 0.0
+        for i in paying:
+            reward[i] -= self.fee
+            venue += self.fee
+
+        # ---- matching: front of the serving order, then it rejoins at the back of time priority
         filled = -1
         price = float("nan")
         if event in ("buy", "sell"):
-            filled = self.queue.pop(0)
+            filled = self.serving[0]
+            self.queue.remove(filled)
             self.queue.append(filled)                # its order is consumed; a fresh one goes to the back
             if event == "buy":
                 price = best_ask
@@ -125,7 +150,8 @@ class QueueEnv(GlostenMilgromEnv):
         info = {"event": event, "price": price, "filled": filled, "informed": informed, "taker": wallet,
                 "regime": self.regime, "mid": mid, "best_ask": best_ask, "best_bid": best_bid,
                 "quoted_spread": best_ask - best_bid, "V": self.V, "V_t": V_t,
-                "n_resting": len(self.queue), "mu_prev": 0.5}
+                "n_resting": len(self.queue), "mu_prev": 0.5,
+                "paying": paying, "venue_fee": venue, "filled_paid": bool(filled >= 0 and a[filled] == 2)}
         return self.observation(), reward, done, info
 
 
