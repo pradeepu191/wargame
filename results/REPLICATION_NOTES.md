@@ -1142,3 +1142,42 @@ Add an identity expert to the no-regret incumbents' policy set, with and without
 * Caveat: 2 seeds, 200 evaluation episodes, one lag; the cluster grid (5 seeds, four lags, both
   spreads) is the reference. Metrics added to `experiments/queue_game.py`: `noliq_{calm,toxic}`,
   `uninformed_fill_{calm,toxic}`, `share_toxic`.
+
+---
+
+# The priority fee (preliminary: 2 seeds, L = 5, ρ_z = 0.9, break-even, fringe 2; `slurm/queue_fee.sh` is the full grid)
+
+Mechanism (`sim/queue_env.py`): a third action REST-AND-PAY; payers are served ahead of non-payers,
+time priority within each group; the fee f is charged per period of priority, filled or not; the
+venue collects it. The selector's rule (`QueueWalletEntrant(pay=True)`): when it would rest and is
+not already first in time priority, pay iff P(fill) · v(α_next) > f. Incumbents: EXP3 over
+{always, never, anon, anon_pay}.
+
+| f | incumbents' weight on paying | incumbent pnl (always / id_pay entrant) | fringe pnl | venue revenue / period | entrant: id (no pay) / id_pay / oracle_pay | id_pay entrant pays: calm / toxic | id_pay fill share | fringe informed share |
+|---|---|---|---|---|---|---|---|---|
+| 0 | — | .03 / .03 | .03 / −.01 | 0 | .10 / — / .11 | — | .13 | .29 |
+| 0.25 | .70 | .00 / **−.05** | −.01 / **−.09** | .15 / .29 | .05 / **.13** / .18 | .73 / .11 | **.37** | **.43** |
+| 0.5 | .48 | .01 / −.03 | .03 / −.06 | .08 / .23 | .09 / .09 / .11 | .43 / .04 | .33 | .35 |
+| 0.75 | .39 | .03 / .03 | .03 / −.01 | 0 / 0 | .11 / .10 / .05 | 0 / 0 | .14 | .30 |
+| 1.0 | — | .03 / .03 | .03 / −.01 | 0 | .10 / .10 / .11 | 0 / 0 | .13 | .29 |
+
+* **The fee is an all-pay auction for position, and it dissipates the selectors' rent to the
+  venue.** At f = 0.25 the incumbents pay in half of the calm periods and a quarter of the toxic
+  ones, gain no position relative to each other, and their profit falls from +0.03 to 0 or below;
+  the venue collects 0.15–0.31 per period, more than the whole maker rent at f = 0 (≈ 0.2). The
+  learners notice: at f ≥ 0.5 their weight moves from `anon_pay` back to `anon`.
+* **The best-informed agent gains from the fee.** The identity entrant pays selectively — 73% of
+  calm periods, 11% of toxic ones at f = 0.25 — takes 37% of fills instead of 13%, and earns 0.13
+  instead of 0.10; the oracle 0.18. The fee converts an information advantage into position,
+  which a time-priority queue otherwise rations by patience.
+* **The incidence falls on the identity-blind.** The fringe never pays, is pushed to the back of
+  the serving order whenever anyone does, and keeps only the fills the selectors declined: its
+  informed share rises from 0.29 to 0.43–0.49 and its profit from −0.01 to −0.09 / −0.10. Taker
+  access is unchanged (the fringe is always there); the fee moves money from identity-blind makers
+  to the venue and the informed, not from takers.
+* The threshold at which paying stops is the calm-state fill value times the fill probability,
+  ≈ 0.86 for an agent that knows the state (the oracle still pays at f = 0.75) and ≈ 0.5–0.6 for
+  one estimating it.
+* For the frontier: the fee is a venue lever that raises venue revenue and the informed entrant's
+  profit while lowering identity-blind makers' profit and leaving taker welfare unchanged — i.e. it
+  is not a defence of the incumbents; it is a tax on selection whose burden the selectors pass on.
