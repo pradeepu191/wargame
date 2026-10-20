@@ -136,7 +136,10 @@ tests/          pytest (38)
 - [x] Anonymity as a venue lever: identity-aware incumbents withdraw in stress (uninformed taker
       filled 0.25 vs 0.73 in the toxic state); priority fee = all-pay auction for position whose
       revenue-maximising level dissipates all maker rent, incidence on the identity-blind (5 seeds)
-- [ ] Quoter-side defences; the profit–resilience frontier
+- [x] Quoter-side defences and the frontier (20 cartels, 7 adversaries incl. a learned one): speed
+      is necessary, noise is a cost, identity-aware control is the one lever that improves both
+      axes (ᾱ = 0.5: worst case 0.08 → 0.19); nothing in the game defends the rent
+- [ ] A stronger learned adversary (PSRO from the hand-crafted rules); train-at-ᾱ / test-at-ᾱ′; held-out attackers
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow
 - [ ] Defences and the profit–resilience frontier (RQ4); preprint by mid-December

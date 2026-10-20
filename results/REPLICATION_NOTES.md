@@ -1346,3 +1346,54 @@ Quoted spread and fill rate are unchanged by every defence (no withdrawal).
   anonymity, fee) decide its incidence. (Hand-crafted adversaries; the learned one is pending.)
 * Learned adversary, one cartel, 600 training episodes (smoke test): J = 0.20 vs 0.48 under the
   undercutter — a Q-learning entrant already hurts the cartel more than the best hand-crafted rule.
+
+## Full grid (`defences.csv`; SuperCloud job 5978770; 20 cfl_exp2 cartels, 500 episodes, learned adversary at 12k training episodes; `fig_defence_frontier{,_cvar}.*`)
+
+Supersedes the preliminary table. Worst case = minimum over the six profit-maximising adversaries
+per cartel, then mean over ten cartels (95% CI).
+
+| ᾱ | defence | Π_nominal | worst-case J | worst-case 5% CVaR | ΔJ vs none: anon / id / oracle / markout / undercut / learned |
+|---|---|---|---|---|---|
+| 0.3 | none | .96 ± .03 | .18 ± .04 | −.31 | — |
+| 0.3 | random ε = .1 / .3 | .94 / .94 | .22 / .23 | −.31 / −.31 | ≈0 everywhere; learned +.04 / +.03 |
+| 0.3 | hold 2 / 5 | .96 / .95 | **.07 / .02** | −.34 / −.35 | −.14 to −.22 / −.20 to −.29; learned +.03 / +.05 |
+| 0.3 | floor anon / id | .97 / .97 | .22 / .22 | −.27 / −.26 | +.01 to +.02 / +.01 to +.03; learned +.01 / −.02 |
+| 0.5 | none | 1.01 ± .06 | .08 ± .03 | −1.07 | — |
+| 0.5 | random ε = .1 / .3 | .97 / .95 | .07 / .08 | −.98 / −.99 | ≈0; markout −.12 / −.14; learned +.01 |
+| 0.5 | hold 2 / 5 | 1.01 / .99 | **−.01 / −.09** | −1.00 / −1.11 | −.08 to −.17 / −.14 to −.37; learned +.01 / −.13 |
+| 0.5 | floor anon / id | 1.02 / **1.02** | .16 / **.19** | −.83 / **−.75** | +.03 to +.10 / **+.09 to +.12**; learned +.06 / +.09 |
+
+Learned adversary (tabular Q, 12k episodes, the incumbents' own algorithm and budget): earns
+0.28–0.42 rent units vs 0.67–1.02 for the best hand-crafted rule, and leaves the cartel J = 0.47–0.59
+(κ_A ≈ 0.5–0.6) vs 0.02–0.26 under the rules. Quoted spread and fill rate are unchanged by every
+defence; every entrant tightens the book (best quote 11–15 ticks under attack vs 17 alone).
+
+### Findings
+* **Speed is necessary.** Requoting every other period costs 0.11–0.17 rent units of worst-case
+  profit (0.18 → 0.07 at ᾱ = 0.3; 0.08 → −0.01 at 0.5); every fifth period, essentially everything
+  (κ_A = 1.0–1.3). The only answer to an undercut is to undercut back; a slow responder keeps the
+  residual flow. The reverse of Brown–MacKay's coercion result, because the entrant here takes
+  flow rather than disciplining a rival.
+* **Noise is a cost.** Randomising the quote lowers nominal profit by 0.02–0.06 and buys nothing
+  in the worst case at ᾱ = 0.5; at ᾱ = 0.3 it narrows the cartel-to-cartel dispersion of the worst
+  case (+0.04 in the mean, tighter CI) at a nominal cost of 0.02. Against the learned adversary
+  — the one it is meant for — it adds 0.03–0.04 at ᾱ = 0.3 and nothing at 0.5.
+* **Identity-aware control is the one lever that improves both axes, and only where the toxic
+  regime is decision-relevant.** At ᾱ = 0.5 the identity floor raises nominal profit 1.01 → 1.02
+  and the worst-case profit under attack 0.08 → 0.19 (CIs ±0.03 / ±0.02), with the worst-case
+  CVaR −1.07 → −0.75; the tape's forecast gets about 70% of it (0.16), identity the rest. At
+  ᾱ = 0.3 the gain is +0.04 and not distinguishable from zero — against ~11-tick cartels the
+  toxic state rarely bites, as in the identity grids. The floor is the same object as the
+  identity entrant's rule, used by the defenders.
+* **A learned adversary is a weak one.** A Q-learning entrant with the incumbents' own algorithm
+  and training budget finds a policy worth 0.3–0.4 rent units where the hand-crafted undercut-
+  with-inference rules take 0.7–1.0; it leaves the cartel half its rent. κ_A ≈ 0.7 is the
+  exploitability by structured best responses, not an artefact of weak adversaries; generic RL
+  with the incumbents' budget does *worse* than the rules, which is a remark about what an entrant
+  needs (the undercut and a toxicity estimate, not a value function).
+* **The makers' levers barely move the frontier.** The best of them leaves the entrant 75–80% of
+  what it took before. The defenders' problem is not that the adversary learns their reaction
+  function; it is that the adversary undercuts, and the only response to an undercut destroys the
+  rent. The rent is not defensible by the makers. The venue's levers (tick, anonymity, fee) decide
+  who holds the toxic flow and who pays for position; they do not defend the rent either. Nothing
+  in the game defends it — which is the answer to RQ3.
