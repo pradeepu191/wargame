@@ -102,3 +102,9 @@ git add results/queue_fee_*.csv && git commit -m "Priority fee sweep" && git pul
 sbatch slurm/defences.sh            # ~1 h on 48 cores -> results/defences.csv
 git add results/defences.csv && git commit -m "Quoter defences" && git pull --no-rebase && git push
 ```
+
+## Train at alpha, test at alpha' (robustness)
+```bash
+sbatch slurm/alpha_shift.sh         # ~20 min on 48 cores -> results/exploitability_alpha_shift.csv
+git add results/exploitability_alpha_shift.csv && git commit -m "Alpha shift" && git pull --no-rebase && git push
+```

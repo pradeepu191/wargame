@@ -1397,3 +1397,21 @@ defence; every entrant tightens the book (best quote 11–15 ticks under attack 
   rent. The rent is not defensible by the makers. The venue's levers (tick, anonymity, fee) decide
   who holds the toxic flow and who pays for position; they do not defend the rent either. Nothing
   in the game defends it — which is the answer to RQ3.
+
+---
+
+# Held-out adversaries (re-analysis of `defences.csv`)
+
+The defence conclusions were drawn with all adversaries in view. Check: choose each cartel's
+defence on {undercut, markout, anon} (maximise the worst-case profit under attack), score it on
+{id, oracle, learned}.
+
+| ᾱ | ordering of defences, selection vs held-out set (Spearman) | defence picked (10 cartels) | held-out worst-case J: picked / none / best in hindsight | gain of the pick over none (paired mean, min) |
+|---|---|---|---|---|
+| 0.3 | 0.75 | random .3 ×4, random .1 ×2, floor anon ×2, floor id ×2 | .23 / .20 / .25 | +.04 (min −.01) |
+| 0.5 | 0.96 | floor id ×5, floor anon ×5 | .18 / .09 / .20 | **+.10 (min +.02)** |
+
+The ordering is the same on adversaries the choice never saw; at ᾱ = 0.5 the floor is chosen in
+every cartel and keeps 93% of its hindsight gain out of sample, positive in every cartel. At
+ᾱ = 0.3 the choice is split among defences that are all within noise of each other, which is the
+"nothing helps here" conclusion restated out of sample.
