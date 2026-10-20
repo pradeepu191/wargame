@@ -26,7 +26,7 @@ import numpy as np
 from .agents import Agent, QConfig
 from .entrants import WalletEntrant
 from .env import MarketConfig
-from .queue_env import fill_value
+from .queue_env import fill_prob, fill_value
 
 
 class AlwaysRest(Agent):
@@ -104,20 +104,34 @@ class QueueQAgent(Agent):
 
 
 class QueueWalletEntrant(WalletEntrant):
-    """WalletEntrant's inference with the rest/out decision at a fixed spread."""
+    """WalletEntrant's inference with the rest/out decision at a fixed spread.
 
-    def __init__(self, cfg: MarketConfig, half_spread: int, info_set: str = "id", **kw):
+    With pay=True it also uses the venue's priority fee: when it would rest and is not already at
+    the front in time priority, it pays f iff the expected value of being served this period,
+    P(fill) * v(alpha_next), exceeds f.  A rule, not an optimum: it ignores that others may pay
+    too and that a place in line has value beyond this period."""
+
+    def __init__(self, cfg: MarketConfig, half_spread: int, info_set: str = "id", pay: bool = False, **kw):
         super().__init__(cfg, info_set, **kw)
         self.h = int(half_spread)
         self.threshold = 0.0
+        self.pay = pay
 
     def act(self, obs, i):
         self._ingest(obs)
         a_next = self.alpha_next()
         self.last_alpha_next = a_next
         v = fill_value(self.cfg, self.h, a_next)
-        self.last_decision = "rest" if v > self.threshold else "out"
-        return 1 if v > self.threshold else 0
+        if v <= self.threshold:
+            self.last_decision = "out"
+            return 0
+        fee = float(obs.get("priority_fee", 0.0))
+        if self.pay and fee > 0 and int(obs["fifo_rank"][i]) != 0:
+            if fill_prob(self.cfg, self.h, a_next) * v > fee:
+                self.last_decision = "pay"
+                return 2
+        self.last_decision = "rest"
+        return 1
 
 
 class QueueHedgeAgent(Agent):

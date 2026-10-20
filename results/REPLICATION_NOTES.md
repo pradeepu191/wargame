@@ -1142,3 +1142,138 @@ Add an identity expert to the no-regret incumbents' policy set, with and without
 * Caveat: 2 seeds, 200 evaluation episodes, one lag; the cluster grid (5 seeds, four lags, both
   spreads) is the reference. Metrics added to `experiments/queue_game.py`: `noliq_{calm,toxic}`,
   `uninformed_fill_{calm,toxic}`, `share_toxic`.
+
+---
+
+# The priority fee (preliminary: 2 seeds, L = 5, ρ_z = 0.9, break-even, fringe 2; `slurm/queue_fee.sh` is the full grid)
+
+Mechanism (`sim/queue_env.py`): a third action REST-AND-PAY; payers are served ahead of non-payers,
+time priority within each group; the fee f is charged per period of priority, filled or not; the
+venue collects it. The selector's rule (`QueueWalletEntrant(pay=True)`): when it would rest and is
+not already first in time priority, pay iff P(fill) · v(α_next) > f. Incumbents: EXP3 over
+{always, never, anon, anon_pay}.
+
+| f | incumbents' weight on paying | incumbent pnl (always / id_pay entrant) | fringe pnl | venue revenue / period | entrant: id (no pay) / id_pay / oracle_pay | id_pay entrant pays: calm / toxic | id_pay fill share | fringe informed share |
+|---|---|---|---|---|---|---|---|---|
+| 0 | — | .03 / .03 | .03 / −.01 | 0 | .10 / — / .11 | — | .13 | .29 |
+| 0.25 | .70 | .00 / **−.05** | −.01 / **−.09** | .15 / .29 | .05 / **.13** / .18 | .73 / .11 | **.37** | **.43** |
+| 0.5 | .48 | .01 / −.03 | .03 / −.06 | .08 / .23 | .09 / .09 / .11 | .43 / .04 | .33 | .35 |
+| 0.75 | .39 | .03 / .03 | .03 / −.01 | 0 / 0 | .11 / .10 / .05 | 0 / 0 | .14 | .30 |
+| 1.0 | — | .03 / .03 | .03 / −.01 | 0 | .10 / .10 / .11 | 0 / 0 | .13 | .29 |
+
+* **The fee is an all-pay auction for position, and it dissipates the selectors' rent to the
+  venue.** At f = 0.25 the incumbents pay in half of the calm periods and a quarter of the toxic
+  ones, gain no position relative to each other, and their profit falls from +0.03 to 0 or below;
+  the venue collects 0.15–0.31 per period, more than the whole maker rent at f = 0 (≈ 0.2). The
+  learners notice: at f ≥ 0.5 their weight moves from `anon_pay` back to `anon`.
+* **The best-informed agent gains from the fee.** The identity entrant pays selectively — 73% of
+  calm periods, 11% of toxic ones at f = 0.25 — takes 37% of fills instead of 13%, and earns 0.13
+  instead of 0.10; the oracle 0.18. The fee converts an information advantage into position,
+  which a time-priority queue otherwise rations by patience.
+* **The incidence falls on the identity-blind.** The fringe never pays, is pushed to the back of
+  the serving order whenever anyone does, and keeps only the fills the selectors declined: its
+  informed share rises from 0.29 to 0.43–0.49 and its profit from −0.01 to −0.09 / −0.10. Taker
+  access is unchanged (the fringe is always there); the fee moves money from identity-blind makers
+  to the venue and the informed, not from takers.
+* The threshold at which paying stops is the calm-state fill value times the fill probability,
+  ≈ 0.86 for an agent that knows the state (the oracle still pays at f = 0.75) and ≈ 0.5–0.6 for
+  one estimating it.
+* For the frontier: the fee is a venue lever that raises venue revenue and the informed entrant's
+  profit while lowering identity-blind makers' profit and leaving taker welfare unchanged — i.e. it
+  is not a defence of the incumbents; it is a tax on selection whose burden the selectors pass on.
+
+## Full grid (`queue_hedge_always_never_anon{,_id}_fringe{0,2}.csv`; SuperCloud job 5971218; 5 seeds, 4k training episodes, 300 evaluation episodes; `fig_liquidity_identity.*`)
+
+Supersedes the preliminary table above. Break-even, no fringe, identity entrant present — the
+venue-design numbers (95% seed intervals in the figure):
+
+| incumbents see | ρ_z | L = 1 / 5 / 20 / 60: nobody resting in toxic state | uninformed taker filled in toxic state | incumbent pnl |
+|---|---|---|---|---|
+| tape only | 0.9 | .54 / .09 / .06 / .12 | .36 / **.73** / **.75** / **.71** | .08 / .00 / .00 / .01 |
+| wallet ids | 0.9 | .54 / .62 / .72 / .69 | .37 / .30 / **.23** / **.25** | .10 / .12 / .14 / .14 |
+| tape only | 0.99 | .86 / .83 / .75 / .64 | .11 / .14 / .20 / .30 | .14 / .13 / .10 / .06 |
+| wallet ids | 0.99 | .87 / .85 / .84 / .86 | .11 / .12 / .13 / .11 | .16 / .14 / .14 / .17 |
+
+Always-resting (identity-blind) maker among those incumbents, no fringe: tape-only incumbents at
+ρ_z = 0.9: −.07 / +.02 / +.03 / +.03; identity incumbents: **−.13 / −.16 / −.18 / −.18**; at ρ_z = 0.99:
+−.24 → −.09 (tape) vs **−.27 to −.29** (ids). With the fringe present (fringe 2): the fringe earns
+−.03 → +.02 (ρ_z = 0.9) and −.10 → −.05 (0.99) under tape-only incumbents, **−.06** and **−.12** under
+identity incumbents, at every lag. Expert weights: identity incumbents choose the identity expert
+0.70–1.0; tape-only incumbents at ρ_z = 0.9 move to always-rest as the tape goes stale (0.43–0.57
+at L = 5–20 without a fringe, 0.77 at L = 60 with one).
+
+### Findings
+* **Under anonymity, the mark lag is what keeps liquidity in the toxic state.** With the tape
+  only and a lag of five or more arrivals, the incumbents cannot tell a toxic spell from a calm
+  one in time; they stay (many learn to always rest), an uninformed taker is filled 71–75% of the
+  time in the toxic state, and the incumbents earn nothing — they are the counterparty. At L = 1
+  they withdraw as sharply as identity-aware makers (0.36 vs 0.37).
+* **Identity removes the lag, and the liquidity with it.** With wallet ids the incumbents withdraw
+  in 62–72% of toxic-state periods at any lag; the uninformed taker's fill probability in the
+  toxic state is 0.23–0.30 against 0.71–0.75 under anonymity (ρ_z = 0.9, L ≥ 5), and the
+  incumbents earn 0.12–0.14 instead of ≈ 0. At ρ_z = 0.99 regimes last long enough for even a
+  stale tape to catch them, and the two converge (0.11–0.13 either way at L ≤ 5; anonymity
+  recovers to 0.30 only at L = 60). The venue's choice is therefore sharpest exactly where the
+  entrant's identity edge is: short regimes relative to the lag.
+* **Whoever is identity-blind on an identity book is the sole counterparty.** An always-resting
+  maker earns −0.13 to −0.29 per period among identity-aware incumbents, against +0.02 to +0.03
+  among anonymous incumbents with a stale tape. With a fringe present, the fringe's loss doubles
+  (−0.06 vs −0.03; −0.12 vs −0.10) once the incumbents can see identities.
+* **The entrant's own identity edge survives identity-aware incumbents** and is larger, not
+  smaller: id − anon = +0.04 to +0.07 per period (fringe 2, break-even, 5/5 seeds, min +0.04),
+  growing with L; against anonymous incumbents +0.05 (ρ_z = 0.9) and 0.00 → +0.06 (0.99). The
+  anonymous entrant is the worst-informed selector on the book.
+* One tick above break-even the same pattern holds with more liquidity overall (tape-only,
+  ρ_z = 0.9, L ≥ 20: 0.74 filled; ids: 0.38–0.48).
+* **For the frontier.** Anonymity is a transfer from makers to uninformed takers in stress:
+  takers keep access (0.7 vs 0.25) and the makers who provide it earn nothing. Public identity is
+  the reverse. Neither is a defence of the incumbents' rent; the lever decides who holds the toxic
+  flow when nobody wants it. This is the venue-side statement of the mark-lag mechanism.
+
+## Full grid (`queue_fee_anon.csv`, `queue_fee_id.csv`; SuperCloud job 5971619; 5 seeds × ρ_z {0.9, 0.99} × L {1, 5, 20} × spread {h^C, h^C+1} × fee {0, 0.1, 0.25, 0.5, 0.75, 1}; `fig_priority_fee.*`)
+
+Supersedes the preliminary table. Break-even, fringe 2, means over ρ_z and L (the pattern is the
+same in every cell; the by-cell numbers are in the CSVs):
+
+| incumbents see | f | incumbents' weight on paying | pay in calm / toxic (incumbents) | id entrant (paying) | incumbents | fringe | venue |
+|---|---|---|---|---|---|---|---|
+| tape | 0 | — | — | .10 | .06 | −.05 | 0 |
+| tape | 0.1 | .96 | .77 / .27 | **.20** | .03 | **−.15** | .16 |
+| tape | 0.25 | .87 | .66 / .18 | .14 | −.02 | −.16 | .33 |
+| tape | 0.5 | .54 | .44 / .06 | .05 | −.04 | −.14 | **.41** |
+| tape | 0.75 | .26 | .02 / .00 | .10 | .06 | −.06 | .02 |
+| ids | 0 | — | — | .09 | .11 | −.09 | 0 |
+| ids | 0.1 | 1.00 | .94 / .09 | .14 | .11 | **−.21** | .17 |
+| ids | 0.25 | 1.00 | .93 / .08 | .04 | .04 | −.21 | .41 |
+| ids | 0.5 | .78 | .86 / .06 | −.04 | −.03 | −.20 | **.62** |
+| ids | 0.75 | .23 | .31 / .01 | .06 | .07 | −.13 | .17 |
+
+A non-paying identity entrant among paying identity-aware incumbents at f ≤ 0.25: fill share
+**0.000–0.001**, profit 0.00 — if you do not pay you do not trade in calm periods.
+
+### Findings
+* **The fee is an all-pay auction for position.** Every selector pays, in the calm state: tape-only
+  incumbents 66–77% of calm periods and 18–27% of toxic ones (they cannot tell), identity-aware
+  incumbents 93–94% of calm and 8–9% of toxic periods (they can). The fee becomes the selection
+  instrument; time priority stops mattering ("if you don't pay you don't trade").
+* **The venue's revenue-maximising fee leaves every maker at or below zero.** Revenue peaks at
+  f = 0.5: 0.41 per period (tape-only incumbents) and 0.62 (identity-aware) — two to four times
+  the makers' total rent at f = 0. At that fee the entrant and the incumbents are at −0.04 to
+  +0.05 and the fringe at −0.14 to −0.20. The excess over the dissipated rent is the fringe's
+  loss: the fee is funded by the identity-blind.
+* **A cheap fee is a gift to the best-informed.** At f = 0.1 the identity entrant among tape-only
+  incumbents doubles its profit (0.10 → 0.20) by paying in 88% of calm and 8% of toxic periods and
+  taking 34% of fills; identity-aware incumbents facing a non-paying entrant double theirs
+  (0.11 → 0.21). Information converts into position at the price of the fee, and the fee is cheap
+  relative to the calm-state fill value (~0.86).
+* **Incidence.** The fringe's loss triples (−0.05 → −0.15 under tape-only incumbents; −0.09 →
+  −0.21 under identity-aware) at any fee that anyone pays, because it is pushed behind every payer
+  and keeps the fills the selectors declined (its informed share 0.29 → 0.40–0.54). Taker access
+  is unchanged (the fringe is always there). The learners notice the price: weight on the paying
+  expert falls from ~1.0 at f ≤ 0.25 to 0.23–0.26 at f = 0.75.
+* **For the frontier.** The priority fee is not a defence of the incumbents' rent: at the venue's
+  optimum it dissipates all of it. It is a tax on selection whose burden is passed to whoever
+  cannot select, and whose only beneficiaries besides the venue are the best-informed at fees
+  below the venue's optimum. Mechanism-design reading: a pay-for-priority queue converts a
+  time-priority rationing of the selection rent into a price, and the price is set by the
+  uninformed makers' losses.

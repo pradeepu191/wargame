@@ -90,3 +90,9 @@ git add results/queue_hedge_fringe2.csv results/queue_always_fringe2.csv && git 
 sbatch slurm/queue_identity.sh      # ~45 min on 48 cores -> results/queue_hedge_always_never_anon{,_id}_fringe{0,2}.csv
 git add results/queue_hedge_always_never_anon*_fringe*.csv && git commit -m "Identity-aware defenders, liquidity in stress" && git pull --no-rebase && git push
 ```
+
+## Priority fee (RQ3, venue lever)
+```bash
+sbatch slurm/queue_fee.sh           # ~1.5 h on 48 cores -> results/queue_fee_anon.csv, queue_fee_id.csv
+git add results/queue_fee_*.csv && git commit -m "Priority fee sweep" && git pull --no-rebase && git push
+```
