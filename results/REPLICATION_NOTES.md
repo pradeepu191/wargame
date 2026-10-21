@@ -1529,3 +1529,72 @@ ETH −0.28 vs −1.58, SOL −1.36 vs −1.83, HYPE −0.03 vs −1.35).
 * Caveats: two nights; types from ≥ 30 fills so the typed set is the high-volume takers;
   "quiet" = mid exactly unmoved at 1 s on the bbo feed.  A cross-venue price lead (Binance) is
   not excluded as the top makers' signal on pick-offs; it cannot produce the quiet-fill gap.
+
+---
+
+# The exact best response, and the double oracle (`best_response.csv`, `best_response_relearn.csv`; SuperCloud; 60 cfl_exp2 cartels)
+
+`experiments/best_response.py`.  A frozen cartel is a deterministic reaction function (greedy Q
+over (own last h, min rival last h); no inventory state; i.i.d. periods), so the entrant's
+problem is a finite-horizon MDP with known deterministic transitions and closed-form expected
+rewards (`profit_curve`); backward induction over the 100-period episode gives the exact best
+response for any objective λ·own − (1−λ)·incumbents.  DP-predicted values match the simulated
+ones (mean |ΔL| 0.00, |Δe| 0.02; no ties in any cartel's argmax).
+
+## Frontier (500 episodes; mean over 10 seeds; L = cartel's loss, e = attacker's profit, rent units)
+
+| ᾱ, N | C | undercut L / e | markout L / e | **exact BR (λ=1)** L / e / κ_A | damage-max (λ=0) L / e | incumbents' quote alone → under BR → under damage-max |
+|---|---|---|---|---|---|---|
+| 0.1, 2 | .84 | .69 / .52 | .67 / .50 | **1.06 / 1.20 / 1.14** | 1.06 / .26 | 10.8 → 15.9 → 4.8 |
+| 0.1, 3 | .80 | .61 / .52 | .59 / .55 | **1.02 / 1.19 / 1.18** | 1.03 / .27 | 10.3 → 15.6 → 6.9 |
+| 0.3, 2 | .87 | .59 / .49 | .59 / .52 | **.95 / 1.08 / 1.14** | 1.33 / .15 | 15.5 → 18.0 → 5.4 |
+| 0.3, 3 | .84 | .59 / .62 | .59 / .62 | **.93 / 1.08 / 1.16** | 1.36 / .02 | 14.6 → 18.8 → 4.8 |
+| 0.5, 2 | .83 | .71 / .46 | .64 / .55 | **1.00 / 1.17 / 1.18** | 2.82 / −.04 | 17.8 → 21.9 → 4.3 |
+| 0.5, 3 | .77 | .59 / .43 | .58 / .54 | **.93 / 1.17 / 1.29** | 2.68 / .02 | 17.0 → 20.5 → 4.9 |
+
+* **The exact best response takes the whole rent and more.**  L ≥ 0.9 C in 60 of 60 cartels,
+  L > C (the incumbents end below the competitive benchmark) in 60 of 60; the entrant earns
+  1.08–1.20 rent units — i.e. ≈ Π^M, the monopoly profit — and κ_A = 1.14–1.29.  The
+  hand-crafted rules reach 55–70% of it.  κ_A ≈ 0.7 was a property of the undercut rules, not
+  of the cartels.
+* **How: it steers.**  The best response quotes one tick inside what the incumbents are *about
+  to* quote (under_share 1.00 — it undercuts the reaction, not the last print) and holds the
+  cartel at Q-cells it never visits on its own path (off-path share 0.86–0.99), where the learned
+  "reaction" sends them wider: 10.8 → 15.9 at ᾱ=0.1, 17.8 → 21.9 at ᾱ=0.5.  The cartel is made
+  to quote near the monopoly width while the entrant sits inside it.
+* **No profit–damage trade-off until the attacker gives up most of its profit.**  λ = 1, 0.75,
+  0.5 give the same policy at ᾱ ≤ 0.3 (the profit-maximiser already destroys everything).  The
+  damage-maximiser is a different attack: it steers the cartel *tight* — to 4–7 ticks, inside
+  break-even (h^C = 8–13) — by quoting *above* it (above_share 0.6–0.86), takes no fills, earns
+  ≈ 0, and lets the incumbents absorb the toxic flow at losing quotes: L = 1.3 at ᾱ=0.3 and
+  2.7–2.8 at ᾱ=0.5, i.e. the incumbents lose two to three times their rent per period.  A frozen
+  learned reaction function can be driven anywhere its off-path rows point.
+
+## Double oracle (λ=1; the cartel re-learns 3000 episodes against the fixed best response, eps0 0.3, decay 1e-5; the entrant re-solves; 3 rounds)
+
+| round | cartel's rent alone C (mean; round 0 = .83) | stale BR still takes L / C | stale BR earns | fresh BR takes ≥ 0.9 C | cartels with C < 0.5 |
+|---|---|---|---|---|---|
+| 1 | .79 | .84 | .49 | 60 / 60 | 1 |
+| 2 | .71 | .91 | .55 | 60 / 60 | 2 |
+| 3 | .69 | .93 | .58 | 60 / 60 | 8 |
+
+* Re-learning buys back about half of what the stale attacker took (its profit falls from ≈1.2
+  to ≈0.5 — the level of the hand-crafted undercutter), and no more: the re-solved best
+  response takes ≥ 90% of the remaining rent in every cartel in every round.
+* While re-learning, the incumbents earn 0.08–0.27 rent units at ᾱ ≤ 0.3 and ≈ −0.05 (below
+  competitive) at ᾱ = 0.5 (last fifth of the re-learning run).
+* The cartel's own rent erodes round by round (0.83 → 0.79 → 0.71 → 0.69; at ᾱ = 0.5, N = 3,
+  0.77 → 0.60 by round 3 with 13% of cartels below C = 0.5).  The trajectory is the collapse
+  branch, slowly: the cartel cannot re-form around an attacker that re-solves.
+
+## For the paper
+* RQ2's headline changes: the rent is fully exploitable, not two-thirds exploitable; the open
+  question about attackers that target the reaction function is answered — they take
+  everything, and the damage-maximiser can impose losses of 2–3× the rent at no cost.
+* The exact best response needs the cartel's reaction function (the F^oracle of the policy); it
+  is the upper bound L_BR by definition.  The reaction function is identifiable from public
+  quotes (every incumbent's response to (own, riv) is on the tape, and the entrant sets riv with
+  its own quote), so a model-based learner with F^anon can approach it — the realistic attacker
+  to build next.  The learned tabular Q entrant of `defences.py` was weaker than the rules
+  because it was solving this MDP by sampling; the DP solves it exactly.
+* Figure `fig_best_response.png`.

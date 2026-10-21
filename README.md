@@ -146,7 +146,13 @@ tests/          pytest (38)
       axes (ᾱ = 0.5: worst case 0.08 → 0.19); nothing in the game defends the rent
 - [x] Robustness: train-at-ᾱ / test-at-ᾱ′ (κ_A ≈ 0.7 holds whenever the rent is intact; a cartel
       caught by a more toxic regime than it trained on becomes over-exploitable), held-out adversaries
-- [ ] A stronger learned adversary (PSRO from the hand-crafted rules)
+- [x] The exact best response to a frozen cartel (backward induction over its reaction function,
+      `experiments/best_response.py`): takes the whole rent in 60/60 cartels (κ_A 1.1–1.3) by
+      steering the cartel off its training path; the damage-maximiser imposes 2–3× the rent at no
+      cost; re-learning (double oracle, 3 rounds) buys back half of a stale attacker's take and
+      nothing against one that re-solves. κ_A ≈ 0.7 was a property of the undercut rules.
+- [ ] The realistic version: a model-based attacker on F^anon that identifies the reaction function
+      from public quotes and solves it; its gap to the exact best response
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow
 - [ ] Defences and the profit–resilience frontier (RQ4); preprint by mid-December

@@ -121,7 +121,10 @@ needs reorganising, not rewriting.
 4. **Model** (1½ pp): the environment; the two modes; closed-form benchmarks; the taker model
    (types, regime, mark lag) with the data that motivate each piece in one sentence each.
 5. **Rent and its exploitability — RQ2** (1½ pp): replication; mechanism test; L_BR and κ_A
-   across 120 populations and three attackers; re-learning incumbents.
+   across 180 populations and three rule attackers (κ_A ≈ 0.7); then the exact best response by
+   backward induction (rent fully exploitable, κ_A 1.1–1.3, steering; damage-maximiser 2–3× the
+   rent at no cost) and the double oracle (re-learning does not defend). fig_best_response. This
+   is now the RQ2 headline; the rule-attacker regression is the lower bound it closes.
 6. **Information — RQ1** (1½ pp): nested information sets; the identity grids; why persistence
    fails and regime + lag succeeds; the empirical counterpart (identity given the anonymous
    signal, by coin) and the empirical anchor: the makers who earn the spread take 2.6–6.5× fewer
