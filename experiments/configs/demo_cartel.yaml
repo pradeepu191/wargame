@@ -1,0 +1,23 @@
+# A small cartel for experiments/demo.py --train: two Q-learners, the alpha = 0.3 market of the paper,
+# 4000 episodes (the paper's cartels use 20000).  ~2 minutes.
+run_name: demo_cartel_trained
+seed: 0
+n_episodes: 4000
+log_every: 1000
+n_tape_episodes: 1
+market:
+  alpha: 0.3
+  n_mm: 2
+  max_half_spread: 24
+  horizon: 100
+  tick: 0.5
+  sigma_L: 8.0
+  edge_dist: exponential
+  edge_mean: 5.0
+  redraw_v_each_period: true
+agents:
+  - type: q
+    params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 2.0e-05, inventory_buckets: 1}
+  - type: q
+    params: {learning_rate: 0.15, discount: 0.95, exploration_decay: 2.0e-05, inventory_buckets: 1}
+impulse: {enabled: false}

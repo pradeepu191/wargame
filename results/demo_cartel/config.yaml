@@ -1,0 +1,34 @@
+agents:
+- params:
+    discount: 0.95
+    exploration_decay: 4.0e-06
+    inventory_buckets: 1
+    learning_rate: 0.15
+  type: q
+- params:
+    discount: 0.95
+    exploration_decay: 4.0e-06
+    inventory_buckets: 1
+    learning_rate: 0.15
+  type: q
+impulse:
+  enabled: true
+  n_episodes: 500
+  post: 15
+  pre: 5
+  t_shock: 50
+log_every: 1000
+market:
+  alpha: 0.3
+  edge_dist: exponential
+  edge_mean: 5.0
+  horizon: 100
+  max_half_spread: 24
+  n_mm: 2
+  redraw_v_each_period: true
+  sigma_L: 8.0
+  tick: 0.5
+n_episodes: 20000
+n_tape_episodes: 3
+run_name: cfl_exp2_alpha0.3_n_mm2
+seed: 0
