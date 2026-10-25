@@ -212,11 +212,11 @@ Trace: exact best response vs the cartel (quotes in ticks)
 \includegraphics[width=\textwidth]{fig_touch.pdf}
 \end{column}
 \begin{column}{0.45\textwidth}\small
-Four sessions of best-bid/ask recording over two weeks (25 h, 490k scored fills) $+$ 449 h of fills with both wallets.
+Four best-bid/ask sessions over two weeks (25 h, 490k scored fills) $+$ 449 h of fills with both wallets.
 \begin{itemize}\setlength\itemsep{2pt}
 \item The quoted spread on BTC/ETH/SOL is \textbf{one tick essentially always} (p90 $=$ median). Rent cannot live in the price.
 \item A fill at the touch pays that tick, then \textbf{loses 0.2--0.4\,bps} to the mid within 10 s, on every coin. The taker's cost is in depth: one order in ten walks the book and pays twenty ticks.
-\item The ten most active maker wallets (chosen on activity, scored on outcome) earn \textbf{0.3--1.0\,bps more per fill at the same price}, and their ranking persists from the first session to the later ones (rank corr.\ 0.53--0.80).
+\item The ten most active maker wallets (chosen on activity, scored on outcome) earn \textbf{0.3--1.0\,bps more per fill at the same price}; their ranking persists across sessions (rank corr.\ 0.53--0.80).
 \end{itemize}
 \takeaway{Rent lives in \emph{which fills you get}, not in the quote.}
 \end{column}
