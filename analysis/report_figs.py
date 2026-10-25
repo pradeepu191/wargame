@@ -195,7 +195,7 @@ def fig_touch(res: Path):
     ax.set_xticks(x); ax.set_xticklabels(COINS)
     ax.set_ylabel("maker's profit per fill vs the mid\n10 s later (bps)")
     ax.set_ylim(-1.1, 0.85)
-    ax.set_title("Same price, same tick: the ordinary fill at the touch loses,\nthe top makers' fills break even or earn (Hyperliquid, two nights)", fontsize=10)
+    ax.set_title("Same price, same tick: the ordinary fill at the touch loses,\nthe top makers' fills break even or earn (Hyperliquid, 25 h over four sessions)", fontsize=10)
     ax.legend(loc="upper left", ncol=1)
     grid(ax)
     save(fig, res / "fig_touch")
@@ -207,8 +207,8 @@ def fig_identity_selection(res: Path):
     fig, axes = plt.subplots(1, 2, figsize=(10.2, 3.6), constrained_layout=True, sharey=True)
     types = [("benign", BLUE, "wallet was benign on night 1"), ("new", GREY, "wallet unseen on night 1"), ("toxic", RED, "wallet was toxic on night 1")]
     x = np.arange(len(COINS)); w = 0.26
-    for ax, suffix, title in ((axes[0], "", "All fills at the touch:\n2.6\u20136.5\u00d7 fewer of the toxic wallets' fills"),
-                              (axes[1], "quiet_", "Only fills with no mid move in the next 1 s (not pick-offs):\nstill 1.3\u20132.8\u00d7 fewer, so it is not speed alone")):
+    for ax, suffix, title in ((axes[0], "", "All fills at the touch:\n2.6\u20136.8\u00d7 fewer of the toxic wallets' fills"),
+                              (axes[1], "quiet_", "Only fills with no mid move in the next 1 s (not pick-offs):\nstill 1.4\u20134.1\u00d7 fewer, so it is not speed alone")):
         for k, (t, color, label) in enumerate(types):
             v = f[f"id_{t}_{suffix}top_share"]
             ax.bar(x + (k - 1) * w, v, w, color=color, edgecolor="white", lw=1, label=label if ax is axes[0] else None)
@@ -217,10 +217,10 @@ def fig_identity_selection(res: Path):
         ax.set_xticks(x); ax.set_xticklabels(COINS)
         ax.set_title(title, fontsize=9.8)
         grid(ax)
-    axes[0].set_ylabel("top-10 makers' share of that\nwallet type's fills on night 2")
+    axes[0].set_ylabel("top-10 makers' share of that\nwallet type's fills, later sessions")
     axes[0].set_ylim(0, 0.62)
     axes[0].legend(loc="upper left", fontsize=8.5, ncol=1, handlelength=1.2, borderaxespad=0.2)
-    fig.suptitle("The top-10 makers are missing from the fills of wallets that were toxic the night before", x=0.01, y=0.995, ha="left", fontsize=10.5, fontweight="bold")
+    fig.suptitle("The top-10 makers are missing from the fills of wallets that were toxic on the first night (typed on night 1, scored on three later sessions)", x=0.01, y=0.995, ha="left", fontsize=10.5, fontweight="bold")
     fig.get_layout_engine().set(rect=(0, 0, 1, 0.95))
     save(fig, res / "fig_identity_selection")
 

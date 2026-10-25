@@ -212,11 +212,11 @@ Trace: exact best response vs the cartel (quotes in ticks)
 \includegraphics[width=\textwidth]{fig_touch.pdf}
 \end{column}
 \begin{column}{0.45\textwidth}\small
-Two nights of best-bid/ask recording (15 h, 300k scored fills) $+$ 327 h of fills with both wallets.
+Four sessions of best-bid/ask recording over two weeks (25 h, 490k scored fills) $+$ 449 h of fills with both wallets.
 \begin{itemize}\setlength\itemsep{2pt}
 \item The quoted spread on BTC/ETH/SOL is \textbf{one tick essentially always} (p90 $=$ median). Rent cannot live in the price.
-\item A fill at the touch pays that tick, then \textbf{loses 0.3--0.6\,bps} to the mid within 10 s, on every coin. The taker's cost is in depth: one order in ten walks the book and pays twenty ticks.
-\item The ten most active maker wallets (chosen on activity, scored on outcome) earn \textbf{0.4--1.1\,bps more per fill at the same price}, and their ranking persists across nights (rank corr.\ 0.43--0.75).
+\item A fill at the touch pays that tick, then \textbf{loses 0.2--0.4\,bps} to the mid within 10 s, on every coin. The taker's cost is in depth: one order in ten walks the book and pays twenty ticks.
+\item The ten most active maker wallets (chosen on activity, scored on outcome) earn \textbf{0.3--1.0\,bps more per fill at the same price}, and their ranking persists from the first session to the later ones (rank corr.\ 0.53--0.80).
 \end{itemize}
 \takeaway{Rent lives in \emph{which fills you get}, not in the quote.}
 \end{column}
@@ -227,8 +227,8 @@ Two nights of best-bid/ask recording (15 h, 300k scored fills) $+$ 327 h of fill
 \centering
 \includegraphics[width=0.86\textwidth]{fig_identity_selection.pdf}
 \begin{itemize}\small\setlength\itemsep{1pt}
-\item They never withdraw after a stressful spell at any timescale (30 s--5 min; correlations $-0.07$ to $+0.13$). They are absent from the \emph{wallet}, not the \emph{moment}: the gap is the same inside calm and stressed tape.
-\item Classified on night 1, scored on night 2 (toxic wallets cost 1.0--2.3\,bps more on night 2: the typing holds). \textbf{RQ1's mechanism, observed on the real book.}
+\item They never withdraw after a stressful spell at any timescale (30 s--5 min; correlations $-0.11$ to $+0.13$). They are absent from the \emph{wallet}, not the \emph{moment}: the gap is the same inside calm and stressed tape.
+\item Classified on the first night, scored on three later sessions over two weeks (toxic wallets cost 1.1--2.1\,bps more there: the typing holds). \textbf{RQ1's mechanism, observed on the real book.}
 \end{itemize}
 \end{frame}
 
@@ -279,15 +279,15 @@ one tick (bps) & 0.12 & 0.39 & 0.86 & 0.11 \\
 taker's cost vs the mid: fills at the touch / walked (bps) & 0.12 / 2.35 & 0.42 / 3.20 & 0.92 / 5.20 & 0.17 / 3.57 \\
 10-s maker markout, at the touch / walked (bps) & $-0.41$ / $-0.80$ & $-0.56$ / $-2.26$ & $-0.27$ / $+0.98$ & $-0.45$ / $-0.01$ \\
 next fill's markout after a toxic vs a benign wallet (bps, 327 h) & $-0.64$ & $-1.01$ & $-0.59$ & $-0.59$ \\
-10-s markout at the touch: top-10 makers / everyone else (bps) & $-0.02$ / $-0.41$ & $+0.24$ / $-0.70$ & $+0.52$ / $-0.56$ & $+0.09$ / $-0.56$ \\
-per-maker rank correlation, night vs night ($n$ makers) & 0.75 (108) & 0.50 (65) & 0.56 (45) & 0.43 (68) \\
-top-10 share of touch fills: benign / unseen / toxic wallets & .12 / .13 / .03 & .38 / .31 / .06 & .42 / .39 / .12 & .30 / .25 / .12 \\
-\ldots\ on fills with no mid move in 1 s: benign / toxic & .14 / .09 & .42 / .15 & .48 / .18 & .30 / .24 \\
+10-s markout at the touch: top-10 makers / everyone else (bps) & $-0.05$ / $-0.36$ & $+0.22$ / $-0.68$ & $+0.53$ / $-0.50$ & $+0.01$ / $-0.56$ \\
+per-maker rank correlation, first session vs later ($n$ makers) & 0.80 (113) & 0.53 (80) & 0.70 (53) & 0.59 (70) \\
+top-10 share of touch fills: benign / unseen / toxic wallets & .11 / .13 / .03 & .43 / .34 / .06 & .42 / .37 / .09 & .32 / .26 / .12 \\
+\ldots\ on fills with no mid move in 1 s: benign / toxic & .12 / .09 & .47 / .17 & .48 / .12 & .34 / .21 \\
 \bottomrule
 \end{tabular}
 \vspace{4pt}
 
-Standard errors cluster by five-minute block; every top-10-vs-rest gap exceeds four SEs. Wallet types from night 1, scored on night 2.
+Four book sessions over two weeks (25 h). Standard errors cluster by five-minute block; every top-10-vs-rest gap exceeds four SEs. Wallet types from the first night, scored on the three later sessions.
 \end{frame}
 
 \begin{frame}{Backup --- the double oracle and robustness, in numbers}
