@@ -29,3 +29,8 @@ slurm-*.out
 results/relearn_parts/
 .tmp/
 .pipcache/
+paper/*.nav
+paper/*.snm
+paper/*.vrb
+paper/*.toc
+paper/*.out

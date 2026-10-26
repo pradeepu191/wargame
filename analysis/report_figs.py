@@ -279,7 +279,7 @@ def fig_payoff(res: Path):
     ax.set_xlabel("half-spread h quoted (ticks)")
     ax.set_ylabel(r"expected payoff per period $\Pi(h;\alpha)$")
     ax.set_xlim(0.5, 24.5); ax.set_ylim(-1.3, 2.5)
-    ax.set_title("The payoff curve of a best quote; circles: Nash (break-even) quote, squares: joint monopoly", fontsize=10)
+    ax.set_title("Expected payoff of a best quote, per period\ncircles: Nash (break-even) quote; squares: joint-monopoly quote", fontsize=10)
     ax.legend(loc="upper right")
     grid(ax)
     save(fig, res / "fig_payoff")
