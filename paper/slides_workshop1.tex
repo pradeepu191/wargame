@@ -42,6 +42,7 @@
 \newcommand{\LBR}{L_{\mathrm{BR}}}
 \newcommand{\takeaway}[1]{\vspace{3pt}\begin{tcolorbox}[enhanced,colback=paleorange,colframe=paleorange,borderline west={2.5pt}{0pt}{orange},boxrule=0pt,arc=1.5pt,left=6pt,right=6pt,top=3pt,bottom=3pt]\small\textbf{#1}\end{tcolorbox}}
 \newcommand{\rqbox}[3]{\begin{tcolorbox}[enhanced,colback=paleblue,colframe=paleblue,borderline north={2.5pt}{0pt}{#1},boxrule=0pt,arc=1.5pt,left=6pt,right=6pt,top=5pt,bottom=5pt,height=3.1cm,valign=top]\raggedright\textcolor{#1}{\textbf{#2}}\par\vspace{3pt}\small #3\end{tcolorbox}}
+\newcommand{\stat}[3]{\begin{tcolorbox}[enhanced,colback=paleblue,colframe=paleblue,borderline north={2.5pt}{0pt}{#1},boxrule=0pt,arc=1.5pt,left=5pt,right=5pt,top=4pt,bottom=4pt]\centering{\Large\textbf{\textcolor{#1}{#2}}}\par\vspace{2pt}{\footnotesize #3}\end{tcolorbox}}
 \newcommand{\partlabel}[1]{\vspace{-10pt}\par\noindent\hfill{\scriptsize\textcolor{muted}{\textsc{#1}}}\par\vspace{-4pt}}
 
 \title{\huge Rent or Toxicity?}
@@ -56,6 +57,56 @@
 
 % ============================================================ (a) motivation
 \section{Motivation and question}
+
+\begin{frame}{Why we care: 2026 was the year retail leverage went wrong at national scale}
+\vspace{-4pt}
+\begin{columns}[T]
+\begin{column}{0.3\textwidth}\stat{red}{$-44\%$}{KOSPI peak to trough, June 19 to July 29; July 28 the worst day on record}\end{column}
+\begin{column}{0.3\textwidth}\stat{red}{1.2 million}{leveraged retail accounts margin-called by mid-July (3.4\% of adults); 320--360k force-liquidated}\end{column}
+\begin{column}{0.3\textwidth}\stat{red}{\$39 billion}{retail losses on single-stock leveraged ETFs (Citi); 92\% of holders retail; 62\% of leveraged accounts aged 20--39}\end{column}
+\end{columns}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}\small
+\vspace{2pt}
+\begin{itemize}\setlength\itemsep{2pt}
+\item Single-stock $2\times$ ETFs listed in late May and sold out on day one; by July they and two stocks were 70\% of trading value. A second leg in October left the index 41\% below its peak.
+\item These were not professionals. They saw the yield of leverage, not its risk, and could not see who was on the other side of their trades.
+\end{itemize}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{tcolorbox}[enhanced,colback=paper,colframe=grey!60,boxrule=0.5pt,arc=2pt,left=7pt,right=7pt,top=3pt,bottom=3pt]
+{\footnotesize\textbf{President Lee Jae-myung}, on X, October 14, 2026 (KST)}\\[1pt]
+\includegraphics[width=0.9\linewidth]{quote_ko.pdf}\\[0pt]
+{\footnotesize\textit{``You must live. Somehow, you must live. If it is hard, call 109. We will find, together, a way and a reason to live.''} \textcolor{muted}{(109: Korea's suicide-prevention line.)}}
+\end{tcolorbox}
+\end{column}
+\end{columns}
+{\tiny\textcolor{muted}{Sources: Bloomberg, Reuters, Goldman Sachs, Citi (via Seoulz, ``KOSPI Crash 2026''); Maeil Shinmun, Oct 22, 2026; x.com/Jaemyung\_Lee/status/2110145832511225984.}}
+\end{frame}
+
+\begin{frame}{The same products are moving toward US retail, and they come with less protection, not more}
+\partlabel{Part (a): motivation}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\small
+\textbf{Hyperliquid} is a crypto \emph{perpetual futures} exchange: positions with tens of times leverage, open around the clock, liquidated automatically. It currently blocks US users; in October 2026 its CEO was publicly discussing a legal path through the CFTC.
+\begin{itemize}\setlength\itemsep{2pt}
+\item Where a Korean retail investor bought a $2\times$ ETF through a broker with a margin desk, a perpetuals user sets the leverage with a slider.
+\item And on this venue everything a user does is \textbf{public}: every order and fill carries their wallet address, forever. The professionals on the other side can, and we will show do, classify a wallet within a night.
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}\small
+\textbf{What a financially literate user would need to know, and nobody tells them}
+\begin{itemize}\setlength\itemsep{2pt}
+\item What an ordinary trade actually costs them, beyond the quoted price.
+\item Who is on the other side, and who earns from them.
+\item Whether their own public identity is being used against them.
+\item Which venue rules protect the uninformed in a stress episode, and which quietly make them pay.
+\end{itemize}
+\takeaway{This project measures those four things on the real venue and in a model where the venue's rules can be changed. The results are for the public and for whoever designs the rules, not only for the makers.}
+\end{column}
+\end{columns}
+\end{frame}
 
 \begin{frame}{The system: a market where everyone can see who is trading}
 \partlabel{Part (a): motivation and question}
