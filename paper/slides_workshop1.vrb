@@ -1,4 +1,5 @@
 \frametitle{The prototype, in one command}
+\partlabel{Part (c): prototype and evidence}
 \begin{columns}[T]
 \begin{column}{0.47\textwidth}\small
 \texttt{python experiments/demo.py} \quad (seconds)
@@ -12,7 +13,7 @@
 \textbf{Package} (\texttt{github.com/pradeepu191/wargame}, 59 tests): \texttt{sim/} environment, learners, entrants, queue mode, benchmarks; \texttt{experiments/} every result below; \texttt{analysis/} the Hyperliquid pipeline (recorder, scoring, identity selection); \texttt{results/REPLICATION\_NOTES.md} logs each result with its command.
 \end{column}
 \begin{column}{0.53\textwidth}
-{\tiny\begin{verbatim}
+\tiny\begin{verbatim}
 Entry (200 episodes each, same random numbers):
   adversary                     cartel loses  entrant earns  kappa_A
   undercut (one tick inside)            0.41           0.33     0.48
@@ -26,7 +27,7 @@ Trace: exact best response vs the cartel (quotes in ticks)
    2    20    14       13   no trade
    5    21    19       14   informed buy  entrant   -5.77
    7    18    23       14   noise    buy  entrant  +11.79
-\end{verbatim}}
+\end{verbatim}
 \vspace{-4pt}
 {\scriptsize The incumbents answer each entrant quote with their learned reaction; the entrant sits one tick inside what they are \emph{about to} quote and holds them where they never trained.}
 \end{column}
