@@ -255,6 +255,89 @@ def fig_anonymity(res: Path):
     save(fig, res / "fig_anonymity")
 
 
+# ----------------------------------------------------------------------------- 7. payoff curve (pedagogical)
+def fig_payoff(res: Path):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from sim import MarketConfig
+    from sim.benchmarks import profit_curve, type_benchmarks
+    fig, ax = plt.subplots(figsize=(7.2, 3.4), constrained_layout=True)
+    hs = np.arange(1, 25)
+    for a, color in ((0.1, AQUA), (0.3, BLUE), (0.5, ORANGE)):
+        cfg = MarketConfig(alpha=a, n_mm=2, max_half_spread=24, horizon=100, tick=0.5, sigma_L=8.0,
+                           edge_dist="exponential", edge_mean=5.0, redraw_v_each_period=True)
+        Pi = profit_curve(cfg, a)
+        hC, PiC, hM, PiM = type_benchmarks(cfg, a)
+        ax.plot(hs, Pi, color=color, lw=2.2, label=rf"informed share $\alpha$ = {a}")
+        ax.scatter([hC], [Pi[hC - 1]], s=60, color=color, marker="o", zorder=4, edgecolor="white")
+        ax.scatter([hM], [Pi[hM - 1]], s=70, color=color, marker="s", zorder=4, edgecolor="white")
+        ax.annotate(rf"$h^C$={hC}", (hC, Pi[hC - 1]), xytext=(0, -14), textcoords="offset points", ha="center", fontsize=8.5, color=color)
+        ax.annotate(rf"$h^M$={hM}", (hM, Pi[hM - 1]), xytext=(0, 7), textcoords="offset points", ha="center", fontsize=8.5, color=color)
+    ax.axhline(0, color=MUTED, lw=0.8)
+    ax.axvline(8, color=INK, lw=1, ls=":")
+    ax.annotate("the same 8-tick quote is zero-rent\n(break-even) if α = 0.5, and four\ntimes the Nash quote if α = 0.1.\nThe quote alone cannot tell\nrent from toxicity.", (8.4, -1.2), fontsize=8.5, color=INK, va="bottom")
+    ax.set_xlabel("half-spread h quoted (ticks)")
+    ax.set_ylabel(r"expected payoff per period $\Pi(h;\alpha)$")
+    ax.set_xlim(0.5, 24.5); ax.set_ylim(-1.3, 2.5)
+    ax.set_title("The payoff curve of a best quote; circles: Nash (break-even) quote, squares: joint monopoly", fontsize=10)
+    ax.legend(loc="upper right")
+    grid(ax)
+    save(fig, res / "fig_payoff")
+
+
+# ----------------------------------------------------------------------------- 8. steering, period by period (pedagogical)
+def fig_steering(res: Path):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import yaml
+    from sim import GlostenMilgromEnv, MarketConfig
+    from experiments.best_response import CartelMDP, DPEntrant
+    from experiments.entry import FrozenQ
+    from sim.entrants import UndercutEntrant
+    d = res / "demo_cartel"
+    cfg = yaml.safe_load((d / "config.yaml").read_text()); mk = dict(cfg["market"]); N = int(mk["n_mm"]); K = int(mk["max_half_spread"]); T = int(mk["horizon"])
+    Q = [np.load(d / f"Q_agent{i}.npy") for i in range(N)]
+    seed = int(cfg.get("seed", 0))
+
+    def episode(agents, n):
+        env = GlostenMilgromEnv(MarketConfig(**{**mk, "n_mm": n, "seed": 10_000 + seed}))
+        obs = env.reset()
+        for ag in agents:
+            ag.reset()
+        rows = []
+        done = False
+        while not done:
+            a = np.array([ag.act(obs, i) for i, ag in enumerate(agents)])
+            obs, r, done, info = env.step(a)
+            rows.append((a.copy(), info["filled"]))
+        return rows
+
+    alone = episode([FrozenQ(Q[i], K, N) for i in range(N)], N)
+    under = episode([FrozenQ(Q[i], K, N + 1) for i in range(N)] + [UndercutEntrant()], N + 1)
+    mdp = CartelMDP(Q, MarketConfig(**{**mk, "n_mm": N + 1}), T)
+    policy, _, _ = mdp.solve(1.0)
+    best = episode([FrozenQ(Q[i], K, N + 1) for i in range(N)] + [DPEntrant(mdp, policy)], N + 1)
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.3), constrained_layout=True, sharey=True)
+    t = np.arange(1, T + 1)
+    for ax, rows, title in zip(axes, (alone, under, best),
+                               ("Alone: the two makers take turns at the best\nquote, which never goes near Nash", "Undercut rule: the cartel answers in kind\nand the entrant is dragged down with it", "Exact best response: one tick inside what the\ncartel is about to quote; the cartel stays wide")):
+        q = np.array([r[0] for r in rows])
+        ax.plot(t, q[:, :N].min(axis=1), color=BLUE, lw=1.8, label="incumbents' best quote")
+        if q.shape[1] > N:
+            ax.plot(t, q[:, N], color=ORANGE, lw=1.8, label="entrant's quote")
+            filled = np.array([r[1] == N for r in rows])
+            ax.scatter(t[filled], q[filled, N], s=10, color=ORANGE, zorder=3)
+        ax.axhline(14, color=MUTED, lw=0.8, ls="--"); ax.axhline(4, color=MUTED, lw=0.8, ls=":")
+        ax.set_title(title, fontsize=9); ax.set_xlabel("period"); grid(ax)
+    axes[0].set_ylabel("half-spread (ticks)")
+    axes[0].annotate("monopoly h = 14", (2, 14.3), fontsize=8, color=MUTED)
+    axes[0].annotate("Nash h = 4", (2, 4.3), fontsize=8, color=MUTED)
+    axes[2].legend(loc="lower right", fontsize=8)
+    axes[0].set_ylim(0, 25)
+    fig.suptitle(r"One episode of the shipped cartel ($\bar\alpha$ = 0.3); dots: periods in which the entrant got the fill", x=0.01, ha="left", fontsize=10.5, fontweight="bold")
+    save(fig, res / "fig_steering")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
@@ -263,7 +346,8 @@ def main():
     res = Path(args.results)
     style()
     for name, fn in (("rent", fig_rent), ("attackers", fig_attackers), ("lag", fig_lag), ("touch", fig_touch),
-                     ("identity_selection", fig_identity_selection), ("anonymity", fig_anonymity)):
+                     ("identity_selection", fig_identity_selection), ("anonymity", fig_anonymity),
+                     ("payoff", fig_payoff), ("steering", fig_steering)):
         if args.only and name not in args.only.split(","):
             continue
         fn(res)

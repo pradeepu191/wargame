@@ -63,6 +63,43 @@
 \end{columns}
 \end{frame}
 
+
+\begin{frame}{The book, in one picture}
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
+  % price axis
+  \draw[-{Latex[length=2mm]},color=muted] (0,0) -- (12.4,0) node[below left,color=muted] {price (one grid step = one tick)};
+  \foreach \x in {1,...,12} \draw[color=muted] (\x,-0.08) -- (\x,0.08);
+  % mid
+  \draw[dashed,color=ink] (6.5,0) -- (6.5,3.3); \node[above,color=ink] at (6.5,3.3) {\textbf{mid} $m_t$};
+  % bids (left) and asks (right) as stacked boxes with wallet labels
+  \foreach \x/\h/\lab in {5/1.0/A, 5/1.9/B, 4/1.0/C, 3/1.0/vault} {
+     \draw[fill=blue!25,draw=blue] (\x-0.42,\h-0.9) rectangle (\x+0.42,\h-0.1); \node at (\x,\h-0.5) {\lab};}
+  \foreach \x/\h/\lab in {8/1.0/B, 8/1.9/A, 9/1.0/vault, 10/1.0/D} {
+     \draw[fill=orange!25,draw=orange] (\x-0.42,\h-0.9) rectangle (\x+0.42,\h-0.1); \node at (\x,\h-0.5) {\lab};}
+  \node[below,color=blue] at (4,-0.35) {\textbf{bids}: standing offers to buy};
+  \node[below,color=orange] at (9,-0.35) {\textbf{asks}: standing offers to sell};
+  % touch and spread
+  \draw[{Latex[length=1.5mm]}-{Latex[length=1.5mm]},color=ink] (5,2.4) -- (8,2.4) node[midway,above] {\textbf{spread}: here one tick each side, $h=1$};
+  \node[color=muted,align=center] at (5,3.0) {best bid\\(the \emph{touch})};
+  \node[color=muted,align=center] at (8,3.0) {best ask\\(the \emph{touch})};
+  % taker
+  \draw[-{Latex[length=2mm]},thick,color=red] (11.6,1.6) -- (8.5,0.6);
+  \node[color=red,align=left,anchor=west] at (11.0,2.1) {\textbf{taker} (wallet T)\\buys 1 unit: hits the\\best ask $\to$ a \emph{fill} for B};
+  % queue note
+  \node[color=muted,align=left,anchor=west,text width=2.7cm] at (0.05,2.3) {B is \emph{first in line} at the best ask, A behind it (first in, first out). An order larger than B's also takes A's, then \emph{walks} to the next price.};
+\end{tikzpicture}
+\vspace{2pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\small
+\textbf{What becomes public}: the fill (buy, price, wallet T, wallet B) at once; what the asset is worth afterwards only as the price moves. B's payoff on the fill is $\text{price}-V_t$: positive if T was a noise trader, negative if T knew the price was about to rise (\emph{adverse selection}).
+\end{column}
+\begin{column}{0.5\textwidth}\small
+\textbf{On Hyperliquid's major books the spread is one tick essentially always.} So a maker cannot earn more by quoting wider; it can only earn by being in line for the \emph{right} fills --- which is why the queue, the wallet labels and the identity of T matter.
+\end{column}
+\end{columns}
+\end{frame}
+
 \begin{frame}{What we want to learn}
 \begin{enumerate}
 \item[\textbf{RQ1}] \textbf{What is public wallet identity worth} to an entrant, beyond the anonymous tape --- and through which mechanism?
@@ -140,6 +177,16 @@ $\Pi(h;\alpha)=(1-\alpha)\,2x\bar\Phi(x/\sigma_L)-\alpha\mu e^{-x/\mu}$, $x=h\th
 \end{columns}
 \end{frame}
 
+
+\begin{frame}{Why rent and toxicity look alike: the payoff curve}
+\centering
+\includegraphics[width=0.8\textwidth]{fig_payoff.pdf}
+\begin{itemize}\small\setlength\itemsep{1pt}
+\item Every curve is $\Pi(h;\alpha)=(1-\alpha)\,2x\bar\Phi(x/\sigma_L)-\alpha\mu e^{-x/\mu}$: uninformed takers pay the half-spread $x=h\theta$, informed ones cost $\mu$ when they trade, and trade less often as $x$ grows.
+\item More toxic flow (larger $\alpha$) pushes the whole curve down and both benchmarks to the right. An observer who sees only the quote cannot locate it on the right curve --- the entrant's first job is to estimate $\alpha$ from the outcomes of its own fills (the \emph{markout} rule), or from \emph{who} is trading.
+\end{itemize}
+\end{frame}
+
 % ============================================================ (c) prototype and evidence
 \section{Prototype and evidence}
 
@@ -197,6 +244,57 @@ Trace: exact best response vs the cartel (quotes in ticks)
 \end{itemize}
 \end{frame}
 
+
+\begin{frame}{Steering, period by period}
+\centering
+\includegraphics[width=0.98\textwidth]{fig_steering.pdf}
+\begin{itemize}\small\setlength\itemsep{1pt}
+\item Left: the learned cartel is a \emph{rotation} --- the two makers alternate at the best quote and never go near Nash. Middle: the undercut rule gets a price war: every undercut is answered, both sides slide toward break-even and the entrant's fills (dots) are at ever worse prices.
+\item Right: the exact best response never provokes the war. It quotes one tick inside the reaction it has \emph{predicted}, so the cartel's learned answer is to stay wide, and the entrant takes nearly every fill at $\approx14$ ticks --- the monopoly profit, for itself.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Why identity has value: a spell of toxic flow, seen two ways}
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize,scale=0.86,transform shape]
+  \foreach \i in {0,...,9} \draw[color=muted] (\i*1.2+0.6,2.35) -- (\i*1.2+0.6,2.45);
+  \node[left,color=muted] at (0.4,2.4) {arrival};
+  \foreach \i/\lab in {0/1,1/2,2/3,3/4,4/5,5/6,6/7,7/8,8/9,9/10} \node[above,color=muted] at (\i*1.2+0.6,2.45) {\lab};
+  % hidden regime bar
+  \fill[aqua!30] (0,1.6) rectangle (3.6,2.2); \fill[red!30] (3.6,1.6) rectangle (8.4,2.2); \fill[aqua!30] (8.4,1.6) rectangle (12,2.2);
+  \node[left] at (-0.1,1.9) {\textbf{hidden regime} $z_t$};
+  \node at (1.8,1.9) {calm}; \node at (6.0,1.9) {\textbf{toxic}}; \node at (10.2,1.9) {calm};
+  % identity row: wallets
+  \node[left] at (-0.1,1.1) {$\Fid$ sees the \textbf{wallet} now};
+  \foreach \i/\w/\c in {0/N1/aqua,1/N2/aqua,2/N1/aqua,3/T1/red,4/T2/red,5/T1/red,6/T3/red,7/N3/aqua,8/N1/aqua,9/N2/aqua}
+     \node[draw=\c,fill=\c!15,rounded corners=1pt,minimum width=0.8cm] at (\i*1.2+0.6,1.1) {\w};
+  % anonymous row: outcomes with lag L=3
+  \node[left] at (-0.1,0.3) {$\Fanon$ sees the \textbf{outcome}, $L=3$ later};
+  \foreach \i/\o/\c in {0/?/grey,1/?/grey,2/?/grey,3/+/aqua,4/+/aqua,5/+/aqua,6/$-$/red,7/$-$/red,8/$-$/red,9/$-$/red}
+     \node[draw=\c,fill=\c!15,rounded corners=1pt,minimum width=0.8cm] at (\i*1.2+0.6,0.3) {\o};
+  \draw[-{Latex[length=1.5mm]},color=ink] (4.2,-0.45) -- (4.2,0.9);
+  \node[color=ink,anchor=north east,align=right] at (4.1,-0.4) {\textbf{identity}: T1 is a known toxic wallet at arrival 4 $\Rightarrow$ withdraw \emph{now}};
+  \draw[-{Latex[length=1.5mm]},color=ink] (7.8,-0.95) -- (7.8,0.05);
+  \node[color=ink,anchor=north east,align=right] at (7.7,-0.9) {\textbf{tape}: the first loss shows only at arrival 7, three fills late};
+\end{tikzpicture}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\small
+\begin{itemize}\setlength\itemsep{1pt}
+\item Informed trading comes in \textbf{spells}; the toxic wallets are the ones active in a spell.
+\item A wallet label identifies the spell at the first fill; the anonymous tape identifies it only when the fills' outcomes become public, $L$ arrivals later.
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}\small
+\begin{itemize}\setlength\itemsep{1pt}
+\item So identity is worth $\approx$ (what you lose during the $L$ fills before the tape catches up) --- zero if $L=1$ or if the spell is too short to matter, and growing with $L$ up to the spell's lifetime $\approx1/(1-\rho_z)$.
+\item Hyperliquid's own analogue of $L$: a fill's outcome is only knowable once the price has moved, seconds to minutes; the wallet is on the fill at once.
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
 \begin{frame}{Evidence 3 --- what identity is worth, and why (RQ1)}
 \centering
 \includegraphics[width=0.88\textwidth]{fig_lag.pdf}
@@ -230,6 +328,33 @@ Four best-bid/ask sessions over two weeks (25 h, 490k scored fills) $+$ 449 h of
 \item They never withdraw after a stressful spell at any timescale (30 s--5 min; correlations $-0.11$ to $+0.13$). They are absent from the \emph{wallet}, not the \emph{moment}: the gap is the same inside calm and stressed tape.
 \item Classified on the first night, scored on three later sessions over two weeks (toxic wallets cost 1.1--2.1\,bps more there: the typing holds). \textbf{RQ1's mechanism, observed on the real book.}
 \end{itemize}
+\end{frame}
+
+
+\begin{frame}{The queue game, in one picture (the one-tick book)}
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
+  \node[anchor=west,text width=12.4cm] at (0,3.1) {\textbf{Period $t$}: the spread is pinned at one tick; each maker chooses \textsc{rest} or \textsc{out}; those resting stand in line, first in first out. The taker takes the front.};
+  \foreach \i/\lab/\c in {0/fringe 1/grey, 1/incumbent A/blue, 2/entrant/orange, 3/fringe 2/grey}
+     \node[draw=\c,fill=\c!15,rounded corners=2pt,minimum width=2.0cm,minimum height=0.6cm] (q\i) at (\i*2.3+1.3,2.0) {\lab};
+  \node[above,color=muted] at (1.3,2.35) {front of the queue};
+  \node[above,color=muted] at (8.2,2.35) {back};
+  \node[draw=blue,dashed,rounded corners=2pt,minimum width=2.0cm,minimum height=0.6cm] at (11.2,2.0) {incumbent B: \textsc{out}};
+  \draw[-{Latex[length=2mm]},thick,color=red] (1.3,0.95) -- (1.3,1.65);
+  \node[color=red,align=center,anchor=north] at (1.3,0.85) {taker (wallet T) arrives:\\fringe 1 gets the fill};
+  \draw[-{Latex[length=1.5mm]},color=muted] (q0.south east) .. controls (3.5,1.1) and (6.5,1.1) .. (q3.south west);
+  \node[color=muted,align=center,anchor=north] at (7.2,0.85) {the filled maker rejoins at the back;\\a maker that stepped out and returns also joins at the back};
+  \node[anchor=west,text width=12.4cm] at (0,-0.6) {\textbf{Payoff of a fill} at break-even $h^C$ against a taker of type $\alpha$: $(1-q)\,x-q\,\mu$, with $q$ the probability the fill was informed. On average $+0.15$; in a \textbf{calm} spell $+1.10$; in a \textbf{toxic} spell $-2.26$. All the value is in \emph{which fills you take}, and time priority rations them.};
+\end{tikzpicture}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\small
+\textbf{What a selector does.} Incumbent B stepped out because its forecast says the next taker is toxic; it gives up its place in line to avoid the fill. The identity entrant does this on the wallet label; the tape-reading entrant on outcomes $L$ late.
+\end{column}
+\begin{column}{0.5\textwidth}\small
+\textbf{Who pays.} Whoever rests through the toxic spell --- the \emph{fringe} (retail orders, the vault) --- takes those fills. The priority fee (\textsc{rest-and-pay}) lets a maker buy the front of the line: an all-pay auction for the calm fills.
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}{Evidence 6 --- the levers decide who holds the toxic flow, not whether the rent survives (RQ3)}
