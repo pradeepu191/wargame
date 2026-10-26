@@ -71,16 +71,17 @@
 \vspace{2pt}
 \begin{columns}[T]
 \begin{column}{0.3\textwidth}\stat{red}{$-44\%$}{KOSPI, June 19 to July 29}\end{column}
-\begin{column}{0.3\textwidth}\stat{red}{1.2 million}{leveraged retail accounts margin-called}\end{column}
+\begin{column}{0.3\textwidth}\stat{red}{1.2 million}{retail accounts margin-called: 3.4\% of all adults}\end{column}
 \begin{column}{0.3\textwidth}\stat{red}{\$39 billion}{retail losses on single-stock leveraged ETFs}\end{column}
 \end{columns}
 \vspace{8pt}
 \begin{columns}[c]
 \begin{column}{0.42\textwidth}\small
+\textbf{``Retail'' means everyday people}
 \begin{itemize}\setlength\itemsep{4pt}
-\item 62\% of the leveraged accounts: ages 20 to 39
-\item They saw the yield of leverage, not its risk
-\item They could not see who was on the other side
+\item 92\% of the holders were individuals, not firms
+\item 62\% of the accounts: people aged 20 to 39
+\item trading on a phone app, with borrowed money, against professionals they cannot see
 \end{itemize}
 \end{column}
 \begin{column}{0.56\textwidth}
@@ -93,45 +94,78 @@
 \end{columns}
 \vspace{2pt}
 {\tiny\textcolor{muted}{Sources: Bloomberg, Reuters, Goldman Sachs, Citi (via Seoulz, ``KOSPI Crash 2026''); Maeil Shinmun, Oct 22, 2026; x.com/Jaemyung\_Lee/status/2110145832511225984. 109 is Korea's suicide-prevention line.}}
-\note{Why we care. This summer the Korean stock market fell forty-four percent in six weeks, and July 28 was the worst single day on record. What made it a national event rather than a market event is who was holding the risk. Single-stock two-times leveraged ETFs were listed in late May and sold out on day one; by July they and two stocks were seventy percent of all trading value. By mid-July 1.2 million leveraged retail accounts, over three percent of adults, had been margin-called and three hundred thousand were force-liquidated. Citi puts retail losses on the leveraged ETFs alone at thirty-nine billion dollars, and sixty-two percent of those accounts belonged to people in their twenties and thirties. These were not professionals. They saw the yield of leverage and not its risk, and they had no way to see who was on the other side of their trades. On October 14 the President of Korea posted this on X: you must live; if it is hard, call 109, the suicide-prevention line. That is the level at which this stopped being a finance story. Our project is about the gap between what a retail trader can see and what the professional opposite them can see, and we think closing that gap is a financial-literacy problem as much as a market-design one.}
+\note{Why we care. This summer the Korean stock market fell forty-four percent in six weeks, and July 28 was the worst single day on record. What made it a national event rather than a market event is who was holding the risk. The word for that is retail, and retail means everyday people: not banks, not funds. Ninety-two percent of the holders of these products were individuals. By mid-July 1.2 million retail accounts had been margin-called, which is three point four percent of every adult in the country, and three hundred thousand were force-liquidated. Citi puts retail losses on single-stock leveraged ETFs alone at thirty-nine billion dollars, and sixty-two percent of those accounts belonged to people in their twenties and thirties. Students, office workers, people with ordinary jobs, trading on a phone app with borrowed money against professionals they could not see. On October 14 the President of Korea posted this on X: you must live; if it is hard, call 109, the suicide-prevention line. That is the level at which this stopped being a finance story. Our project is about the gap between what one of those people can see and what the professional opposite them can see, and we think closing that gap is a financial-literacy problem as much as a market-design one.}
 \end{frame}
 
-\begin{frame}{The same products are moving toward US retail, with less protection}
+\begin{frame}{What ``leverage'' is, and why a 5\% move can take everything}
+\partlabel{Part (a): motivation}
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
+  % position bar
+  \node[anchor=west,font=\small\bfseries] at (0,3.6) {You put in \$1{,}000. At $20\times$ leverage you control a \$20{,}000 position.};
+  \draw[fill=orange,draw=none] (0,2.7) rectangle (0.6,3.2); \node[color=white,font=\bfseries] at (0.3,2.95) {};
+  \draw[fill=grey!35,draw=none] (0.6,2.7) rectangle (12,3.2);
+  \node[anchor=north west,color=orange] at (0,2.65) {\textbf{yours}: \$1{,}000};
+  \node[anchor=north,color=muted] at (6.3,2.65) {\textbf{borrowed from the exchange}: \$19{,}000};
+  % up case
+  \begin{scope}[shift={(0,0)}]
+    \node[anchor=west,font=\small\bfseries,color=aqua] at (0,1.5) {price $+5\%$};
+    \node[anchor=west] at (0,1.0) {position worth \$21{,}000};
+    \draw[fill=aqua,draw=none] (0,0.2) rectangle (1.2,0.6); \node[anchor=west,color=aqua] at (1.3,0.4) {\textbf{you doubled your money}: $+\$1{,}000$};
+  \end{scope}
+  % down case
+  \begin{scope}[shift={(6.4,0)}]
+    \node[anchor=west,font=\small\bfseries,color=red] at (0,1.5) {price $-5\%$};
+    \node[anchor=west] at (0,1.0) {position worth \$19{,}000: exactly the loan};
+    \draw[fill=red,draw=none] (0,0.2) rectangle (1.2,0.6); \node[anchor=west,color=red] at (1.3,0.4) {\textbf{you lost everything}: $-\$1{,}000$};
+    \node[anchor=north west,color=muted,text width=5.6cm] at (0,-0.05) {the exchange closes your position automatically (\textbf{liquidation}); in a crash, millions of these happen at once and push the price further down};
+  \end{scope}
+\end{tikzpicture}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\small
+A $2\times$ ETF (Korea) does this for you at $2\times$. On a crypto perpetuals exchange the multiplier is a \textbf{slider}, up to $50\times$.
+\end{column}
+\begin{column}{0.5\textwidth}\small
+The yield is visible on the way in. The risk, and who is on the other side, is not.
+\end{column}
+\end{columns}
+\note{Since nobody here needs to know this for a living: leverage is trading with borrowed money. You put in a thousand dollars; at twenty times leverage the exchange lends you nineteen thousand more and you control a twenty thousand dollar position. If the price goes up five percent, the position is worth twenty-one thousand; you pay back the nineteen, you keep two, you doubled your money. That is the yield people see. If the price goes down five percent, the position is worth nineteen thousand, which is exactly the loan. Your thousand is gone. The exchange does not wait for you: it closes the position automatically, which is called liquidation, and in a crash millions of these happen at once and push the price down further, which liquidates the next person. In Korea the product was a two-times ETF, a fund that does this for you at two times. On a crypto perpetuals exchange the multiplier is a slider that goes to fifty. The yield is visible on the way in; the risk, and who is on the other side taking your money, is not. That second part is what we study.}
+\end{frame}
+
+\begin{frame}{These products are moving toward US retail; Korea should be the lesson}
 \partlabel{Part (a): motivation}
 \begin{columns}[T]
-\begin{column}{0.52\textwidth}
-{\centering
-\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
-  % leverage slider
-  \node[anchor=west,font=\small\bfseries] at (0,3.2) {Hyperliquid: leverage is a slider};
-  \draw[line width=3pt,color=grey!50,line cap=round] (0.2,2.5) -- (5.8,2.5);
-  \draw[line width=3pt,color=orange,line cap=round] (0.2,2.5) -- (2.44,2.5);
-  \fill[orange] (2.44,2.5) circle (0.16);
-  \foreach \x/\l in {0.2/1$\times$, 1.32/10$\times$, 2.44/20$\times$, 3.56/30$\times$, 4.68/40$\times$, 5.8/50$\times$} \node[below,color=muted] at (\x,2.35) {\l};
-  % what 20x means
-  \node[anchor=west,font=\small\bfseries] at (0,1.5) {What $20\times$ means};
-  \draw[fill=grey!35,draw=none] (0.2,0.65) rectangle (0.5,1.05); \node[anchor=west] at (0.6,0.85) {price moves against you: $-5\%$};
-  \draw[fill=red,draw=none] (0.2,0.0) rectangle (5.8,0.4); \node[anchor=west,color=white] at (0.35,0.2) {\textbf{your account: $-100\%$, liquidated}};
-\end{tikzpicture}\par}
-\subline{Blocks US users today; its CEO is discussing a CFTC path (Oct 2026).}
+\begin{column}{0.5\textwidth}\small
+\textbf{In the US, right now}
+\begin{itemize}\setlength\itemsep{3pt}
+\item \textbf{CLARITY Act} (crypto market structure): House 294 to 134, July 2025; one vote short in the Senate, Sept 15, 2026; revivable
+\item \textbf{CFTC}, Aug 2026: rules to let exchanges offer leveraged crypto trading to Americans; filed Sept 17
+\item \textbf{Hyperliquid} blocks US users today; its CEO is discussing a CFTC path
+\end{itemize}
+\vspace{2pt}
+\textbf{In Korea, after the crash}
+\begin{itemize}\setlength\itemsep{3pt}
+\item new listings halted; minimum deposit tripled; exposure capped at 20\% of assets. All of it \emph{after} the losses.
+\end{itemize}
 \end{column}
-\begin{column}{0.48\textwidth}
-\textbf{\small And everything you do there is public}\par\vspace{2pt}
+\begin{column}{0.5\textwidth}
+\textbf{\small On a public-wallet venue, every trade you make is on the tape}\par\vspace{2pt}
 \noindent\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
-  \node[draw=blue,fill=paleblue,rounded corners=2pt,text width=5.4cm,align=left,inner sep=5pt] at (2.9,0) {\textbf{fill}~~buy 0.5 BTC @ 67{,}412.0\\ taker \texttt{0x7f3a\ldots c91e} ~~ maker \texttt{0x21b0\ldots 4d7a}\\ \textcolor{muted}{on the public tape, forever}};
+  \node[draw=blue,fill=paleblue,rounded corners=2pt,text width=5.4cm,align=left,inner sep=5pt] at (2.9,0) {\textbf{fill}~~buy 0.5 BTC @ 67{,}412.0\\ taker \texttt{0x7f3a\ldots c91e} ~~ maker \texttt{0x21b0\ldots 4d7a}\\ \textcolor{muted}{public, forever; the professionals read it}};
 \end{tikzpicture}\par
 \vspace{4pt}
-\textbf{\small What a literate user would need to know}
+\textbf{\small What an everyday trader would need to know}
 \begin{itemize}\small\setlength\itemsep{2pt}
 \item what a trade really costs
 \item who is on the other side
 \item whether their identity is used against them
 \item which venue rules protect them in stress
 \end{itemize}
-\takeaway{We measure those four things, on the real venue and in a model where the rules can be changed.}
+\takeaway{Korea's protections came after the losses. We measure these four things now, on the real venue and in a model where the rules can be changed, so the protections can come first.}
 \end{column}
 \end{columns}
-\note{The products that did this in Korea are coming to US retail in a less protected form. Hyperliquid is a crypto perpetual futures exchange: you can take positions with tens of times leverage, around the clock, and you are liquidated automatically. In Korea a retail investor bought a two-times ETF through a broker with a margin desk. On Hyperliquid, leverage is a slider. At twenty times, a five percent move against you is a hundred percent of your account. Hyperliquid blocks US users today, but in October its CEO was publicly discussing a legal path through the CFTC. And there is a second difference. On this venue everything you do is public: every order and every fill carries your wallet address, permanently, on a public tape. The professionals on the other side can read that, and we will show that they do. So what would a financially literate user actually need to know? Four things: what a trade really costs beyond the quoted price; who is on the other side and earns from them; whether their public identity is being used against them; and which venue rules protect the uninformed in a stress episode, and which quietly make them pay. Our project measures exactly those four things, on the real venue, and in a model where we can change the venue's rules. The results are for the public and for whoever writes those rules, not only for the market makers.}
+\note{The products that did this in Korea are moving toward US retail, and the legislative machinery is in motion. The CLARITY Act, the crypto market-structure bill, passed the House two hundred ninety-four to one hundred thirty-four in July 2025; it failed a Senate procedural vote forty-nine to fifty on September 15 this year, but the no vote that sank it was cast specifically to preserve a path to bring it back. Separately, in August the CFTC chairman announced rules that would let exchanges offer leveraged crypto trading to Americans under CFTC oversight, and that rulemaking was filed in September. Hyperliquid, the venue we study, blocks US users today, but its CEO has been publicly discussing exactly that path. And on this kind of venue there is one more thing: every trade you make carries your wallet address on a public tape, forever, and the professionals on the other side read it. We will show that they do. Korea's response was real: new listings halted, the minimum deposit tripled, exposure capped at twenty percent of assets. But every one of those came after the losses. We think what happened in Korea should be read as a lesson, and the protections should come first. For that, someone has to measure what an everyday trader would need to know: what a trade really costs beyond the quoted price; who is on the other side and earns from them; whether their public identity is used against them; and which venue rules protect the uninformed in a stress episode, and which quietly make them pay. That is what this project measures, on the real venue and in a model where the rules can be changed.}
 \end{frame}
 
 \begin{frame}{An exchange is a list of standing offers: the order book}
