@@ -1598,3 +1598,70 @@ ones (mean |ΔL| 0.00, |Δe| 0.02; no ties in any cartel's argmax).
   to build next.  The learned tabular Q entrant of `defences.py` was weaker than the rules
   because it was solving this MDP by sampling; the DP solves it exactly.
 * Figure `fig_best_response.png`.
+
+---
+
+# Strategizing against a no-regret market maker (`no_regret.csv`, `fig_no_regret.png`; this container, 2 cores; ᾱ = 0.3, η = 0.05, 3 selection + 5 evaluation seeds)
+
+Workshop 1 feedback: present the background as Glosten–Milgrom + Q-learners (Colliard, Foucault,
+Lovo) and Deng, Schneider and Sivan (2019), "Strategizing against no-regret learners", and
+nothing else.  The theorem: an optimizer playing against a no-regret learner can always guarantee
+its Stackelberg value; against a no-swap-regret learner it can get no more; against a
+mean-based learner (MWU, EXP3, follow-the-leader-like) with more than two actions it can get
+strictly more, and the optimal play is a control problem.  Two additions make the mapping exact.
+
+## The Stackelberg value is on the attackers figure (`sim.benchmarks.stackelberg_value`)
+
+The entrant commits to a quote; the incumbents play a symmetric pure Nash equilibrium of the
+resulting stage game (ties split).  On the tick grid the equilibrium set can hold more than one
+quote, so both tie-breaks are computed; "strong" (best for the entrant) is drawn.  The entrant
+can only share a quote the incumbents have no incentive to undercut, so the value sits at
+h^C to h^C + 1: 0.10 / 0.15 / 0.21 of the rent against a single incumbent and 0.07 / 0.10 / 0.06
+against two, at ᾱ = 0.1 / 0.3 / 0.5.  Everything an attacker earns above that line is
+exploitation of the learner's dynamics, not of the game.  On `fig_attackers` the line sits at
+0.06 against the 60 frozen Q-cartels: the undercut rule is at 0.51, the exact best response at 1.15.
+
+## A no-regret cartel without memory earns no rent (`sim.agents.Exp3QuoteAgent`, `experiments/no_regret.py`)
+
+Stateless EXP3 over h ∈ 1..24, per-period bandit feedback, never frozen.
+* One learner alone finds the monopoly quote: C = 0.96–0.97 (mean best quote 12–19 ticks, h^M = 14).
+* Two learners compete: C = 0.01–0.03, mean best quote 4.5–5 ticks (h^C = 4), for η = 0.02–0.2.
+
+So the Colliard–Foucault–Lovo rent needs the learner's **memory** (state = last quotes): without
+it there is no threat, and no-regret dynamics land at the coarse correlated equilibrium of the
+stage game, which here is Bertrand.  That memory is also what makes the cartel a reaction
+function, which is what the exact best response solves.  Rent and exploitability have one cause.
+
+## A single live no-regret learner is exploited far beyond its Stackelberg value
+
+Against one EXP3 monopolist (C = 0.97 alone), still learning throughout 2000 attack episodes,
+evaluation seeds, rent units (whole window; second half in brackets):
+
+| attacker | entrant earns | learner loses |
+|---|---|---|
+| undercut rule (one tick inside its last quote) | 0.72 (0.60) | 1.03 (1.03) |
+| same, floored at h^C | 0.72 (0.61) | 1.03 (1.03) |
+| lure-then-undercut cycle (K for 20 periods, then 10 ticks for 400; chosen on other seeds) | 0.29 (0.06) | 0.52 (0.31) |
+| Q-learning entrant, online | 0.32 (0.28) | 0.58 (0.50) |
+| Stackelberg value | 0.15 | |
+
+* The trivial undercut rule takes five times the Stackelberg value, and the learner gives up its
+  whole rent and more: a mean-based learner answers an undercut by slowly moving mass toward
+  tighter quotes, the rule follows one tick inside, and the learner is always a step behind.
+  This is the "strictly more than Stackelberg against mean-based learners" branch of the
+  theorem, observed.
+* The explicit lure/undercut cycle, our hand approximation to the control problem, is worse
+  than the plain rule here: against this learner there is no need to lure, it never tightens
+  for good.  The control problem is worth solving properly (the learner's state is its weight
+  vector, which an attacker can estimate from its play) but the headline does not need it.
+* Against two EXP3 learners there is nothing to take (C ≈ 0): the naive undercut rule goes
+  inside h^C and loses 0.23; floored at h^C it earns 0.04.
+
+## For the paper
+* Background = two things: GM + Q-learners (the rent exists and is a reaction function) and
+  Deng–Schneider–Sivan (what an optimizer can take from a learner, with Stackelberg as the
+  benchmark).  Every result is placed against the Stackelberg line.
+* The two findings here: (i) the rent needs memory, and memory is the attack surface;
+  (ii) a live mean-based learner is exploited far beyond Stackelberg by a one-line rule.
+* Not yet run: ᾱ = 0.1, 0.5 and η = 0.02, 0.2 (`slurm/no_regret.sh`, ~1 h on 48 cores); an
+  attacker that solves the control problem against the estimated weight vector.

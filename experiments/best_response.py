@@ -77,10 +77,14 @@ class CartelMDP:
     """States are last period's quotes (h_1..h_N, h_e) in 1..K, flattened row-major with the
     entrant's quote as the fastest index, so that next_state(s, a) = base[s] + (a - 1)."""
 
-    def __init__(self, Q: list[np.ndarray], cfg: MarketConfig, horizon: int):
-        self.N, self.K, self.T = len(Q), cfg.max_half_spread, horizon
+    def __init__(self, Q: list[np.ndarray] | None, cfg: MarketConfig, horizon: int, R: np.ndarray | None = None):
+        """Either the cartel's Q tables (the oracle) or a reaction table R[i, own, riv] (an estimate)."""
+        if R is None:
+            self.R, self.ties = response_tables(Q, cfg.max_half_spread)
+        else:
+            self.R, self.ties = np.asarray(R, dtype=np.int64), 0
+        self.N, self.K, self.T = len(self.R), cfg.max_half_spread, horizon
         N, K = self.N, self.K
-        self.R, self.ties = response_tables(Q, K)
         self.Pi = profit_curve(cfg, cfg.alpha)                 # Pi[h-1], market-wide, one period
         grids = np.meshgrid(*[np.arange(1, K + 1)] * (N + 1), indexing="ij")
         self.h = np.stack([g.ravel() for g in grids], axis=1)  # (S, N+1): columns 0..N-1 incumbents, N entrant

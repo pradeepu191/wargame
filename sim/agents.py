@@ -8,8 +8,9 @@ Fixed / equilibrium policies (rubric: "fixed policy" baselines):
 Learners:
     QLearningAgent (tabular, Calvano/Colliard-style)
 
-TODO(v1): skew and displayed-size actions; Hedge (no-regret) agent; PPO agent;
-          request-budget state B_t; entrant with markout inference.
+    Exp3QuoteAgent (stateless, mean-based no-regret: the learner of Deng, Schneider and Sivan 2019)
+
+TODO(v1): skew and displayed-size actions; PPO agent; request-budget state B_t.
 """
 from __future__ import annotations
 
@@ -174,3 +175,45 @@ class QLearningAgent(Agent):
         target = reward if done else reward + self.cfg.discount * self.Q[s_next][1:].max()
         self.Q[s][action] += self.cfg.learning_rate * (target - self.Q[s][action])
         self.step_count += 1
+
+
+class Exp3QuoteAgent(Agent):
+    """Stateless EXP3 over the half-spreads 1..K with per-period bandit feedback.
+
+    This is a mean-based no-regret learner in the sense of Deng, Schneider and Sivan (2019,
+    "Strategizing against no-regret learners"): it keeps a cumulative importance-weighted
+    reward estimate per action and plays (almost) the historically best one.  It has no memory
+    of the rivals' quotes, so it cannot carry a threat; what it can be is lured -- an optimizer
+    that quotes wide for a while raises the estimates of the wide quotes, then undercuts them
+    while the estimates decay.  Rewards are scaled by reward_scale before the update.
+    In eval mode the weights are frozen and the agent keeps sampling from them."""
+
+    def __init__(self, max_half_spread: int, eta: float = 0.05, explore: float = 0.02,
+                 reward_scale: float = 20.0, seed: int = 0):
+        self.K = max_half_spread
+        self.eta, self.explore, self.scale = eta, explore, reward_scale
+        self.rng = np.random.default_rng(seed)
+        self.logw = np.zeros(self.K)
+        self.eval = False
+        self._p = None
+        self._a = None
+
+    def set_eval(self, flag: bool):
+        self.eval = flag
+
+    def probs(self) -> np.ndarray:
+        w = np.exp(self.logw - self.logw.max())
+        p = w / w.sum()
+        return (1 - self.explore) * p + self.explore / self.K
+
+    def act(self, obs, i):
+        self._p = self.probs()
+        self._a = int(self.rng.choice(self.K, p=self._p))
+        return self._a + 1
+
+    def update(self, obs, action, reward, obs_next, done):
+        if self.eval:
+            return
+        a = int(action) - 1
+        self.logw[a] += self.eta * (float(reward) / self.scale) / self._p[a]
+        self.logw -= self.logw.max()
