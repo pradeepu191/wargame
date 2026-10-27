@@ -1665,3 +1665,46 @@ evaluation seeds, rent units (whole window; second half in brackets):
   (ii) a live mean-based learner is exploited far beyond Stackelberg by a one-line rule.
 * Not yet run: ᾱ = 0.1, 0.5 and η = 0.02, 0.2 (`slurm/no_regret.sh`, ~1 h on 48 cores); an
   attacker that solves the control problem against the estimated weight vector.
+
+---
+
+# The attacker with public information only (`public_attacker.csv`, `fig_public_attacker.png`; 30 two-maker cfl_exp2 cartels, this container; N = 3 pending on SuperCloud, `slurm/public_attacker.sh`)
+
+`experiments/public_attacker.py`.  The exact best response needed the cartel's Q tables.  But a
+frozen cartel is a deterministic reaction function R_i(own, riv), and every value of it is on
+the public book: each period shows incumbent i's new quote next to the (own, riv) it answered,
+and the entrant sets riv whenever its own quote is the tightest.  The entrant records R_i cell by
+cell, fills unseen cells with "the incumbent goes to h^C" (so the planner never counts on a cell
+it has not seen), and solves the same finite-horizon MDP on the estimate, re-solving every 1000
+periods.  Probing = uniformly random quotes for the first B periods of the attack window; the
+clock runs across episodes.  500 attack episodes per cartel and budget, common random numbers
+with the oracle.
+
+| probing budget B (periods) | ᾱ = 0.1 | ᾱ = 0.3 | ᾱ = 0.5 | coverage of the oracle path |
+|---|---|---|---|---|
+| oracle (true tables) | 1.20 | 1.08 | 1.17 | 1 |
+| B = 0 | 0.21 | 0.09 | 0.19 | .14–.21 |
+| B = 200 (two episodes) | 1.11 | 1.06 | 1.16 | .53–.68 |
+| B = 1000 | 1.19 | 1.08 | 1.17 | .92–.97 |
+| B = 5000 | 1.20 | 1.08 | 1.16 | 1.00 |
+
+(entrant's profit after probing, rent units; the cartel's loss is 0.95–1.06 at every budget,
+including B = 0, where the entrant plans on an almost empty table and effectively quotes near
+h^C: it destroys the rent without earning it.)
+
+* **Two episodes of random quoting are enough to take the rent; ten are enough to match the
+  oracle to the second decimal.**  A deterministic reaction function needs one observation per
+  cell, and random quoting visits the cells the best response uses (its path lives in 20–40
+  cells of the 1152) fast.  300 cells known after 200 periods already cover half the path;
+  the DP only needs the cells its own trajectory touches.
+* The "needs the cartel's policy" caveat on the exact best response is closed for frozen
+  cartels: the policy is public, up to a probing cost of 2–10 episodes of near-zero profit.
+* What this does not cover: a cartel that keeps learning (its reaction function drifts; the
+  double oracle shows the stale attacker still keeps ≈ 0.6) and stochastic cartels (ties, or
+  ε > 0), where a cell needs several observations.  Both are the natural next experiment:
+  identification with a forgetting window against the re-learning cartel.
+
+## For the paper
+* The realistic attacker is now the public-information attacker; the oracle is its limit, and
+  the gap between them is the probing budget.  Report the table above with the N = 3 cartels
+  from SuperCloud added.
