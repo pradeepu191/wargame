@@ -416,35 +416,35 @@ Trace: exact best response vs the cartel (quotes in ticks)
 \end{verbatim}
 \end{column}
 \end{columns}
-\note{The prototype runs in seconds with one command. It prints the closed-form benchmarks, plays the shipped two-maker cartel alone to show its rent index of 0.86, enters three adversaries under common random numbers, and traces the exact best response period by period. The trace is worth reading: the incumbents answer each entrant quote with their learned reaction, and the entrant sits one tick inside what they are about to quote, holding them in states they never trained on. The package has the simulator, the learners, the entrants, the queue mode, the benchmarks, every experiment, and the Hyperliquid pipeline: recorder, scoring, identity selection. Fifty-nine tests. Every result in the report is logged in REPLICATION-NOTES with the command that produced it.}
+\note{[0:15] Everything you are about to see runs from one command in seconds: benchmarks, the cartel alone, three adversaries entering under the same random numbers, and the best response traced period by period. Fifty-nine tests, every number in the report logged with the command that produced it.}
 \end{frame}
 
 \begin{frame}{Evidence 1: learners coordinate above the Nash point}
-\partlabel{Part (c): evidence 1 of 6}
+\partlabel{Part (c): evidence 1 of 5}
 \centering
 \includegraphics[width=0.72\textwidth]{fig_rent.pdf}
 \subline{$C=0.71$ to $0.87$ in every cell. In 55 to 83\% of states undercutting would pay \emph{this period}; the learner forgoes it 96 to 100\% of the time.}
-\note{First piece of evidence: the thing we are attacking exists. Independent Q-learners settle at a rent index between 0.71 and 0.87 in every cell of a grid over the number of makers, the learning rate, and the initialisation. That replicates Colliard, Foucault and Lovo. The mechanism is restraint, and we can see it directly: in fifty-five to eighty-three percent of the states the learners visit, undercutting would pay this period, and in ninety-six to one hundred percent of those states the learner does not do it. It has learned that the rival punishes.}
+\note{[0:30] First, the thing we attack exists. Independent Q-learners settle at a rent index of 0.7 to 0.9 in every cell of a grid over the number of makers, learning rate and initialisation; that replicates Colliard, Foucault and Lovo. And we can see the mechanism: in most states undercutting would pay this period, and the learner almost never does it. It has learned that the rival punishes. That restraint is the rent, and it is also the attack surface.}
 \end{frame}
 
 \begin{frame}{Evidence 2: the rent is fully exploitable}
-\partlabel{Part (c): evidence 2 of 6, RQ2}
+\partlabel{Part (c): evidence 2 of 5, RQ2}
 \centering
 \includegraphics[width=0.9\textwidth]{fig_attackers.pdf}
 \subline{Hand-written rules take two thirds. The \textbf{exact best response} takes it all, in 60 of 60 cartels: $\kappa_A=1.1$ to $1.3$. The damage-maximiser destroys 2 to 3$\times$ the rent at no cost.}
-\note{Second: how much of that rent can an adversary take. Two hand-written rules, undercut by one tick and undercut when the markouts say there is rent, take about two thirds, flat across a hundred and eighty cartels. The exact best response is different in kind: because a frozen cartel is a deterministic reaction function, the entrant's problem is a finite-horizon dynamic program we solve by backward induction. It takes more than the whole rent, L-B-R greater than C in sixty of sixty cartels, kappa 1.1 to 1.3, and it earns the monopoly profit for itself. How: it undercuts the reaction, not the last quote, and holds the cartel in states it never trained on, where its learned answer is to quote wider. And a damage-maximiser, the same solver with the objective flipped to minimise the cartel's profit, steers the cartel tight instead, inside break-even, destroying two to three times the rent while taking no fills and spending nothing.}
+\note{[0:50] How much can an adversary take? Two hand-written rules, undercut by a tick, or undercut when the markouts say there is rent, take about two thirds, flat across a hundred and eighty cartels. The exact best response is different in kind. A frozen cartel is a deterministic reaction function, so the entrant's problem is a dynamic program we solve by backward induction. It takes more than the whole rent in sixty of sixty cartels and earns the monopoly profit for itself. And flipping the objective to damage, it steers the cartel inside break-even and destroys two to three times the rent while taking no fills at all. In a double oracle where the cartel re-learns against it, the re-solved attacker takes it again; the numbers are in the backup.}
 \end{frame}
 
 \begin{frame}{Steering, period by period}
-\partlabel{Part (c): evidence 2 of 6, RQ2}
+\partlabel{Part (c): evidence 2 of 5, RQ2}
 \centering
 \includegraphics[width=0.98\textwidth]{fig_steering.pdf}
 \subline{\textbf{Left}: the cartel alone rotates at wide quotes. \textbf{Middle}: a naive undercut starts a price war. \textbf{Right}: the best response holds the cartel wide and takes the fills.}
-\note{What steering looks like. Left: the learned cartel alone is a rotation; the two makers alternate at the best quote, wide, and never go near Nash. Middle: the undercut rule starts a price war; both sides slide toward break-even and the entrant's fills, the dots, come at ever worse prices. Right: the exact best response never provokes the war. It quotes one tick inside the reaction it has predicted; the cartel's learned answer to that is to stay wide; and the entrant takes nearly every fill at about fourteen ticks. The monopoly profit, for itself, with the cartel's own restraint doing the work.}
+\note{[0:30] What that looks like. Left: the cartel alone rotates at wide quotes and never goes near Nash. Middle: a naive undercut starts a price war and both sides slide to break-even. Right: the best response never provokes the war. It quotes one tick inside the reaction it has predicted; the cartel's learned answer is to stay wide; and the entrant takes nearly every fill at the monopoly price. The cartel's own restraint does the work.}
 \end{frame}
 
 \begin{frame}{Why identity has value: a spell of toxic flow, seen two ways}
-\partlabel{Part (c): the mechanism behind evidence 3}
+\partlabel{Part (c): RQ1, the mechanism}
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize,scale=0.9,transform shape]
   \foreach \i in {0,...,9} \draw[color=muted] (\i*1.2+0.6,2.35) -- (\i*1.2+0.6,2.45);
@@ -465,20 +465,13 @@ Trace: exact best response vs the cartel (quotes in ticks)
   \node[color=ink,anchor=north east,align=right] at (7.7,-0.9) {\textbf{tape}: the first loss shows three fills late};
 \end{tikzpicture}
 \vspace{6pt}
-\takeaway{Identity is worth what you lose in the $L$ fills before the tape catches up.}
-\note{Why would a wallet be worth anything beyond the tape? Because informed trading comes in spells, and the toxic wallets are the ones active in a spell. Top row: the hidden regime switches to toxic at arrival four. Middle row: with identities, the fourth fill carries wallet T1, which you have seen lose you money before, so you know the spell has started and you step out now. Bottom row: the anonymous tape only learns a fill's markout L arrivals later; with L equal to three, the first minus sign appears at arrival seven. Three fills late. So identity is worth about what you lose on those L fills: zero if the tape is instant or the spell is harmless, and growing with the lag up to the spell's lifetime, roughly one over one minus rho. On Hyperliquid the analogue of L is real: a fill's outcome is only knowable once the price has moved, seconds to minutes, while the wallet is on the fill at once.}
+\takeaway{Identity is worth what you lose in the $L$ fills before the tape catches up: measured, zero at $\bar\alpha\le0.3$, growing with $L$ at $\bar\alpha=0.5$ (backup).}
+\note{[0:40] Now RQ1, what a wallet is worth beyond the tape. Informed trading comes in spells, and the toxic wallets are the ones active in a spell. The regime turns toxic at arrival four. With identities, the fourth fill carries a wallet you have seen lose you money before, so you step out now. The anonymous tape learns a fill's markout L arrivals later; with L equal to three, the first minus sign appears at arrival seven. So identity is worth what you lose on those L fills: measured, it is zero where even toxic flow leaves an undercut profitable, alpha up to 0.3, and grows with the lag at alpha 0.5, up to the lifetime of a spell. On Hyperliquid that lag is real: the outcome of a fill is knowable only once the price has moved; the wallet is on the fill at once.}
 \end{frame}
 
-\begin{frame}{Evidence 3: what identity is worth, and why}
-\partlabel{Part (c): evidence 3 of 6, RQ1}
-\centering
-\includegraphics[width=0.9\textwidth]{fig_lag.pdf}
-\subline{The proposal's mechanism (the same wallet trades again) is worth nothing: repeats are 2 to 5\%. The lag mechanism survives: zero where $\bar\alpha\le0.3$, growing with $L$ up to the spell's lifetime.}
-\note{Measured. Our original proposal's mechanism, that the same wallet trades again so you can learn it, is worth nothing on the data: a wallet repeats within the window two to five percent of the time. The mechanism that survives is the lag story from the previous slide. The value of identity is zero wherever even the toxic state leaves an undercut profitable, alpha up to 0.3, because then you do not care who is coming. It becomes positive at alpha 0.5 and grows with the mark lag L, saturating at the spell's lifetime. So RQ1's answer is: identity is a lag story, and its value depends on the venue's reporting delay and the market's toxicity, not on recognising individuals.}
-\end{frame}
 
-\begin{frame}{Evidence 4, Hyperliquid: the price cannot move, and someone still earns}
-\partlabel{Part (c): evidence 4 of 6, data}
+\begin{frame}{Evidence 3, Hyperliquid: the price cannot move, and someone still earns}
+\partlabel{Part (c): evidence 3 of 5, data}
 \begin{columns}[c]
 \begin{column}{0.56\textwidth}
 \includegraphics[width=\textwidth]{fig_touch.pdf}
@@ -493,19 +486,75 @@ Four sessions, 25 h, 490k scored fills.
 \takeaway{Rent lives in \emph{which fills you get}, not in the quote.}
 \end{column}
 \end{columns}
-\note{Now the real venue. We recorded the best bid and ask and every fill with both wallets on Hyperliquid, four sessions over two weeks, twenty-five hours, four hundred and ninety thousand scored fills, plus four hundred and forty-nine hours of fills alone. Three facts. On BTC, ETH and SOL the spread is one tick essentially always; the ninetieth percentile equals the median. Rent cannot live in the price. The ordinary fill loses: a maker filled at the touch collects the tick and then loses 0.2 to 0.4 basis points to the mid within ten seconds. The taker's real cost is in depth: one order in ten walks the book and pays twenty ticks. And the ten most active maker wallets, chosen on activity and scored on outcome, earn 0.3 to 1.0 basis points more per fill at the same price, and their ranking persists from session to session, rank correlation 0.5 to 0.8. So on the real book rent lives in which fills you get, which is exactly the queue-mode model.}
+\note{[0:45] The real venue. Four sessions, twenty-five hours, four hundred and ninety thousand scored fills. Three facts. The spread is one tick essentially always, so rent cannot live in the price. The ordinary fill loses: a maker filled at the touch collects the tick and loses 0.2 to 0.4 basis points to the mid within ten seconds. And the ten most active makers, chosen on activity and scored on outcome, earn 0.3 to 1.0 basis points more per fill at the same price, session after session. So on the real book, rent lives in which fills you get.}
 \end{frame}
 
-\begin{frame}{Evidence 5: how they do it is identity, not the tape}
-\partlabel{Part (c): evidence 5 of 6, RQ1 on data}
+\begin{frame}{Evidence 4: how they do it is identity, not the tape}
+\partlabel{Part (c): evidence 4 of 5, RQ1 on data}
 \centering
 \includegraphics[width=0.88\textwidth]{fig_identity_selection.pdf}
 \subline{They never withdraw after a stressful spell (30 s to 5 min). They are absent from the toxic \emph{wallets'} fills: typed on night 1, scored on three later sessions.}
-\note{How do the top makers do it? First what it is not: they never withdraw after a stressful spell, at any timescale from thirty seconds to five minutes; the correlation between recent stress and their presence is between minus 0.11 and plus 0.13. They are not reading the tape. What they are doing is identity. We typed every taker wallet on the first night by the markout it inflicted, then on three later sessions over two weeks measured each maker's share of fills against toxic wallets versus benign ones. The top ten makers hold eleven to forty-three percent of fills against benign wallets and three to twelve percent against toxic ones; the gap is the same inside calm and stressed tape, and it survives on quiet fills where the mid does not move, so it is not that they are being picked off. Out of sample: the toxic wallets typed on night one still cost one to two basis points more on the later nights. This is RQ1's mechanism observed on the real book: the makers who earn are the ones missing from the toxic wallets' fills.}
+\note{[0:45] How do they get the good fills? Not by reading the tape: they never withdraw after a stressful spell at any timescale from thirty seconds to five minutes. By identity. We typed every taker wallet on the first night by the markout it inflicted, then on three later sessions measured each maker's share of fills against toxic versus benign wallets. The top makers hold eleven to forty-three percent of the benign wallets' fills and three to twelve percent of the toxic ones; the gap is the same in calm and stressed tape and survives on fills where the mid never moved. That is RQ1's mechanism on the real book: the makers who earn are the ones missing from the toxic wallets' fills, and someone else is holding those.}
 \end{frame}
 
-\begin{frame}{The queue game: the one-tick book}
-\partlabel{Part (c): the model behind evidence 6}
+
+\begin{frame}{Evidence 5: the levers decide who holds the toxic flow, not whether rent survives}
+\partlabel{Part (c): evidence 5 of 5, RQ3}
+\centering
+\includegraphics[width=0.74\textwidth]{fig_anonymity.pdf}
+\vspace{2pt}
+\begin{columns}[T]
+\begin{column}{0.33\textwidth}\small
+\textbf{Anonymity}: a transfer from makers to uninformed takers in stress; identity the reverse.
+\end{column}
+\begin{column}{0.33\textwidth}\small
+\textbf{Priority fee}: the venue collects 2 to 4$\times$ the rent; the identity-blind fringe pays.
+\end{column}
+\begin{column}{0.33\textwidth}\small
+\textbf{Makers' own levers}: only an identity-aware floor helps, and it leaves the adversary 75 to 80\%.
+\end{column}
+\end{columns}
+\note{[0:30] Who holds them is the venue's choice, in our one-tick queue model. Anonymity moves money from makers to uninformed takers in stress; identity moves it back. A priority fee lets the venue collect two to four times the makers' rent, paid by the fringe that cannot see identities. The makers' own defences mostly cost profit and buy nothing. So the rules decide who holds the toxic flow, not whether the rent survives, and the party holding it is the one that cannot see.}
+\end{frame}
+
+% ============================================================ (d) next steps
+\section{Next steps}
+
+\begin{frame}{Plan for Workshop 2}
+\partlabel{Part (d): next steps}
+\vspace{6pt}
+\begin{columns}[T]
+\begin{column}{0.33\textwidth}\rqbox{orange}{Attacks}{A \textbf{public-information attacker}: identify the reaction function from the tape, then solve. Then both sides learning (PSRO).}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{aqua}{Designs}{Venue and maker levers on one frontier: profit vs the worst 5\% under attack, plus takers' access in stress.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{blue}{Data}{A month of recording: the identity-selection gap by coin, hour and regime; which \emph{action} carries the selection.}\end{column}
+\end{columns}
+\vspace{8pt}
+\centering\small\textbf{Your view}: is a frozen reaction function the right ``realistic attacker'', or should the cartel adapt continuously?
+\note{[0:25] Three things for Workshop 2. Attacks: an attacker with public information only, which identifies the cartel's reaction function from the tape and then solves it, and then both sides learning. Designs: every venue and maker lever on one frontier, profit against the worst five percent under attack, with takers' access in stress so that robust cannot mean withdrew. Data: the recorder has run continuously since October 25 and will run a month, so we can cut the identity gap by coin, hour and regime. The question we would most like your view on: is a frozen reaction function the right realistic attacker, or should the cartel adapt continuously?}
+\end{frame}
+
+\begin{frame}{If you remember three things}
+\partlabel{Part (d): what the evidence establishes so far}
+\vspace{6pt}
+\begin{columns}[T]
+\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Rent is not defensible}{Solve the cartel's reaction function and you take the monopoly profit. Re-learning does not get it back.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Identity is a lag story}{A wallet reveals a toxic spell before the price does. Worth zero when the tape is instant, more with the lag.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~The real book agrees}{On a one-tick book rent is which fills you get. The makers who earn avoid last night's toxic wallets.}\end{column}
+\end{columns}
+\vspace{10pt}
+\centering\small \texttt{github.com/pradeepu191/wargame}\\[2pt] Recorder running continuously since October 25.
+\note{[0:25] Three things. The rent is not defensible: solve the cartel's reaction function and you take the monopoly profit, and re-learning does not get it back. Identity is a lag story: a wallet reveals a toxic spell before the price does. And the real book agrees: on a one-tick book the rent is which fills you get, and the makers who earn are the ones avoiding last night's toxic wallets. Code, results and a findings log are on GitHub. Thank you.}
+\end{frame}
+
+\appendix
+\begin{frame}{Backup: what identity is worth, measured}
+\centering
+\includegraphics[width=0.9\textwidth]{fig_lag.pdf}
+\subline{The proposal's mechanism (the same wallet trades again) is worth nothing: repeats are 2 to 5\%. The lag mechanism survives: zero where $\bar\alpha\le0.3$, growing with $L$ up to the spell's lifetime.}
+\note{Measured. Our original proposal's mechanism, that the same wallet trades again so you can learn it, is worth nothing on the data: a wallet repeats within the window two to five percent of the time. The mechanism that survives is the lag story from the previous slide. The value of identity is zero wherever even the toxic state leaves an undercut profitable, alpha up to 0.3, because then you do not care who is coming. It becomes positive at alpha 0.5 and grows with the mark lag L, saturating at the spell's lifetime. So RQ1's answer is: identity is a lag story, and its value depends on the venue's reporting delay and the market's toxicity, not on recognising individuals.}
+\end{frame}
+
+\begin{frame}{Backup: the queue game, the one-tick book}
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
   \node[anchor=west,color=muted] at (0,3.0) {spread pinned at one tick; makers choose \textsc{rest} or \textsc{out}; the queue is first in, first out};
@@ -532,67 +581,6 @@ Four sessions, 25 h, 490k scored fills.
 \note{The model for the one-tick book. The spread is pinned, so each maker's only decision is rest or step out, and those resting stand in a first-in-first-out line; the taker takes the front. A filled maker rejoins at the back; so does one that stepped out and comes back, which is the cost of stepping out. Incumbent B has stepped out because its forecast says the next taker is toxic; it gives up its place in line to avoid that fill. An identity-aware maker does this on the wallet label; a tape-reading one on markouts L late. A fill at break-even is worth plus 1.10 in a calm spell and minus 2.26 in a toxic one, so all the value is in which fills you take, and time priority rations them. Who pays? Whoever rests through the toxic spell: the fringe, which is retail orders and the vault. We also allow rest-and-pay, a priority fee that buys the front of the line, which turns the calm fills into an all-pay auction.}
 \end{frame}
 
-\begin{frame}{Evidence 6: the levers decide who holds the toxic flow, not whether rent survives}
-\partlabel{Part (c): evidence 6 of 6, RQ3}
-\centering
-\includegraphics[width=0.74\textwidth]{fig_anonymity.pdf}
-\vspace{2pt}
-\begin{columns}[T]
-\begin{column}{0.33\textwidth}\small
-\textbf{Anonymity}: a transfer from makers to uninformed takers in stress; identity the reverse.
-\end{column}
-\begin{column}{0.33\textwidth}\small
-\textbf{Priority fee}: the venue collects 2 to 4$\times$ the rent; the identity-blind fringe pays.
-\end{column}
-\begin{column}{0.33\textwidth}\small
-\textbf{Makers' own levers}: only an identity-aware floor helps, and it leaves the adversary 75 to 80\%.
-\end{column}
-\end{columns}
-\note{The venue's levers, in the queue game. Anonymity is a transfer: it moves money from makers to uninformed takers in stress episodes, because nobody can step out in front of a toxic wallet; identity moves it the other way. Neither defends the rent. The priority fee is an all-pay auction for position: at the venue's optimum it collects two to four times the makers' rent and leaves every maker at or below zero, and the fringe that cannot see identities is who pays. The makers' own defences, requoting, randomising, a floor on the quote, mostly cost profit and buy nothing; only an identity-aware floor improves both profit and resilience, only where the toxic regime bites, and it still leaves the adversary seventy-five to eighty percent of its take. So RQ3's answer: the rules decide who holds the toxic flow, not whether the rent survives, and the party that ends up holding it is the one that cannot see.}
-\end{frame}
-
-% ============================================================ (d) next steps
-\section{Next steps}
-
-\begin{frame}{Plan for Workshop 2}
-\partlabel{Part (d): next steps}
-\vspace{2pt}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}\small
-\textbf{Attacks and learning}
-\begin{enumerate}\setlength\itemsep{4pt}
-\item \textbf{Public-information attacker}: identify the reaction function from the tape, then solve
-\item \textbf{Both sides learning}: PSRO; are adversarially trained cartels less exploitable, or just less collusive?
-\item \textbf{Queue-mode attacks} on no-regret incumbents
-\end{enumerate}
-\end{column}
-\begin{column}{0.5\textwidth}\small
-\textbf{Designs, and data}
-\begin{itemize}\setlength\itemsep{4pt}
-\item Venue and maker levers on one frontier: profit vs worst-5\% under attack, plus takers' access in stress
-\item A month of recording, by coin, hour and regime; the order-level archive
-\end{itemize}
-\vspace{6pt}
-\textbf{Your view}: is a frozen reaction function the right ``realistic attacker''?
-\end{column}
-\end{columns}
-\note{For Workshop 2. On attacks: first, the attacker with public information only. Every incumbent answer to every pair of quotes is on the tape, and the entrant sets the rival's quote with its own, so it can identify the reaction function by probing and then solve it; we will report its gap to the exact best response as a function of the probing budget. Second, both sides learning, PSRO with re-learning cartels and learned entrants: what is the equilibrium rent, and are adversarially trained cartels less exploitable or just less collusive. Third, attacks in queue mode on no-regret incumbents. On designs: venue levers and maker levers on one frontier, profit alone against profit in the worst five percent of episodes under attack, against all three attackers, plus uninformed takers' access in stress so that robust cannot mean withdrew. On data: the recorder has been running continuously since October 25 and will run for a month, so we can cut the identity-selection gap by coin, hour and regime; and the order-level archive tells us which action, cancel, queue position, depth, carries the selection. The question we would most like your view on: is identifying a frozen reaction function the right realistic attacker, or should the cartel be allowed to adapt continuously?}
-\end{frame}
-
-\begin{frame}{If you remember three things}
-\partlabel{Part (d): what the evidence establishes so far}
-\vspace{6pt}
-\begin{columns}[T]
-\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Rent is not defensible}{Solve the cartel's reaction function and you take the monopoly profit. Re-learning does not get it back.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Identity is a lag story}{A wallet reveals a toxic spell before the price does. Worth zero when the tape is instant, more with the lag.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~The real book agrees}{On a one-tick book rent is which fills you get. The makers who earn avoid last night's toxic wallets.}\end{column}
-\end{columns}
-\vspace{10pt}
-\centering\small \texttt{github.com/pradeepu191/wargame}\\[2pt] Recorder running continuously since October 25.
-\note{Three things. One: the rent is not defensible. An entrant that solves the cartel's reaction function takes the monopoly profit for itself, and in a double oracle where the cartel re-learns against it, the re-solved attacker takes it again. Two: identity's value is a lag story. A wallet reveals a toxic spell before the price does; that is worth zero when the tape is instant or the spell is harmless, and grows with the reporting lag. Three: the real book agrees. On a one-tick book the rent lives in which fills you get, and the makers who earn are the ones missing from last night's toxic wallets' fills, out of sample, calm or stressed. Code, results and a findings log are on GitHub. Thank you.}
-\end{frame}
-
-\appendix
 \begin{frame}{Backup: Hyperliquid numbers}
 \scriptsize
 \begin{tabular}{lcccc}
