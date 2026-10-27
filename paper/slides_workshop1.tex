@@ -67,37 +67,6 @@
 % ============================================================ (a) motivation
 \section{Motivation and question}
 
-\begin{frame}{2026: the year retail leverage went wrong at national scale}
-\vspace{2pt}
-\begin{columns}[T]
-\begin{column}{0.3\textwidth}\stat{red}{$-44\%$}{KOSPI, June 19 to July 29}\end{column}
-\begin{column}{0.3\textwidth}\stat{red}{1.2 million}{retail accounts margin-called: 3.4\% of all adults}\end{column}
-\begin{column}{0.3\textwidth}\stat{red}{\$39 billion}{retail losses on single-stock leveraged ETFs}\end{column}
-\end{columns}
-\vspace{8pt}
-\begin{columns}[c]
-\begin{column}{0.42\textwidth}\small
-\textbf{``Retail'' means everyday people}
-\begin{itemize}\setlength\itemsep{4pt}
-\item 92\% of the holders were individuals, not firms
-\item 62\% of the accounts: people aged 20 to 39
-\item taking leveraged exposure through products whose risks can be hard to assess
-\end{itemize}
-\end{column}
-\begin{column}{0.56\textwidth}
-\begin{tcolorbox}[enhanced,colback=paper,colframe=grey!60,boxrule=0.5pt,arc=2pt,left=7pt,right=7pt,top=3pt,bottom=3pt]
-{\footnotesize\textbf{President Lee Jae-myung}, on X, October 14, 2026}\\[1pt]
-\includegraphics[width=0.9\linewidth]{quote_ko.pdf}\\[2pt]
-{\footnotesize\textit{``You must live. Somehow, you must live. If it is hard, call 109. We will find, together, a way and a reason to live.''}}\\[5pt]
-{\footnotesize Our goal: help traders avoid preventable losses by testing which exchange rules improve their outcomes.}
-\end{tcolorbox}
-\end{column}
-\end{columns}
-\vspace{2pt}
-{\tiny\textcolor{muted}{Sources for background figures: Bloomberg, Reuters, Goldman Sachs, Citi (via Seoulz, ``KOSPI Crash 2026''); Maeil Shinmun, Oct 22, 2026.}}
-\note{Why we care: large trading losses affect people with ordinary jobs, savings, and families. President Lee's words reflect the human stakes behind this work. The Korean episode motivates the research; our Hyperliquid model does not explain or attribute those losses. Our present contribution is to identify how information and exchange rules distribute execution costs and risks. The public-benefit goal is to test which rules improve outcomes for less-informed traders. Account liquidation requires a further model extension.}
-\end{frame}
-
 \begin{frame}{Leverage magnifies losses; liquidation is a future extension}
 \partlabel{Part (a): motivation}
 \centering
@@ -132,6 +101,37 @@
 \end{column}
 \end{columns}
 \note{Leverage means exposure larger than the collateral supporting it. A thousand dollars supporting a twenty-thousand-dollar long position gives twenty-times leverage. A five-percent rise produces a thousand-dollar gain before fees and funding; a five-percent fall produces a loss equal to the original collateral. For perpetuals this is exposure supported by margin, rather than a literal nineteen-thousand-dollar loan from the exchange. Maintenance margin can trigger liquidation before equity reaches zero, and liquidation can leave collateral remaining. Leveraged ETFs have a different structure, typically with daily resetting; the Korean products and a perpetual account should not be treated as the same liquidation mechanism. Our current simulator studies execution and information. Modelling collateral, margin, depth and forced sales is a later extension needed before we can claim to reduce liquidation losses. Sources for these distinctions: Hyperliquid Docs, Margining and Liquidations; SEC Investor Bulletin, Leveraged and Inverse ETFs.}
+\end{frame}
+
+\begin{frame}{2026: the year retail leverage went wrong at national scale}
+\vspace{2pt}
+\begin{columns}[T]
+\begin{column}{0.3\textwidth}\stat{red}{$-44\%$}{KOSPI, June 19 to July 29}\end{column}
+\begin{column}{0.3\textwidth}\stat{red}{1.2 million}{retail accounts margin-called: 3.4\% of all adults}\end{column}
+\begin{column}{0.3\textwidth}\stat{red}{\$39 billion}{retail losses on single-stock leveraged ETFs}\end{column}
+\end{columns}
+\vspace{8pt}
+\begin{columns}[c]
+\begin{column}{0.42\textwidth}\small
+\textbf{``Retail'' means everyday people}
+\begin{itemize}\setlength\itemsep{4pt}
+\item 92\% of the holders were individuals, not firms
+\item 62\% of the accounts: people aged 20 to 39
+\item taking leveraged exposure through products whose risks can be hard to assess
+\end{itemize}
+\end{column}
+\begin{column}{0.56\textwidth}
+\begin{tcolorbox}[enhanced,colback=paper,colframe=grey!60,boxrule=0.5pt,arc=2pt,left=7pt,right=7pt,top=3pt,bottom=3pt]
+{\footnotesize\textbf{President Lee Jae-myung}, on X, October 14, 2026}\\[1pt]
+\includegraphics[width=0.9\linewidth]{quote_ko.pdf}\\[2pt]
+{\footnotesize\textit{``You must live. Somehow, you must live. If it is hard, call 109. We will find, together, a way and a reason to live.''}}\\[5pt]
+{\footnotesize Our goal: help traders avoid preventable losses by testing which exchange rules improve their outcomes.}
+\end{tcolorbox}
+\end{column}
+\end{columns}
+\vspace{2pt}
+{\tiny\textcolor{muted}{Sources for background figures: Bloomberg, Reuters, Goldman Sachs, Citi (via Seoulz, ``KOSPI Crash 2026''); Maeil Shinmun, Oct 22, 2026.}}
+\note{Why we care: large trading losses affect people with ordinary jobs, savings, and families. President Lee's words reflect the human stakes behind this work. The Korean episode motivates the research; our Hyperliquid model does not explain or attribute those losses. Our present contribution is to identify how information and exchange rules distribute execution costs and risks. The public-benefit goal is to test which rules improve outcomes for less-informed traders. Account liquidation requires a further model extension.}
 \end{frame}
 
 \begin{frame}{From trading mechanisms to protections we can test}
