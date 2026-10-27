@@ -54,7 +54,7 @@
 \newcommand{\subline}[1]{\par\vspace{3pt}{\small #1}\par}
 
 \title{\huge Who is on the other side of your trade?}
-\subtitle{What everyday traders pay on a public-wallet exchange, and which rules would protect them\\ {\small\textcolor{white!70!navy}{Rent or toxicity: strategic exploitability of learning market makers with public wallet information}}}
+\subtitle{How exchange rules distribute trading costs and risks, and what this means for protecting everyday traders\\ {\small\textcolor{white!70!navy}{Rent or toxicity: strategic exploitability of learning market makers with public wallet information}}}
 \author{Deepu Pradeep \quad Miguel Betran Menz}
 \institute{6.S974 Games, Learning, and Security, Workshop 1\\ Example 4: an algorithmic market with adaptive agents}
 \date{October 27, 2026}
@@ -62,7 +62,7 @@
 \begin{document}
 {\setbeamercolor{background canvas}{bg=navy}\setbeamercolor{normal text}{fg=white}\setbeamercolor{title}{fg=white}\setbeamercolor{subtitle}{fg=white!85!navy}\setbeamercolor{author}{fg=white}\setbeamercolor{institute}{fg=white!80!navy}\setbeamercolor{date}{fg=white!80!navy}\usebeamercolor[fg]{normal text}
 \maketitle
-\note{Good morning. We are Deepu and Miguel, Example 4: an algorithmic market with adaptive agents. The title is the question an everyday trader never gets to ask: who is on the other side of my trade, and what are they taking from me? On the exchange we study, every trade carries a public wallet address, so for once that question can be answered, and we will show what the professionals do with the answer. The technical version of the question is in brackets: when the professionals quote a wide price, is it a rent they are collecting, or a defence against toxic flow? By the end you will know why those two are impossible to tell apart from the outside, and what that means for the people trading against professionals. Ten minutes: two on why, three on the model, four on what we found, one on what is next.}}
+\note{Good morning. We are Deepu and Miguel, Example 4: an algorithmic market with adaptive agents. Our long-term motivation is to help everyday traders avoid preventable losses. On Hyperliquid, every fill carries public wallet addresses, which lets us study how information and exchange rules distribute trading costs and risks. Today we establish mechanisms: how learned maker profits can be attacked, when identity helps, and who bears toxic flow in our model. We have not yet demonstrated a rule that protects retail accounts from severe losses. That is the next research stage, with customer outcomes as the test of success. Ten minutes: two on why, three on the model, four on evidence, one on that next step.}}
 
 % ============================================================ (a) motivation
 \section{Motivation and question}
@@ -81,23 +81,24 @@
 \begin{itemize}\setlength\itemsep{4pt}
 \item 92\% of the holders were individuals, not firms
 \item 62\% of the accounts: people aged 20 to 39
-\item trading on a phone app, with borrowed money, against professionals they cannot see
+\item taking leveraged exposure through products whose risks can be hard to assess
 \end{itemize}
 \end{column}
 \begin{column}{0.56\textwidth}
 \begin{tcolorbox}[enhanced,colback=paper,colframe=grey!60,boxrule=0.5pt,arc=2pt,left=7pt,right=7pt,top=3pt,bottom=3pt]
-{\footnotesize\textbf{President Lee Jae-myung}, on X, October 14, 2026}\\[1pt]
-\includegraphics[width=0.9\linewidth]{quote_ko.pdf}\\[0pt]
-{\footnotesize\textit{``You must live. Somehow, you must live. If it is hard, call 109. We will find, together, a way and a reason to live.''}}
+{\small\textbf{The public-benefit goal}}\\[5pt]
+{\small Help people avoid preventable trading losses.}\\[7pt]
+{\small\textbf{Today:} identify mechanisms that distribute trading costs and risks.}\\[5pt]
+{\small\textbf{Next:} test whether changing the rules improves ordinary traders' outcomes.}
 \end{tcolorbox}
 \end{column}
 \end{columns}
 \vspace{2pt}
-{\tiny\textcolor{muted}{Sources: Bloomberg, Reuters, Goldman Sachs, Citi (via Seoulz, ``KOSPI Crash 2026''); Maeil Shinmun, Oct 22, 2026; x.com/Jaemyung\_Lee/status/2110145832511225984. 109 is Korea's suicide-prevention line.}}
-\note{Why we care. This summer the Korean stock market fell forty-four percent in six weeks, and July 28 was the worst single day on record. What made it a national event rather than a market event is who was holding the risk. The word for that is retail, and retail means everyday people: not banks, not funds. Ninety-two percent of the holders of these products were individuals. By mid-July 1.2 million retail accounts had been margin-called, which is three point four percent of every adult in the country, and three hundred thousand were force-liquidated. Citi puts retail losses on single-stock leveraged ETFs alone at thirty-nine billion dollars, and sixty-two percent of those accounts belonged to people in their twenties and thirties. Students, office workers, people with ordinary jobs, trading on a phone app with borrowed money against professionals they could not see. On October 14 the President of Korea posted this on X: you must live; if it is hard, call 109, the suicide-prevention line. That is the level at which this stopped being a finance story. Our project is about the gap between what one of those people can see and what the professional opposite them can see, and we think closing that gap is a financial-literacy problem as much as a market-design one.}
+{\tiny\textcolor{muted}{Sources for background figures: Bloomberg, Reuters, Goldman Sachs, Citi (via Seoulz, ``KOSPI Crash 2026''); Maeil Shinmun, Oct 22, 2026.}}
+\note{Why we care: large trading losses affect people with ordinary jobs, savings, and families. The Korean episode is our motivation, not an outcome our Hyperliquid model explains. We cannot attribute those losses to the mechanisms studied here. Our present contribution is narrower: identify how information and exchange rules distribute execution costs and risks. The public-benefit goal is to use those mechanisms to test protections, and to judge them by whether less-informed traders are better off. Account liquidation requires a further model extension.}
 \end{frame}
 
-\begin{frame}{What ``leverage'' is, and why a 5\% move can take everything}
+\begin{frame}{Leverage magnifies losses; liquidation is a future extension}
 \partlabel{Part (a): motivation}
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
@@ -105,67 +106,65 @@
   \node[anchor=west,font=\small\bfseries] at (0,3.6) {You put in \$1{,}000. At $20\times$ leverage you control a \$20{,}000 position.};
   \draw[fill=orange,draw=none] (0,2.7) rectangle (0.6,3.2); \node[color=white,font=\bfseries] at (0.3,2.95) {};
   \draw[fill=grey!35,draw=none] (0.6,2.7) rectangle (12,3.2);
-  \node[anchor=north west,color=orange] at (0,2.65) {\textbf{yours}: \$1{,}000};
-  \node[anchor=north,color=muted] at (6.3,2.65) {\textbf{borrowed from the exchange}: \$19{,}000};
+  \node[anchor=north west,color=orange] at (0,2.65) {\textbf{collateral}: \$1{,}000};
+  \node[anchor=north,color=muted] at (6.3,2.65) {\textbf{exposure beyond collateral}: \$19{,}000};
   % up case
   \begin{scope}[shift={(0,0)}]
     \node[anchor=west,font=\small\bfseries,color=aqua] at (0,1.5) {price $+5\%$};
-    \node[anchor=west] at (0,1.0) {position worth \$21{,}000};
+    \node[anchor=west] at (0,1.0) {position gain: \$20{,}000 $\times$ 5\%};
     \draw[fill=aqua,draw=none] (0,0.2) rectangle (1.2,0.6); \node[anchor=west,color=aqua] at (1.3,0.4) {\textbf{you doubled your money}: $+\$1{,}000$};
   \end{scope}
   % down case
   \begin{scope}[shift={(6.4,0)}]
     \node[anchor=west,font=\small\bfseries,color=red] at (0,1.5) {price $-5\%$};
-    \node[anchor=west] at (0,1.0) {position worth \$19{,}000: exactly the loan};
-    \draw[fill=red,draw=none] (0,0.2) rectangle (1.2,0.6); \node[anchor=west,color=red] at (1.3,0.4) {\textbf{you lost everything}: $-\$1{,}000$};
-    \node[anchor=north west,color=muted,text width=5.6cm] at (0,-0.05) {the exchange closes your position automatically (\textbf{liquidation}); in a crash, millions of these happen at once and push the price further down};
+    \node[anchor=west] at (0,1.0) {position loss: \$20{,}000 $\times$ 5\%};
+    \draw[fill=red,draw=none] (0,0.2) rectangle (1.2,0.6); \node[anchor=west,color=red] at (1.3,0.4) {\textbf{loss equals collateral}: $-\$1{,}000$};
+    \node[anchor=north west,color=muted,text width=5.6cm] at (0,-0.05) {illustrative PnL before costs; maintenance margin can trigger liquidation before this point};
   \end{scope}
 \end{tikzpicture}
 \vspace{4pt}
 \begin{columns}[T]
 \begin{column}{0.5\textwidth}\small
-A $2\times$ ETF (Korea) does this for you at $2\times$. On a crypto perpetuals exchange the multiplier is a \textbf{slider}, up to $50\times$.
+\textbf{Current model}: quotes, fills, information and queue position. It does not track leveraged accounts.
 \end{column}
 \begin{column}{0.5\textwidth}\small
-The yield is visible on the way in. The risk, and who is on the other side, is not.
+\textbf{Later extension}: collateral, margin and forced sales, to test protections against liquidation losses.
 \end{column}
 \end{columns}
-\note{Since nobody here needs to know this for a living: leverage is trading with borrowed money. You put in a thousand dollars; at twenty times leverage the exchange lends you nineteen thousand more and you control a twenty thousand dollar position. If the price goes up five percent, the position is worth twenty-one thousand; you pay back the nineteen, you keep two, you doubled your money. That is the yield people see. If the price goes down five percent, the position is worth nineteen thousand, which is exactly the loan. Your thousand is gone. The exchange does not wait for you: it closes the position automatically, which is called liquidation, and in a crash millions of these happen at once and push the price down further, which liquidates the next person. In Korea the product was a two-times ETF, a fund that does this for you at two times. On a crypto perpetuals exchange the multiplier is a slider that goes to fifty. The yield is visible on the way in; the risk, and who is on the other side taking your money, is not. That second part is what we study.}
+\note{Leverage means exposure larger than the collateral supporting it. A thousand dollars supporting a twenty-thousand-dollar long position gives twenty-times leverage. A five-percent rise produces a thousand-dollar gain before fees and funding; a five-percent fall produces a loss equal to the original collateral. For perpetuals this is exposure supported by margin, rather than a literal nineteen-thousand-dollar loan from the exchange. Maintenance margin can trigger liquidation before equity reaches zero, and liquidation can leave collateral remaining. Leveraged ETFs have a different structure, typically with daily resetting; the Korean products and a perpetual account should not be treated as the same liquidation mechanism. Our current simulator studies execution and information. Modelling collateral, margin, depth and forced sales is a later extension needed before we can claim to reduce liquidation losses. Sources for these distinctions: Hyperliquid Docs, Margining and Liquidations; SEC Investor Bulletin, Leveraged and Inverse ETFs.}
 \end{frame}
 
-\begin{frame}{These products are moving toward US retail; Korea should be the lesson}
+\begin{frame}{From trading mechanisms to protections we can test}
 \partlabel{Part (a): motivation}
 \begin{columns}[T]
 \begin{column}{0.5\textwidth}\small
-\textbf{In the US, right now}
-\begin{itemize}\setlength\itemsep{3pt}
-\item \textbf{CLARITY Act} (crypto market structure): House 294 to 134, July 2025; one vote short in the Senate, Sept 15, 2026; revivable
-\item \textbf{CFTC}, Aug 2026: rules to let exchanges offer leveraged crypto trading to Americans; filed Sept 17
-\item \textbf{Hyperliquid} blocks US users today; its CEO is discussing a CFTC path
+\textbf{What this study establishes}
+\begin{itemize}\setlength\itemsep{6pt}
+\item learned maker profits can be vulnerable to a strategic entrant
+\item wallet information can help select fills in the model
+\item identity and priority rules change who bears toxic flow
 \end{itemize}
-\vspace{2pt}
-\textbf{In Korea, after the crash}
-\begin{itemize}\setlength\itemsep{3pt}
-\item new listings halted; minimum deposit tripled; exposure capped at 20\% of assets. All of it \emph{after} the losses.
-\end{itemize}
+\vspace{8pt}
+\textbf{The missing test}\\[3pt]
+Does changing a rule improve outcomes for traders with less information and fewer resources?
 \end{column}
 \begin{column}{0.5\textwidth}
-\textbf{\small On a public-wallet venue, every trade you make is on the tape}\par\vspace{2pt}
+\textbf{\small Public wallets make the question measurable}\par\vspace{2pt}
 \noindent\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
-  \node[draw=blue,fill=paleblue,rounded corners=2pt,text width=5.4cm,align=left,inner sep=5pt] at (2.9,0) {\textbf{fill}~~buy 0.5 BTC @ 67{,}412.0\\ taker \texttt{0x7f3a\ldots c91e} ~~ maker \texttt{0x21b0\ldots 4d7a}\\ \textcolor{muted}{public, forever; the professionals read it}};
+  \node[draw=blue,fill=paleblue,rounded corners=2pt,text width=5.4cm,align=left,inner sep=5pt] at (2.9,0) {\textbf{fill}~~buy 0.5 BTC @ 67{,}412.0\\ taker \texttt{0x7f3a\ldots c91e} ~~ maker \texttt{0x21b0\ldots 4d7a}\\ \textcolor{muted}{a wallet's history is observable}};
 \end{tikzpicture}\par
 \vspace{4pt}
-\textbf{\small What an everyday trader would need to know}
+\textbf{\small Next: measure customer outcomes}
 \begin{itemize}\small\setlength\itemsep{2pt}
-\item what a trade really costs
-\item who is on the other side
-\item whether their identity is used against them
-\item which venue rules protect them in stress
+\item execution costs and gains from trade
+\item access to liquidity during stress
+\item severe losses for passive traders
+\item whether improvements survive adaptation
 \end{itemize}
-\takeaway{Korea's protections came after the losses. We measure these four things now, on the real venue and in a model where the rules can be changed, so the protections can come first.}
+\takeaway{Consumer protection is the next test. Current evidence identifies mechanisms and tradeoffs.}
 \end{column}
 \end{columns}
-\note{The products that did this in Korea are moving toward US retail, and the legislative machinery is in motion. The CLARITY Act, the crypto market-structure bill, passed the House two hundred ninety-four to one hundred thirty-four in July 2025; it failed a Senate procedural vote forty-nine to fifty on September 15 this year, but the no vote that sank it was cast specifically to preserve a path to bring it back. Separately, in August the CFTC chairman announced rules that would let exchanges offer leveraged crypto trading to Americans under CFTC oversight, and that rulemaking was filed in September. Hyperliquid, the venue we study, blocks US users today, but its CEO has been publicly discussing exactly that path. And on this kind of venue there is one more thing: every trade you make carries your wallet address on a public tape, forever, and the professionals on the other side read it. We will show that they do. Korea's response was real: new listings halted, the minimum deposit tripled, exposure capped at twenty percent of assets. But every one of those came after the losses. We think what happened in Korea should be read as a lesson, and the protections should come first. For that, someone has to measure what an everyday trader would need to know: what a trade really costs beyond the quoted price; who is on the other side and earns from them; whether their public identity is used against them; and which venue rules protect the uninformed in a stress episode, and which quietly make them pay. That is what this project measures, on the real venue and in a model where the rules can be changed.}
+\note{Here is the bridge from the human motivation to what we can actually establish. Today we show strategic vulnerabilities and how information and priority redistribute trading outcomes. An attacker earning more does not establish that customers benefit; it can simply move profit between sophisticated firms. Our next test compares exchange rules by less-informed traders' costs, gains from trade, access in stress, and severe losses. We will separate small takers from passive liquidity providers, because the same rule can help one and hurt the other. Public wallet histories let us measure behavior, but a wallet does not tell us whether its owner is retail or wealthy. The current work motivates protective interventions; their effectiveness remains to be tested.}
 \end{frame}
 
 \begin{frame}{An exchange is a list of standing offers: the order book}
@@ -323,8 +322,8 @@ Which curve you are on is decided by $\alpha$, the share of informed takers. Onl
 \begin{column}{0.33\textwidth}\rqbox{aqua}{RQ3~~One-tick books}{When the grid pins the spread, where does rent live, and which rules decide who holds the toxic flow?}\end{column}
 \end{columns}
 \vspace{10pt}
-\takeaway{Today: the rent is fully exploitable; identity's value is a lag story; and on the real book the makers who earn are the ones avoiding the toxic wallets.}
-\note{Three questions. One: what is a public wallet worth to an entrant beyond what the anonymous tape already tells it, and through what mechanism. Two: how much of a learned cartel's rent can an adversary take for itself or destroy, and does a bigger rent mean a bigger target. Three: on Hyperliquid's major books the spread is pinned at one tick by the grid, so the quote cannot carry rent; where does the rent live then, and which venue rules decide who ends up holding the toxic flow. Why this is a game and not an optimisation: the entrant's weapon, undercutting or cherry-picking fills, is exactly what the incumbents' learned reaction function is tuned to punish, and the venue decides what each side is allowed to know. The three headlines today: the rent is fully exploitable; identity's value is a story about lag; and on the real book the makers who earn the spread are the ones who are missing from the toxic wallets' fills.}
+\takeaway{Today: identify mechanisms. Next: test rules by customer outcomes.}
+\note{Our three current questions concern identity, exploitability and venue rules. They explain how strategic advantages arise and who bears toxic flow in the model. The players adapt to each other, so changing a rule can change both quoting behavior and the outcomes customers receive. Our next-stage question is whether an intervention lowers less-informed traders' costs and severe losses while preserving access in stress. That benefit must be measured separately from the attacker's profit or the makers' resilience.}
 \end{frame}
 
 % ============================================================ (b) model
@@ -432,7 +431,7 @@ Trace: exact best response vs the cartel (quotes in ticks)
 \centering
 \includegraphics[width=0.9\textwidth]{fig_attackers.pdf}
 \subline{Hand-written rules take two thirds. The \textbf{exact best response} takes it all, in 60 of 60 cartels: $\kappa_A=1.1$ to $1.3$. The damage-maximiser destroys 2 to 3$\times$ the rent at no cost.}
-\note{[0:50] How much can an adversary take? Two hand-written rules, undercut by a tick, or undercut when the markouts say there is rent, take about two thirds, flat across a hundred and eighty cartels. The exact best response is different in kind. A frozen cartel is a deterministic reaction function, so the entrant's problem is a dynamic program we solve by backward induction. It takes more than the whole rent in sixty of sixty cartels and earns the monopoly profit for itself. And flipping the objective to damage, it steers the cartel inside break-even and destroys two to three times the rent while taking no fills at all. In a double oracle where the cartel re-learns against it, the re-solved attacker takes it again; the numbers are in the backup.}
+\note{[0:45] Two hand-written rules take about two thirds of the rent. The exact best response solves the frozen cartel's reaction function by backward induction and removes its entire rent in sixty of sixty tested populations, earning monopoly-like profit for itself. Re-solving after the cartel re-learns preserves the attack. This establishes strategic vulnerability under the model's assumptions. It does not show that customers receive cheaper execution: the entrant can keep the market wide and collect the profit itself. For our next stage, this attacker is a stress-testing instrument. The separate question is whether a protective rule improves customer outcomes under that stress.}
 \end{frame}
 
 \begin{frame}{Steering, period by period}
@@ -472,6 +471,7 @@ Trace: exact best response vs the cartel (quotes in ticks)
 
 \begin{frame}{Evidence 3, Hyperliquid: the price cannot move, and someone still earns}
 \partlabel{Part (c): evidence 3 of 5, data}
+\vspace{10pt}
 \begin{columns}[c]
 \begin{column}{0.56\textwidth}
 \includegraphics[width=\textwidth]{fig_touch.pdf}
@@ -479,71 +479,101 @@ Trace: exact best response vs the cartel (quotes in ticks)
 \begin{column}{0.44\textwidth}\small
 Four sessions, 25 h, 490k scored fills.
 \begin{itemize}\setlength\itemsep{5pt}
-\item \textbf{The spread is one tick}, essentially always
-\item \textbf{The ordinary fill loses}: $-0.2$ to $-0.4$ bps in 10 s
+\item \textbf{BTC/ETH/SOL spreads}: essentially one tick
+\item \textbf{Average maker markout}: negative at 10 s on every coin
 \item \textbf{The top makers earn} $+0.3$ to $+1.0$ bps more, \emph{at the same price}; rank persists (corr.\ 0.5 to 0.8)
 \end{itemize}
-\takeaway{Rent lives in \emph{which fills you get}, not in the quote.}
+\takeaway{Fill selection matters even at the same quoted price.}
 \end{column}
 \end{columns}
-\note{[0:45] The real venue. Four sessions, twenty-five hours, four hundred and ninety thousand scored fills. Three facts. The spread is one tick essentially always, so rent cannot live in the price. The ordinary fill loses: a maker filled at the touch collects the tick and loses 0.2 to 0.4 basis points to the mid within ten seconds. And the ten most active makers, chosen on activity and scored on outcome, earn 0.3 to 1.0 basis points more per fill at the same price, session after session. So on the real book, rent lives in which fills you get.}
+\note{[0:35] Four sessions, twenty-five hours, four hundred and ninety thousand scored fills. BTC, ETH and SOL spreads are essentially one tick. Average maker markouts at the touch are negative at ten seconds, while the top ten active makers do better at the same price. These are outcomes for the maker on each fill, not retail account returns. The comparison shows that fill selection matters; it does not by itself establish excess profits after all operating costs. For consumer protection, the next step is to measure outcomes separately for customers taking liquidity and customers supplying it.}
 \end{frame}
 
-\begin{frame}{Evidence 4: how they do it is identity, not the tape}
+\begin{frame}{Evidence 4: top makers receive fewer toxic-wallet fills}
 \partlabel{Part (c): evidence 4 of 5, RQ1 on data}
 \centering
 \includegraphics[width=0.88\textwidth]{fig_identity_selection.pdf}
-\subline{They never withdraw after a stressful spell (30 s to 5 min). They are absent from the toxic \emph{wallets'} fills: typed on night 1, scored on three later sessions.}
-\note{[0:45] How do they get the good fills? Not by reading the tape: they never withdraw after a stressful spell at any timescale from thirty seconds to five minutes. By identity. We typed every taker wallet on the first night by the markout it inflicted, then on three later sessions measured each maker's share of fills against toxic versus benign wallets. The top makers hold eleven to forty-three percent of the benign wallets' fills and three to twelve percent of the toxic ones; the gap is the same in calm and stressed tape and survives on fills where the mid never moved. That is RQ1's mechanism on the real book: the makers who earn are the ones missing from the toxic wallets' fills, and someone else is holding those.}
+\subline{Wallets typed on night 1, scored on three later sessions. Consistent with selection; the makers' decision signals remain unobserved.}
+\note{[0:35] We typed taker wallets on the first night and measured the top makers' share of their fills in later sessions. Their share is lower for previously toxic wallets, in calm and stressed tape, and the gap survives when the mid does not move within one second. This is evidence of differential exposure consistent with selection. It does not identify the signals the makers actually used or prove that wallet identity caused the gap. The data motivates our information treatments and a closer study of cancellations and queue actions. We also cannot label these wallets as ordinary households from their addresses alone.}
 \end{frame}
 
 
-\begin{frame}{Evidence 5: the levers decide who holds the toxic flow, not whether rent survives}
+\begin{frame}{Evidence 5: venue rules redistribute access and losses}
 \partlabel{Part (c): evidence 5 of 5, RQ3}
 \centering
 \includegraphics[width=0.74\textwidth]{fig_anonymity.pdf}
 \vspace{2pt}
 \begin{columns}[T]
 \begin{column}{0.33\textwidth}\small
-\textbf{Anonymity}: a transfer from makers to uninformed takers in stress; identity the reverse.
+\textbf{Anonymity}: more uninformed takers get filled in stress in the queue model.
 \end{column}
 \begin{column}{0.33\textwidth}\small
-\textbf{Priority fee}: the venue collects 2 to 4$\times$ the rent; the identity-blind fringe pays.
+\textbf{Priority fee}: venue revenue rises; the always-resting fringe's losses deepen.
 \end{column}
 \begin{column}{0.33\textwidth}\small
-\textbf{Makers' own levers}: only an identity-aware floor helps, and it leaves the adversary 75 to 80\%.
+\textbf{Next test}: customer costs and severe losses, alongside access and maker viability.
 \end{column}
 \end{columns}
-\note{[0:30] Who holds them is the venue's choice, in our one-tick queue model. Anonymity moves money from makers to uninformed takers in stress; identity moves it back. A priority fee lets the venue collect two to four times the makers' rent, paid by the fringe that cannot see identities. The makers' own defences mostly cost profit and buy nothing. So the rules decide who holds the toxic flow, not whether the rent survives, and the party holding it is the one that cannot see.}
+\note{[0:30] This is our closest current result to the consumer-protection question. In the queue model, anonymity raises uninformed takers' fill probability during toxic spells. Priority fees raise venue revenue and deepen the losses of the always-resting fringe. These are distributional tradeoffs. More fills alone do not establish higher welfare, and the fringe is a modeled strategy rather than an identified retail population. The next test measures costs, gains from trade and severe losses separately for takers and passive traders, while checking that makers still supply liquidity.}
 \end{frame}
 
 % ============================================================ (d) next steps
 \section{Next steps}
 
-\begin{frame}{Plan for Workshop 2}
-\partlabel{Part (d): next steps}
+\begin{frame}{Workshop 2: test protections for less-informed traders}
+\partlabel{Part (d): proposed experiment}
 \vspace{6pt}
 \begin{columns}[T]
-\begin{column}{0.33\textwidth}\rqbox{orange}{Attacks}{A \textbf{public-information attacker}: identify the reaction function from the tape, then solve. Then both sides learning (PSRO).}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{aqua}{Designs}{Venue and maker levers on one frontier: profit vs the worst 5\% under attack, plus takers' access in stress.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{blue}{Data}{A month of recording: the identity-selection gap by coin, hour and regime; which \emph{action} carries the selection.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{aqua}{1~~Customer outcomes}{Separate small \textbf{takers} and \textbf{passive traders}: execution costs, gains from trade, stress access and worst-5\% losses.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Compare rules}{Public, anonymous or delayed wallet disclosure. FIFO versus paid priority. Measure \textbf{who gains and who loses}.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{orange}{3~~Stress-test benefits}{Let makers adapt. Use the existing attacker as a stress test. Check liquidity and whether loss-making participants leave.}\end{column}
 \end{columns}
 \vspace{8pt}
-\centering\small\textbf{Your view}: is a frozen reaction function the right ``realistic attacker'', or should the cartel adapt continuously?
-\note{[0:25] Three things for Workshop 2. Attacks: an attacker with public information only, which identifies the cartel's reaction function from the tape and then solves it, and then both sides learning. Designs: every venue and maker lever on one frontier, profit against the worst five percent under attack, with takers' access in stress so that robust cannot mean withdrew. Data: the recorder has run continuously since October 25 and will run a month, so we can cut the identity gap by coin, hour and regime. The question we would most like your view on: is a frozen reaction function the right realistic attacker, or should the cartel adapt continuously?}
+\centering\small\textbf{Your view}: which rule improves less-informed traders' outcomes,\\ and does the improvement survive stress and adaptation?
+\note{[0:35] The priority for Workshop 2 is a consumer-protection experiment. First, define small takers and passive traders separately and measure execution costs, gains from trade, access in stress and worst-five-percent losses. Our existing private valuations can support a model-based gains-from-trade measure. Second, compare identity disclosure and priority rules under matched market conditions and multiple seeds. Third, let makers adapt and use the existing attacker to test whether benefits survive. We must also let participants leave if they keep losing, rather than assume permanent subsidizing liquidity. The test of success is better customer outcomes with viable liquidity. Our question for the room is which rule improves those outcomes, and whether that improvement survives stress and adaptation.}
+\end{frame}
+
+\begin{frame}{Longer term: connect execution risk to liquidation losses}
+\partlabel{Part (d): future extension, not a current result}
+\begin{columns}[T]
+\begin{column}{0.49\textwidth}\small
+\textbf{Add to the model}
+\begin{itemize}\setlength\itemsep{5pt}
+\item persistent prices and finite book depth
+\item account collateral and maintenance margin
+\item forced sales and their price impact
+\end{itemize}
+\vspace{5pt}
+\textbf{Compare}: leverage limits, margin buffers and liquidation execution rules.
+\end{column}
+\begin{column}{0.49\textwidth}\small
+\textbf{Measure protection directly}
+\begin{itemize}\setlength\itemsep{5pt}
+\item fraction of small accounts liquidated
+\item collateral remaining after liquidation
+\item severe losses and ability to exit in stress
+\end{itemize}
+\vspace{5pt}
+\textbf{Evidence}: longer recording windows and stress episodes to calibrate the extension.
+\end{column}
+\end{columns}
+\vspace{6pt}
+\takeaway{Reducing liquidation losses is a future hypothesis. Today's model cannot establish it.}
+\note{[0:25] This longer-term extension connects most directly to the people whose losses motivated us. We would add persistent prices, finite depth, collateral, maintenance margin, and forced sales with price impact. Then compare candidate protections by the fraction of small accounts liquidated, collateral retained and severe losses, while checking their ability to exit. Leverage limits, margin buffers and liquidation rules are hypotheses to test. The present model cannot establish that any of them prevents account wipeouts. Longer recording windows and stress episodes will help calibrate this extension.}
 \end{frame}
 
 \begin{frame}{If you remember three things}
-\partlabel{Part (d): what the evidence establishes so far}
+\partlabel{Part (d): evidence today, protection as the next test}
 \vspace{6pt}
 \begin{columns}[T]
-\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Rent is not defensible}{Solve the cartel's reaction function and you take the monopoly profit. Re-learning does not get it back.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Identity is a lag story}{A wallet reveals a toxic spell before the price does. Worth zero when the tape is instant, more with the lag.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~The real book agrees}{On a one-tick book rent is which fills you get. The makers who earn avoid last night's toxic wallets.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Vulnerabilities}{Learned maker profits are exploitable in our model. This gives us a way to stress-test market rules.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Distribution}{Information and priority change who gets fills and who bears losses. The data motivates testing these mechanisms.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~Protection next}{Test rules by customer costs, access and severe losses. Measure whether less-informed traders benefit.}\end{column}
 \end{columns}
 \vspace{10pt}
-\centering\small \texttt{github.com/pradeepu191/wargame}\\[2pt] Recorder running continuously since October 25.
-\note{[0:25] Three things. The rent is not defensible: solve the cartel's reaction function and you take the monopoly profit, and re-learning does not get it back. Identity is a lag story: a wallet reveals a toxic spell before the price does. And the real book agrees: on a one-tick book the rent is which fills you get, and the makers who earn are the ones avoiding last night's toxic wallets. Code, results and a findings log are on GitHub. Thank you.}
+\centering\small\textbf{Goal: fewer preventable losses for everyday traders.}\\[4pt]
+\texttt{github.com/pradeepu191/wargame}
+\note{[0:25] Three things to remember. We have established vulnerabilities in learned maker behavior. We have shown how information and priority redistribute outcomes in the model, with empirical patterns that motivate those mechanisms. Now we will judge interventions by outcomes for less-informed traders. Helping an attacker profit is not sufficient evidence of public benefit. The next contribution must show whether a rule lowers customer costs or severe losses while preserving access to liquidity. Reducing leveraged account losses requires the later liquidation extension. That is how we plan to turn this work toward fewer preventable losses for everyday traders. Thank you.}
 \end{frame}
 
 \appendix
@@ -575,10 +605,10 @@ Four sessions, 25 h, 490k scored fills.
 \textbf{A fill at $h^C$}: $+1.10$ in a calm spell, $-2.26$ in a toxic one.
 \end{column}
 \begin{column}{0.5\textwidth}\small
-\textbf{Who pays}: whoever rests through the toxic spell, the \emph{fringe} (retail orders, the vault).
+\textbf{Who pays in the model}: the always-resting \emph{fringe}. Its retail interpretation needs testing.
 \end{column}
 \end{columns}
-\note{The model for the one-tick book. The spread is pinned, so each maker's only decision is rest or step out, and those resting stand in a first-in-first-out line; the taker takes the front. A filled maker rejoins at the back; so does one that stepped out and comes back, which is the cost of stepping out. Incumbent B has stepped out because its forecast says the next taker is toxic; it gives up its place in line to avoid that fill. An identity-aware maker does this on the wallet label; a tape-reading one on markouts L late. A fill at break-even is worth plus 1.10 in a calm spell and minus 2.26 in a toxic one, so all the value is in which fills you take, and time priority rations them. Who pays? Whoever rests through the toxic spell: the fringe, which is retail orders and the vault. We also allow rest-and-pay, a priority fee that buys the front of the line, which turns the calm fills into an all-pay auction.}
+\note{The spread is fixed, and makers choose whether to rest or step out. Resting makers form a first-in-first-out queue. A filled maker, or one returning after stepping out, joins the back. Selection avoids toxic fills at the cost of queue position. The always-resting fringe absorbs flow that selectors avoid. That strategy may approximate some passive liquidity, but it is not an empirically identified retail group or a calibrated vault policy. The consumer-protection extension will give small passive traders explicit constraints and allow loss-making participants to leave. We also model paid priority, which changes who receives favorable fills.}
 \end{frame}
 
 \begin{frame}{Backup: Hyperliquid numbers}
