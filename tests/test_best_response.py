@@ -71,3 +71,18 @@ def test_dp_value_matches_simulation_against_a_matching_cartel():
     _, _, inc_profit = mdp.solve(1.0)
     _, _, inc_damage = mdp.solve(0.0)
     assert inc_damage <= inc_profit + 1e-9
+
+
+def test_stackelberg_value_sits_near_the_competitive_quote():
+    """The entrant can only share a quote the incumbents have no incentive to undercut, so the
+    Stackelberg value is a small positive number near Pi(h^C) and far below the rent."""
+    from sim.benchmarks import stackelberg_value, type_benchmarks
+    for alpha in (0.1, 0.3, 0.5):
+        cfg = market(24, 2, alpha)
+        hC, PiC, hM, PiM = type_benchmarks(cfg, alpha)
+        sv = stackelberg_value(cfg, alpha, 2)
+        for key in ("strong", "weak"):
+            v, h_e, h_inc = sv[key]["value"], sv[key]["h_e"], sv[key]["h_inc"]
+            assert 0.0 <= v <= 0.2 * (PiM - PiC), (alpha, key, v)
+            assert hC <= h_e <= hC + 2 and h_inc == h_e, (alpha, key, h_e, h_inc)
+        assert sv["strong"]["value"] >= sv["weak"]["value"]

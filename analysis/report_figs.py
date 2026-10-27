@@ -77,6 +77,21 @@ def fig_rent(res: Path):
 
 
 # ----------------------------------------------------------------------------- 2. attackers
+def stackelberg_line(d: pd.DataFrame) -> float:
+    """Mean Stackelberg value (strong tie-break) over the cartels in d, in rent units."""
+    import yaml
+    from sim import MarketConfig
+    from sim.benchmarks import stackelberg_value
+    vals = []
+    for run, g in d.groupby("run"):
+        cfg_path = Path("results") / run / "config.yaml"
+        m = yaml.safe_load(open(cfg_path))["market"] if cfg_path.exists() else {}
+        cfg = MarketConfig(**{**dict(alpha=float(g.alpha.iloc[0]), n_mm=int(g.n_mm.iloc[0])), **m})
+        sv = stackelberg_value(cfg, cfg.alpha, int(g.n_mm.iloc[0]))["strong"]["value"]
+        vals.append(sv / (float(g.PiM.iloc[0]) - float(g.PiC.iloc[0])))
+    return float(np.mean(vals))
+
+
 def fig_attackers(res: Path):
     d = pd.read_csv(res / "best_response.csv")
     r = pd.read_csv(res / "best_response_relearn.csv")
@@ -98,12 +113,17 @@ def fig_attackers(res: Path):
         ax.annotate(f"{e:.2f}", (max(e, 0) + eci, yi - h / 2), xytext=(5, 0), textcoords="offset points", va="center", fontsize=9, color=INK)
     ax.axvline(C_mean, color=MUTED, lw=1, ls="--")
     ax.annotate(f"the cartel's whole rent\n(C = {C_mean:.2f} on average)", (C_mean + 0.04, y[-1] - 0.42), ha="left", va="top", fontsize=8.5, color=MUTED)
+    # the Stackelberg value: what an optimizer is guaranteed against any no-regret learner, and the most it
+    # can get against a no-swap-regret one (Deng, Schneider and Sivan 2019); averaged over the same cartels
+    sv = stackelberg_line(d)
+    ax.axvline(sv, color=AQUA, lw=1.2, ls=":")
+    ax.annotate(f"Stackelberg value ({sv:.2f}): the most a no-swap-regret cartel would give up", (sv + 0.04, y[0] + 0.62), ha="left", va="center", fontsize=8.5, color=AQUA)
     ax.axvline(0, color=MUTED, lw=0.6)
     ax.set_yticks(y); ax.set_yticklabels([lab for _, lab in order], fontsize=8.8)
     ax.set_xlabel(r"rent units ($1$ = the monopoly rent $\Pi^M-\Pi^C$); 60 cartels, 95% intervals")
-    ax.set_xlim(-0.05, 2.25); ax.set_ylim(-1.0, len(order) + 0.25)
+    ax.set_xlim(-0.05, 2.25); ax.set_ylim(-1.0, len(order) + 0.45)
     ax.set_title("Rules take two thirds of the rent; the exact best response\ntakes all of it and more", fontsize=10)
-    ax.legend(loc="upper right", bbox_to_anchor=(1.0, 1.0))
+    ax.legend(loc="upper right", bbox_to_anchor=(1.0, 0.86))
     grid(ax, "x")
     # --- right: double oracle, pooled over cartels
     rounds = sorted(r["round"].unique())

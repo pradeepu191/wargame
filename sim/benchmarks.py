@@ -119,3 +119,53 @@ def identity_monopoly_profit(env: GlostenMilgromEnv, rho: float | None = None) -
     a_next = rho * env.wallet_alpha + (1 - rho) * env.alpha_eff
     best = np.array([type_benchmarks(c, float(a))[3] for a in a_next])
     return float(env.wallet_weights @ best)
+
+
+def stackelberg_value(cfg: MarketConfig, alpha: float, n_inc: int) -> dict:
+    """The entrant's Stackelberg value in the stage game (Deng, Schneider and Sivan 2019: what an
+    optimizer can guarantee against any no-regret learner, and the most it can get against a
+    no-swap-regret one).  The entrant commits to a half-spread h_e; the n_inc incumbents then play
+    a symmetric pure Nash equilibrium of the resulting one-shot quoting game (makers at the best
+    quote split Pi(h_best) equally; everyone else earns 0).  On a tick grid that equilibrium set
+    can contain more than one quote, so both tie-breaks are returned: 'strong' (incumbents pick
+    the equilibrium best for the entrant, the usual Stackelberg convention) and 'weak' (the one
+    worst for it).  Both are small -- the entrant can only share a quote the incumbents have no
+    incentive to undercut, which pins everything near h^C -- which is the point: anything an
+    attacker earns above this line is exploitation of the learner's dynamics, not of the game."""
+    Pi = profit_curve(cfg, alpha)
+    K = cfg.max_half_spread
+
+    def payoffs(h_e, h_inc):
+        best = min(h_e, h_inc)
+        n_at = (1 if h_e == best else 0) + (n_inc if h_inc == best else 0)
+        share = Pi[best - 1] / n_at
+        ent = share if h_e == best else 0.0
+        inc = share if h_inc == best else 0.0
+        return ent, inc
+
+    def is_equilibrium(h_e, h_inc):
+        _, u = payoffs(h_e, h_inc)
+        for d in range(1, K + 1):            # one incumbent deviates to d, the others stay at h_inc
+            if d == h_inc:
+                continue
+            quotes = [h_e] + [h_inc] * (n_inc - 1) + [d]
+            best = min(quotes)
+            n_at = sum(1 for q in quotes if q == best)
+            u_dev = Pi[best - 1] / n_at if d == best else 0.0
+            if u_dev > u + 1e-12:
+                return False
+        return True
+
+    strong = {"value": -np.inf, "h_e": None, "h_inc": None}
+    weak = {"value": -np.inf, "h_e": None, "h_inc": None}
+    for h_e in range(1, K + 1):
+        eq = [h for h in range(1, K + 1) if is_equilibrium(h_e, h)]
+        if not eq:
+            continue
+        vals = [payoffs(h_e, h)[0] for h in eq]
+        hi, lo = int(np.argmax(vals)), int(np.argmin(vals))
+        if vals[hi] > strong["value"]:
+            strong = {"value": float(vals[hi]), "h_e": h_e, "h_inc": eq[hi]}
+        if vals[lo] > weak["value"]:
+            weak = {"value": float(vals[lo]), "h_e": h_e, "h_inc": eq[lo]}
+    return {"strong": strong, "weak": weak}
