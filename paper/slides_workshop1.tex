@@ -134,38 +134,6 @@
 \note{Why we care: large trading losses affect people with ordinary jobs, savings, and families. President Lee's words reflect the human stakes behind this work. The Korean episode motivates the research; our Hyperliquid model does not explain or attribute those losses. Our present contribution is to identify how information and exchange rules distribute execution costs and risks. The public-benefit goal is to test which rules improve outcomes for less-informed traders. Account liquidation requires a further model extension.}
 \end{frame}
 
-\begin{frame}{From trading mechanisms to protections we can test}
-\partlabel{Part (a): motivation}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}\small
-\textbf{What this study establishes}
-\begin{itemize}\setlength\itemsep{6pt}
-\item learned maker profits can be vulnerable to a strategic entrant
-\item wallet information can help select fills in the model
-\item identity and priority rules change who bears toxic flow
-\end{itemize}
-\vspace{8pt}
-\textbf{The missing test}\\[3pt]
-Does changing a rule improve outcomes for traders with less information and fewer resources?
-\end{column}
-\begin{column}{0.5\textwidth}
-\textbf{\small Public wallets make the question measurable}\par\vspace{2pt}
-\noindent\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
-  \node[draw=blue,fill=paleblue,rounded corners=2pt,text width=5.4cm,align=left,inner sep=5pt] at (2.9,0) {\textbf{fill}~~buy 0.5 BTC @ 67{,}412.0\\ taker \texttt{0x7f3a\ldots c91e} ~~ maker \texttt{0x21b0\ldots 4d7a}\\ \textcolor{muted}{a wallet's history is observable}};
-\end{tikzpicture}\par
-\vspace{4pt}
-\textbf{\small Next: measure customer outcomes}
-\begin{itemize}\small\setlength\itemsep{2pt}
-\item execution costs and gains from trade
-\item access to liquidity during stress
-\item severe losses for passive traders
-\item whether improvements survive adaptation
-\end{itemize}
-\takeaway{Consumer protection is the next test. Current evidence identifies mechanisms and tradeoffs.}
-\end{column}
-\end{columns}
-\note{Here is the bridge from the human motivation to what we can actually establish. Today we show strategic vulnerabilities and how information and priority redistribute trading outcomes. An attacker earning more does not establish that customers benefit; it can simply move profit between sophisticated firms. Our next test compares exchange rules by less-informed traders' costs, gains from trade, access in stress, and severe losses. We will separate small takers from passive liquidity providers, because the same rule can help one and hurt the other. Public wallet histories let us measure behavior, but a wallet does not tell us whether its owner is retail or wealthy. The current work motivates protective interventions; their effectiveness remains to be tested.}
-\end{frame}
 
 \begin{frame}{An exchange is a list of standing offers: the order book}
 \partlabel{Part (a): the vocabulary}
@@ -275,22 +243,96 @@ Learning makers end up in the right panel \emph{without talking}: \textbf{tacit 
 \end{columns}
 \note{The other word in the title: rent. Three pictures of the same two makers' ask prices. Left: both quote the competitive half-spread h-C, where what you earn from noise takers just covers what you lose to informed ones; each earns about zero. Middle: B quotes wide and A undercuts by a tick; takers always hit the tighter price, so A takes every fill and B gets nothing. That is why a wide quote is fragile. Right: both quote wide and neither undercuts. Each takes half the fills at the wide price and earns half the monopoly profit. The difference between the right panel and the left is the rent. The striking fact, from Colliard, Foucault and Lovo and replicated by us, is that independent learning algorithms end up in the right panel without ever communicating. Each learns that undercutting today gets punished tomorrow, and stops. That is tacit collusion, and the rent is what the uninformed taker pays for it.}
 \end{frame}
-
-\begin{frame}{The puzzle: on the tape, rent and toxicity look identical}
-\partlabel{Part (a): the question}
-\centering
-\includegraphics[width=0.72\textwidth]{fig_payoff.pdf}
-\vspace{2pt}
+\begin{frame}{A worked example (1): two makers, where the rent comes from, and the price war}
+\partlabel{Part (a): a small example}
 \begin{columns}[T]
-\begin{column}{0.5\textwidth}\small
-A wide quote is a \textbf{rent} \ldots\ or the correct charge for \textbf{toxic flow}.
+\begin{column}{0.36\textwidth}\small
+\textbf{Toy payoff table}: expected profit per period of the maker with the best quote; one tick $=$ \$1
+\vspace{3pt}
+{\scriptsize\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrrr}
+\toprule
+half-spread $h$ & 1 & 2 & 3 & 4 & 5\\
+\midrule
+calm ($\alpha$ = 0.1) & 0.3 & 0.8 & \textbf{1.0} & 0.9 & 0.7\\
+\textbf{ours} ($\alpha$ = 0.3) & $-0.5$ & \textcolor{blue}{\textbf{0}} & 0.6 & \textcolor{orange}{\textbf{0.9}} & 0.7\\
+toxic ($\alpha$ = 0.5) & $-1.5$ & $-0.8$ & $-0.2$ & 0.1 & \textbf{0.3}\\
+\bottomrule
+\end{tabular}}
+\vspace{4pt}
+\begin{itemize}\setlength\itemsep{2pt}
+\item \textcolor{blue}{$h^C=2$}: break-even, the \textbf{Nash} quote
+\item \textcolor{orange}{$h^M=4$}: the \textbf{joint-monopoly} quote
+\item \textbf{rent} $=0.9-0=0.9$ per period
+\item the same $h=4$ is a rent in our market and barely break-even in the toxic one
+\end{itemize}
 \end{column}
-\begin{column}{0.5\textwidth}\small
-Which curve you are on is decided by $\alpha$, the share of informed takers. Only outcomes, or \emph{who} trades, reveal it.
+\begin{column}{0.64\textwidth}\small
+\textbf{Periods} (A, B: the cartel; E: an entrant using the ``undercut by one tick'' rule)
+\vspace{3pt}
+{\scriptsize\setlength{\tabcolsep}{5pt}
+\begin{tabular}{cccclll}
+\toprule
+$t$ & A & B & E & best & profit this period & \\
+\midrule
+1 & 4 & 4 & -- & A, B tie & A $0.45$, B $0.45$ & \textcolor{orange}{rent shared}\\
+\visible<2->{2} & \visible<2->{4} & \visible<2->{4} & \visible<2->{\textbf{3}} & \visible<2->{E} & \visible<2->{E $0.6$, A $0$, B $0$} & \\
+\visible<3->{3} & \visible<3->{\textbf{3}} & \visible<3->{\textbf{3}} & \visible<3->{\textbf{2}} & \visible<3->{E} & \visible<3->{E $0$, A $0$, B $0$} & \visible<3->{cartel matched, E undercut again}\\
+\visible<4->{4} & \visible<4->{2} & \visible<4->{2} & \visible<4->{1} & \visible<4->{E} & \visible<4->{E $-0.5$, A $0$, B $0$} & \\
+\visible<4->{5} & \visible<4->{2} & \visible<4->{2} & \visible<4->{2} & \visible<4->{all tie} & \visible<4->{$0$, $0$, $0$} & \visible<4->{everyone at Nash}\\
+\bottomrule
+\end{tabular}}
+\vspace{4pt}
+\visible<2->{\textbf{Period 2}: undercutting a wide quote takes every fill.}\par
+\visible<3->{\textbf{Period 3}: the cartel's learned rule is \emph{match an undercut; return to 4 once nobody undercuts}. A naive entrant keeps undercutting.}\par
+\visible<4->{\textbf{Periods 4--5}: the price war ends at Nash. The undercut rule earned 0.6 once and then nothing.}
 \end{column}
 \end{columns}
-\note{Here is the puzzle. This is the maker's expected profit per period as a function of its half-spread, one curve per level of toxicity alpha, the fraction of takers who are informed. Each curve has a break-even point on the left, h-C, and a peak, h-M. More toxic flow pushes the whole curve down and both points to the right. So if you watch a market and see wide quotes, you cannot tell whether the makers are colluding on a calm market, the blue curve, or correctly charging for a toxic one, the red curve. Rent and toxicity produce the same tape. The only ways to tell are to look at outcomes, the markouts, or to look at who is trading. And that second route exists only because wallets are public.}
+\note{A small example with made-up numbers, so that the next slides have something concrete to point at. One tick is one dollar. The table on the left is the expected profit per period of whichever maker has the best quote, as a function of its half-spread. Read the middle row, our market: at one tick you lose half a dollar, because the informed takers pick you off; at two ticks you break even, that is h-C, the Nash quote; at four ticks you earn ninety cents, that is h-M, the joint-monopoly quote; at five you earn less because the noise takers start walking away. The rent is ninety cents minus zero: ninety cents per period. And look at the toxic row: the same four-tick quote earns ten cents there, barely break-even. That is the puzzle from the title in numbers: the quote alone does not tell you which row you are in. Now the periods. Period 1: A and B both quote four, tie, and share the rent, forty-five cents each. [click] Period 2: an entrant E quotes three. Takers always hit the best price, so E takes every fill and earns sixty cents; A and B earn nothing. [click] Period 3: the cartel has learned a rule from its training: match an undercut, and go back to four once nobody undercuts. So A and B quote three. A naive entrant undercuts again, to two, where everyone earns zero. [click] Periods 4 and 5: the war runs down to Nash and stays there. The undercut rule earned sixty cents once and then nothing. That is why a learned cartel is stable against naive entry, and the next slide is what a smarter entrant does with the same rule.}
 \end{frame}
+
+\begin{frame}{A worked example (2): knowing the reaction, and knowing the wallet}
+\partlabel{Part (a): a small example}
+\begin{columns}[T]
+\begin{column}{0.62\textwidth}\small
+\textbf{The cartel's rule}: match an undercut; return to 4 once nobody undercuts.\\ An entrant that \emph{knows the rule} never starts the war:
+\vspace{3pt}
+{\scriptsize\setlength{\tabcolsep}{5pt}
+\begin{tabular}{cccclll}
+\toprule
+$t$ & A & B & E & best & profit this period & \\
+\midrule
+2 & 4 & 4 & \textbf{3} & E & E $0.6$, A $0$, B $0$ & \\
+\visible<2->{3} & \visible<2->{3} & \visible<2->{3} & \visible<2->{\textbf{5}} & \visible<2->{A, B tie} & \visible<2->{E $0$, A $0.3$, B $0.3$} & \visible<2->{E steps aside}\\
+\visible<2->{4} & \visible<2->{\textbf{4}} & \visible<2->{\textbf{4}} & \visible<2->{\textbf{3}} & \visible<2->{E} & \visible<2->{E $0.6$, A $0$, B $0$} & \visible<2->{cartel went back to 4}\\
+\visible<2->{5} & \visible<2->{3} & \visible<2->{3} & \visible<2->{5} & \visible<2->{A, B tie} & \visible<2->{E $0$, A $0.3$, B $0.3$} & \\
+\midrule
+\multicolumn{5}{l}{\visible<3->{per period, on average}} & \multicolumn{2}{l}{\visible<3->{E $0.3$; A, B $0.15$ each (was $0.45$)}}\\
+\bottomrule
+\end{tabular}}
+\par\vspace{5pt}
+\visible<4->{\textbf{Now add identity.} Period 6: E is due to quote 3. The arriving wallet T is one that has cost E money before.}\par
+\vspace{2pt}
+{\scriptsize\setlength{\tabcolsep}{5pt}
+\visible<4->{
+\begin{tabular}{lcccl}
+\toprule
+the entrant sees\ldots & A & B & E & profit this period\\
+\midrule
+the \textbf{wallet}: T is toxic, step aside & 4 & 4 & 5 & A takes the fill: A $-4$, E $0$\\
+only the \textbf{tape}: nothing yet & 4 & 4 & 3 & E takes the fill: E $-4$\\
+\bottomrule
+\end{tabular}}}
+\end{column}
+\begin{column}{0.38\textwidth}\small
+\visible<3->{\takeaway{Timing the undercut to the cartel's own rule takes a third of the rent here. In the full model the \textbf{exact best response} solves the learned rule by backward induction and takes \emph{all} of it.}}
+\visible<4->{\takeaway{One toxic fill costs seven good periods. The tape reveals that T was informed only when the price moves, a few fills later; the wallet reveals it \emph{now}. That gap is what identity is worth.}}
+\end{column}
+\end{columns}
+\note{Same rule, smarter entrant. Period 2, E undercuts to three and takes sixty cents. [click] Period 3, the cartel matches at three. Instead of undercutting again, E steps aside and quotes five. Nobody undercut the cartel this period, so by its own rule it goes back to four in period 4, and E undercuts to three again and takes another sixty cents. Period 5, step aside; period 6, undercut; and so on. [click] On average E earns thirty cents a period, a third of the rent, and A and B are down from forty-five to fifteen each. E never started a war; it used the cartel's own forgiveness against it. In the full model the cartel's rule is a table learned by Q-learning, and the exact best response solves that table by backward induction and takes the whole rent, not a third. [click] Now add identity. It is period 6 and E is due to quote three. The taker who arrives is wallet T, and E has seen T before: the last time T traded against E, the price ran away and E lost. An entrant that sees the wallet steps aside; A gets the fill at four ticks and loses four dollars. An entrant that sees only the tape has no way to know yet; it quotes three, takes the fill, and loses four dollars, seven good periods of profit gone in one fill. The tape will show that T was informed only when the price moves, a few fills later. That gap, between the fill and the tape catching up, is what identity is worth, and it is what we measure.}
+\end{frame}
+
+
 
 \begin{frame}{Three players, and what each one gets to know}
 \partlabel{Part (a): the question}
@@ -357,28 +399,6 @@ Which curve you are on is decided by $\alpha$, the share of informed takers. Onl
 \note{The model, one period. Step one: every maker commits a half-spread h on the tick grid. Step two: nature draws a regime, calm or toxic, from a persistent Markov chain, then a wallet from a population of fifty; each wallet has its own probability alpha-j of being informed, and in the toxic state the active wallets are the toxic ones. Step three: the taker hits the best quote if it pays him to, which for an informed taker means exactly when the maker will lose. Step four: the fill is public at once, price and wallet, but its markout, the value V-t the maker traded against, is only revealed L arrivals later. That lag L is the key parameter. Step five: the filled maker's payoff is price minus value. One hundred periods make an episode; the regime chain and the wallets persist across episodes. The incumbents are tabular Q-learners whose state is their own last quote and the best rival's; they are identity-blind by construction; we train them twenty thousand episodes and then freeze them, so a cartel is a fixed reaction function. The entrant's information set is the treatment, and a Bayesian filter turns whatever it sees into an estimate of the next taker's alpha. And because the market is Glosten-Milgrom, the expected payoff of a quote against informed share alpha is closed form, which is what makes rent measurable rather than estimated.}
 \end{frame}
 
-\begin{frame}{Benchmarks are closed-form, so ``rent'' is measured, not estimated}
-\partlabel{Part (b): the mathematical model}
-\vspace{2pt}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\begin{tcolorbox}[enhanced,colback=paleblue,colframe=paleblue,boxrule=0pt,arc=1.5pt,left=8pt,right=8pt,top=6pt,bottom=6pt]
-\small
-$h^C=\min\{h:\Pi(h)\ge0\}$ \hfill \textbf{Nash} (competitive)\\[4pt]
-$h^M=\arg\max_h \Pi(h)$ \hfill \textbf{joint monopoly}\\[4pt]
-$C=\dfrac{\Pi_{\text{cartel}}-\Pi^C}{\Pi^M-\Pi^C}\in[0,1]$ \hfill \textbf{rent index}\\[6pt]
-$\LBR=\Pi_{\text{cartel}}-\Pi_{\text{under attack}}$ \hfill \textbf{loss under attack}\\[4pt]
-$\kappa_A=\LBR/(\Pi_{\text{cartel}}-\Pi^C)$ \hfill \textbf{rent destroyed}
-\end{tcolorbox}
-\end{column}
-\begin{column}{0.5\textwidth}\small
-\textbf{At $\bar\alpha=0.3$}: $h^C=4$, $h^M=14$, rent $\Pi^M-\Pi^C=1.38$.\\[6pt]
-\textbf{Why a cartel is attackable}: it is a \emph{reaction function} that does not chase every undercut. That restraint is the rent, and the attack surface.\\[6pt]
-\textbf{One-tick (queue) mode}: spread pinned; actions \textsc{rest} / \textsc{out} / \textsc{rest-and-pay}, first in first out. A fill at $h^C$: $+1.10$ calm, $-2.26$ toxic.
-\end{column}
-\end{columns}
-\note{Because the payoff curve is closed form, the benchmarks are exact. h-C is the smallest break-even quote, the Nash outcome of one-shot competition: any wider quote is profitably undercut. h-M is the joint-monopoly quote. The rent index C puts a frozen cartel between zero, Nash, and one, monopoly; the cartels we train sit at 0.7 to 0.9. Under an adversary A, L-B-R is what the cartel loses, and kappa-A is that loss as a share of the rent it had; kappa above one means the attacker destroyed more than the rent. All our results are in rent units, divided by Pi-M minus Pi-C, so cartels at different toxicity levels are comparable. A worked example at alpha 0.3: two incumbents at fourteen ticks split 1.50 per period. An entrant at thirteen takes every fill and earns 1.49, they earn zero. If they chase, the entrant goes to twelve, and the chase ends at h-C equals four, where everyone earns 0.12. A learned cartel is a reaction function that does not chase every time; that restraint is the rent, and it is also the attack surface, because the attacker can learn exactly when it chases and when it does not. The queue mode models the one-tick book: the spread is pinned, so the only decisions are rest, step out, or pay for priority, and the fill queue is first in first out. At break-even a fill is worth plus 1.10 in a calm spell and minus 2.26 in a toxic one, so all the value is in which fills you take.}
-\end{frame}
 
 % ============================================================ (c) prototype and evidence
 \section{Prototype and evidence}
@@ -434,13 +454,6 @@ Trace: exact best response vs the cartel (quotes in ticks)
 \note{[0:45] Two hand-written rules take about two thirds of the rent. The exact best response solves the frozen cartel's reaction function by backward induction and removes its entire rent in sixty of sixty tested populations, earning monopoly-like profit for itself. Re-solving after the cartel re-learns preserves the attack. This establishes strategic vulnerability under the model's assumptions. It does not show that customers receive cheaper execution: the entrant can keep the market wide and collect the profit itself. For our next stage, this attacker is a stress-testing instrument. The separate question is whether a protective rule improves customer outcomes under that stress.}
 \end{frame}
 
-\begin{frame}{Steering, period by period}
-\partlabel{Part (c): evidence 2 of 5, RQ2}
-\centering
-\includegraphics[width=0.98\textwidth]{fig_steering.pdf}
-\subline{\textbf{Left}: the cartel alone rotates at wide quotes. \textbf{Middle}: a naive undercut starts a price war. \textbf{Right}: the best response holds the cartel wide and takes the fills.}
-\note{[0:30] What that looks like. Left: the cartel alone rotates at wide quotes and never goes near Nash. Middle: a naive undercut starts a price war and both sides slide to break-even. Right: the best response never provokes the war. It quotes one tick inside the reaction it has predicted; the cartel's learned answer is to stay wide; and the entrant takes nearly every fill at the monopoly price. The cartel's own restraint does the work.}
-\end{frame}
 
 \begin{frame}{Why identity has value: a spell of toxic flow, seen two ways}
 \partlabel{Part (c): RQ1, the mechanism}
@@ -533,7 +546,70 @@ Four sessions, 25 h, 490k scored fills.
 \note{[0:35] The priority for Workshop 2 is a consumer-protection experiment. First, define small takers and passive traders separately and measure execution costs, gains from trade, access in stress and worst-five-percent losses. Our existing private valuations can support a model-based gains-from-trade measure. Second, compare identity disclosure and priority rules under matched market conditions and multiple seeds. Third, let makers adapt and use the existing attacker to test whether benefits survive. We must also let participants leave if they keep losing, rather than assume permanent subsidizing liquidity. The test of success is better customer outcomes with viable liquidity. Our question for the room is which rule improves those outcomes, and whether that improvement survives stress and adaptation.}
 \end{frame}
 
-\begin{frame}{Longer term: connect execution risk to liquidation losses}
+
+\begin{frame}{If you remember three things}
+\partlabel{Part (d): evidence today, protection as the next test}
+\vspace{6pt}
+\begin{columns}[T]
+\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Vulnerabilities}{Learned maker profits are exploitable in our model. This gives us a way to stress-test market rules.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Distribution}{Information and priority change who gets fills and who bears losses. The data motivates testing these mechanisms.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~Protection next}{Test rules by customer costs, access and severe losses. Measure whether less-informed traders benefit.}\end{column}
+\end{columns}
+\vspace{10pt}
+\centering\small\textbf{Goal: fewer preventable losses for everyday traders.}\\[4pt]
+\texttt{github.com/pradeepu191/wargame}
+\note{[0:25] Three things to remember. We have established vulnerabilities in learned maker behavior. We have shown how information and priority redistribute outcomes in the model, with empirical patterns that motivate those mechanisms. Now we will judge interventions by outcomes for less-informed traders. Helping an attacker profit is not sufficient evidence of public benefit. The next contribution must show whether a rule lowers customer costs or severe losses while preserving access to liquidity. Reducing leveraged account losses requires the later liquidation extension. That is how we plan to turn this work toward fewer preventable losses for everyday traders. Thank you.}
+\end{frame}
+
+\appendix
+\begin{frame}{Backup: the payoff curve, rent and toxicity look identical}
+\partlabel{Part (a): the question}
+\centering
+\includegraphics[width=0.72\textwidth]{fig_payoff.pdf}
+\vspace{2pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\small
+A wide quote is a \textbf{rent} \ldots\ or the correct charge for \textbf{toxic flow}.
+\end{column}
+\begin{column}{0.5\textwidth}\small
+Which curve you are on is decided by $\alpha$, the share of informed takers. Only outcomes, or \emph{who} trades, reveal it.
+\end{column}
+\end{columns}
+\note{Here is the puzzle. This is the maker's expected profit per period as a function of its half-spread, one curve per level of toxicity alpha, the fraction of takers who are informed. Each curve has a break-even point on the left, h-C, and a peak, h-M. More toxic flow pushes the whole curve down and both points to the right. So if you watch a market and see wide quotes, you cannot tell whether the makers are colluding on a calm market, the blue curve, or correctly charging for a toxic one, the red curve. Rent and toxicity produce the same tape. The only ways to tell are to look at outcomes, the markouts, or to look at who is trading. And that second route exists only because wallets are public.}
+\end{frame}
+
+\begin{frame}{Backup: benchmarks are closed-form, so ``rent'' is measured, not estimated}
+\partlabel{Part (b): the mathematical model}
+\vspace{2pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\begin{tcolorbox}[enhanced,colback=paleblue,colframe=paleblue,boxrule=0pt,arc=1.5pt,left=8pt,right=8pt,top=6pt,bottom=6pt]
+\small
+$h^C=\min\{h:\Pi(h)\ge0\}$ \hfill \textbf{Nash} (competitive)\\[4pt]
+$h^M=\arg\max_h \Pi(h)$ \hfill \textbf{joint monopoly}\\[4pt]
+$C=\dfrac{\Pi_{\text{cartel}}-\Pi^C}{\Pi^M-\Pi^C}\in[0,1]$ \hfill \textbf{rent index}\\[6pt]
+$\LBR=\Pi_{\text{cartel}}-\Pi_{\text{under attack}}$ \hfill \textbf{loss under attack}\\[4pt]
+$\kappa_A=\LBR/(\Pi_{\text{cartel}}-\Pi^C)$ \hfill \textbf{rent destroyed}
+\end{tcolorbox}
+\end{column}
+\begin{column}{0.5\textwidth}\small
+\textbf{At $\bar\alpha=0.3$}: $h^C=4$, $h^M=14$, rent $\Pi^M-\Pi^C=1.38$.\\[6pt]
+\textbf{Why a cartel is attackable}: it is a \emph{reaction function} that does not chase every undercut. That restraint is the rent, and the attack surface.\\[6pt]
+\textbf{One-tick (queue) mode}: spread pinned; actions \textsc{rest} / \textsc{out} / \textsc{rest-and-pay}, first in first out. A fill at $h^C$: $+1.10$ calm, $-2.26$ toxic.
+\end{column}
+\end{columns}
+\note{Because the payoff curve is closed form, the benchmarks are exact. h-C is the smallest break-even quote, the Nash outcome of one-shot competition: any wider quote is profitably undercut. h-M is the joint-monopoly quote. The rent index C puts a frozen cartel between zero, Nash, and one, monopoly; the cartels we train sit at 0.7 to 0.9. Under an adversary A, L-B-R is what the cartel loses, and kappa-A is that loss as a share of the rent it had; kappa above one means the attacker destroyed more than the rent. All our results are in rent units, divided by Pi-M minus Pi-C, so cartels at different toxicity levels are comparable. A worked example at alpha 0.3: two incumbents at fourteen ticks split 1.50 per period. An entrant at thirteen takes every fill and earns 1.49, they earn zero. If they chase, the entrant goes to twelve, and the chase ends at h-C equals four, where everyone earns 0.12. A learned cartel is a reaction function that does not chase every time; that restraint is the rent, and it is also the attack surface, because the attacker can learn exactly when it chases and when it does not. The queue mode models the one-tick book: the spread is pinned, so the only decisions are rest, step out, or pay for priority, and the fill queue is first in first out. At break-even a fill is worth plus 1.10 in a calm spell and minus 2.26 in a toxic one, so all the value is in which fills you take.}
+\end{frame}
+
+\begin{frame}{Backup: steering, period by period}
+\partlabel{Part (c): evidence 2 of 5, RQ2}
+\centering
+\includegraphics[width=0.98\textwidth]{fig_steering.pdf}
+\subline{\textbf{Left}: the cartel alone rotates at wide quotes. \textbf{Middle}: a naive undercut starts a price war. \textbf{Right}: the best response holds the cartel wide and takes the fills.}
+\note{[0:30] What that looks like. Left: the cartel alone rotates at wide quotes and never goes near Nash. Middle: a naive undercut starts a price war and both sides slide to break-even. Right: the best response never provokes the war. It quotes one tick inside the reaction it has predicted; the cartel's learned answer is to stay wide; and the entrant takes nearly every fill at the monopoly price. The cartel's own restraint does the work.}
+\end{frame}
+
+\begin{frame}{Backup: longer term, connect execution risk to liquidation losses}
 \partlabel{Part (d): future extension, not a current result}
 \begin{columns}[T]
 \begin{column}{0.49\textwidth}\small
@@ -562,21 +638,39 @@ Four sessions, 25 h, 490k scored fills.
 \note{[0:25] This longer-term extension connects most directly to the people whose losses motivated us. We would add persistent prices, finite depth, collateral, maintenance margin, and forced sales with price impact. Then compare candidate protections by the fraction of small accounts liquidated, collateral retained and severe losses, while checking their ability to exit. Leverage limits, margin buffers and liquidation rules are hypotheses to test. The present model cannot establish that any of them prevents account wipeouts. Longer recording windows and stress episodes will help calibrate this extension.}
 \end{frame}
 
-\begin{frame}{If you remember three things}
-\partlabel{Part (d): evidence today, protection as the next test}
-\vspace{6pt}
+\begin{frame}{Backup: from trading mechanisms to protections we can test}
+\partlabel{Part (a): motivation}
 \begin{columns}[T]
-\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Vulnerabilities}{Learned maker profits are exploitable in our model. This gives us a way to stress-test market rules.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Distribution}{Information and priority change who gets fills and who bears losses. The data motivates testing these mechanisms.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~Protection next}{Test rules by customer costs, access and severe losses. Measure whether less-informed traders benefit.}\end{column}
+\begin{column}{0.5\textwidth}\small
+\textbf{What this study establishes}
+\begin{itemize}\setlength\itemsep{6pt}
+\item learned maker profits can be vulnerable to a strategic entrant
+\item wallet information can help select fills in the model
+\item identity and priority rules change who bears toxic flow
+\end{itemize}
+\vspace{8pt}
+\textbf{The missing test}\\[3pt]
+Does changing a rule improve outcomes for traders with less information and fewer resources?
+\end{column}
+\begin{column}{0.5\textwidth}
+\textbf{\small Public wallets make the question measurable}\par\vspace{2pt}
+\noindent\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
+  \node[draw=blue,fill=paleblue,rounded corners=2pt,text width=5.4cm,align=left,inner sep=5pt] at (2.9,0) {\textbf{fill}~~buy 0.5 BTC @ 67{,}412.0\\ taker \texttt{0x7f3a\ldots c91e} ~~ maker \texttt{0x21b0\ldots 4d7a}\\ \textcolor{muted}{a wallet's history is observable}};
+\end{tikzpicture}\par
+\vspace{4pt}
+\textbf{\small Next: measure customer outcomes}
+\begin{itemize}\small\setlength\itemsep{2pt}
+\item execution costs and gains from trade
+\item access to liquidity during stress
+\item severe losses for passive traders
+\item whether improvements survive adaptation
+\end{itemize}
+\takeaway{Consumer protection is the next test. Current evidence identifies mechanisms and tradeoffs.}
+\end{column}
 \end{columns}
-\vspace{10pt}
-\centering\small\textbf{Goal: fewer preventable losses for everyday traders.}\\[4pt]
-\texttt{github.com/pradeepu191/wargame}
-\note{[0:25] Three things to remember. We have established vulnerabilities in learned maker behavior. We have shown how information and priority redistribute outcomes in the model, with empirical patterns that motivate those mechanisms. Now we will judge interventions by outcomes for less-informed traders. Helping an attacker profit is not sufficient evidence of public benefit. The next contribution must show whether a rule lowers customer costs or severe losses while preserving access to liquidity. Reducing leveraged account losses requires the later liquidation extension. That is how we plan to turn this work toward fewer preventable losses for everyday traders. Thank you.}
+\note{Here is the bridge from the human motivation to what we can actually establish. Today we show strategic vulnerabilities and how information and priority redistribute trading outcomes. An attacker earning more does not establish that customers benefit; it can simply move profit between sophisticated firms. Our next test compares exchange rules by less-informed traders' costs, gains from trade, access in stress, and severe losses. We will separate small takers from passive liquidity providers, because the same rule can help one and hurt the other. Public wallet histories let us measure behavior, but a wallet does not tell us whether its owner is retail or wealthy. The current work motivates protective interventions; their effectiveness remains to be tested.}
 \end{frame}
 
-\appendix
 \begin{frame}{Backup: what identity is worth, measured}
 \centering
 \includegraphics[width=0.9\textwidth]{fig_lag.pdf}
