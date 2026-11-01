@@ -191,8 +191,10 @@ def main():
             print(f"{c}: rolling typing, gap by k days ahead: " + ", ".join(f"k={k}: {g:+.2f} (holds {hh:+.1f} bps, n={n})" for k, (g, hh, n) in rr.iterrows()), flush=True)
         if mc:
             cc = pd.DataFrame(mc)
-            print(f"{c}: maker rank persistence, rho vs previous day: " + ", ".join(f"{x:+.2f}" for x in cc.rho_prev_day.dropna())
-                  + "; vs first day: " + ", ".join(f"{x:+.2f}" for x in cc.rho_first_day.dropna()), flush=True)
+            prev = cc["rho_prev_day"].dropna() if "rho_prev_day" in cc else pd.Series(dtype=float)
+            first = cc["rho_first_day"].dropna() if "rho_first_day" in cc else pd.Series(dtype=float)
+            print(f"{c}: maker rank persistence, rho vs previous day: " + ", ".join(f"{x:+.2f}" for x in prev)
+                  + "; vs first day: " + ", ".join(f"{x:+.2f}" for x in first), flush=True)
     for name, store in (("hour", H), ("day", D), ("rolling", R), ("makers", M), ("makers_corr", MC)):
         pd.DataFrame(store).to_csv(res / f"longwindow_{name}.csv", index=False)
     print("wrote", ", ".join(str(res / f"longwindow_{n}.csv") for n in ("hour", "day", "rolling", "makers", "makers_corr")))
