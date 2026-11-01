@@ -1708,3 +1708,64 @@ h^C: it destroys the rent without earning it.)
 * The realistic attacker is now the public-information attacker; the oracle is its limit, and
   the gap between them is the probing budget.  Report the table above with the N = 3 cartels
   from SuperCloud added.
+
+---
+
+# The identity-selection result on the continuous recording (`stress_fill.csv`, `longwindow_*.csv`, `fig_longwindow.png`; Oct 6 to Nov 1, VPS recorder continuous from Oct 25; Mac)
+
+Coverage after the first VPS pull: Oct 6 to 8, Oct 11 to 12, Oct 20, Oct 25 to Nov 1 (the
+gaps are laptop sessions; from Oct 25 the recorder is continuous).  Taker wallets are typed on
+the data before the largest gap (Oct 6 to 12) and scored on everything after it (Oct 20 on):
+1.44 M later touch fills on BTC, 0.85 M ETH, 0.38 M SOL, 1.49 M HYPE, fourteen times the
+Workshop 1 window.
+
+## The gap holds, every day and every hour
+
+| top-10 share of fills from | BTC | ETH | SOL | HYPE |
+|---|---|---|---|---|
+| benign wallets | .14 | .35 | .43 | .30 |
+| toxic wallets | .04 | .12 | .17 | .16 |
+| ratio | 3.6× | 2.8× | 2.5× | 1.9× |
+| quiet fills only (mid unmoved 1 s), benign / toxic | .15 / .09 | .39 / .19 | .46 / .26 | .35 / .18 |
+| calm tape, benign / toxic | .14 / .02 | .35 / .09 | .44 / .13 | .32 / .16 |
+| stressed tape, benign / toxic | .15 / .06 | .31 / .15 | .41 / .20 | .26 / .15 |
+| typing holds: benign minus toxic realized markout, later (bps) | +1.5 | +1.4 | +2.1 | +1.5 |
+
+* By calendar day (`longwindow_day.csv`): the gap in share is positive and more than two SEs
+  wide on 9/9 days for BTC, 8/9 ETH, 7/8 SOL, 9/9 HYPE.  By UTC hour: 23/24, 24/24, 23/24,
+  24/24.  The Workshop 1 ratios (2.6 to 6.8×) were the lucky end of the interval; the stable
+  numbers are 2 to 3.6×.
+* Rolling typing (`longwindow_rolling.csv`): type on day d, score on day d + k.  The gap is flat
+  in k out to ten days (BTC +0.08 at k = 1, +0.13 at k = 10; SOL +0.26 to +0.28; ETH and HYPE
+  the same within noise) and the typed wallets still cost 1.1 to 2.5 bps more ten days later.
+  A toxic label is a durable attribute of a wallet, not a spell.  This is the slow version of
+  the "same wallet trades again" mechanism we dismissed on four sessions: repeats within a
+  window are rare, repeats across days are the norm (30 to 60% of a day's fills are from
+  wallets typed the day before).
+* Maker rank persistence (`longwindow_makers_corr.csv`): Spearman correlation of makers' daily
+  markouts with the previous day's, 0.5 to 0.9 on every coin every day; with the first day a
+  week earlier, 0.5 to 0.8 on BTC.
+
+## What changed with more data
+
+* **A small tape effect on ETH and HYPE.**  Top share vs the previous block's volatility at
+  300 s: ETH −0.26, HYPE −0.17 (tercile shares .29/.26/.23 and .26/.26/.23); BTC +0.11 to
+  +0.17 (more present after stress), SOL flat.  So "identity, not the tape" is now "mostly
+  identity": the tape effect is a 20% relative drop in share on two coins, the identity effect
+  is a factor of 2 to 4 on all four.
+* **One top-10 ETH wallet is the fringe.**  The ETH gap fell from +0.29 to +0.09 on Oct 29 to 31
+  and the top-10 markout turned negative.  `longwindow_makers.csv` shows why: wallet 0x7fda…,
+  in the top 10 by volume, loses 1.4 to 2.3 bps per fill on every day it is active, and its
+  activity rose from ~500 to 5000 to 7300 fills a day on Oct 29 to 31.  It is a high-volume,
+  identity-blind participant that absorbs the toxic fills; the other nine select.  Top-10 by
+  volume is the right definition (no selection on outcome) but the paper should say that it
+  contains the fringe as well as the selectors, and the makers' own levers in the model
+  (anonymity, fee) are about exactly this wallet.
+
+## For the paper
+* Figure `fig_longwindow.png`: gap by day with intervals, rolling typing by k, rank persistence.
+  `fig_identity_selection.png` and `fig_touch.png` regenerated on the full window (titles
+  updated).
+* The empirical claim is now: on a public-wallet venue, the makers who earn the spread are the
+  ones who avoid the wallets that were toxic in the past, every day, in every hour, with labels
+  that stay valid for at least ten days; the tape adds a small effect on two coins.
