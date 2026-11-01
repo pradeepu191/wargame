@@ -1769,3 +1769,56 @@ Workshop 1 window.
 * The empirical claim is now: on a public-wallet venue, the makers who earn the spread are the
   ones who avoid the wallets that were toxic in the past, every day, in every hour, with labels
   that stay valid for at least ten days; the tape adds a small effect on two coins.
+
+---
+
+# Event study: the Binance hack of Oct 29 (`events.csv`, `fig_event_hack.png`; `data/events.csv`, `analysis/events.py`)
+
+Binance's hot wallet was drained at 20:24 UTC on Oct 29 (about $6.3B, of which ~360k ETH moved
+in the first twenty minutes); BTC fell from $80.3k to $78.8k in forty minutes and $628M was
+liquidated within the hour; withdrawals were suspended at 00:04 on Oct 30 and BTC bottomed at
+$76.4k at 02:07.  The FOMC statement of Oct 28, 18:00 UTC (rates held) is the control: a
+scheduled macro shock with no informed seller of one asset.  Hour-by-hour, hour 0 = 20:00 to
+21:00 UTC:
+
+| ETH | hours −8..−1 | hour 0 | hours 1..5 | hours 6..12 |
+|---|---|---|---|---|
+| volatility, bps per fill | 5–8 | 25 | 9–15 | 4–7 |
+| touch fills per hour | 2.4–9.8k | 29.6k | 16–49k | 4.6–9.3k |
+| top-10 share of benign / toxic wallets' fills | .23–.48 / .07–.15 | .25 / .18 | .20–.30 / .18–.32 | .09–.50 / .04–.15 |
+| gap | +0.14 to +0.41 | +0.06 | −0.12 to +0.11 | +0.02 to +0.22 |
+| top-10 markout, bps | −0.05 to +0.55 | +0.42 | −0.69 to +0.38 | +0.05 to +0.37 |
+| fringe wallet's share of the top-10 fills | .03–.15 | .15 | .14–.39 | 0 (it left) |
+
+| BTC | hours −8..−1 | hour 0 | hours 1..5 | hours 6..12 |
+|---|---|---|---|---|
+| volatility | 2–8 | 13.5 | 6.5–12.8 | 3–4 |
+| gap | +0.06 to +0.18 | +0.17 | +0.06 to +0.13 | +0.12 to +0.18 |
+| top-10 markout | −0.37 to +0.44 | +0.95 | −0.05 to +0.40 | −0.21 to +0.26 |
+| fringe share | 0–.02 | .005 | .02–.03 | .02–.06 |
+
+* **On ETH, the asset being dumped, the identity gap fails for five hours.**  In hours 2 and 3
+  the top-10 hold a larger share of the toxic wallets' fills than of the benign ones (.31 vs
+  .30, .32 vs .20), and the top-10 markout is −0.5 to −0.7 bps.  Who held it: the fringe wallet
+  0x7fda…, whose share of the top-10 fills goes from 3–15% to 39%, 27%, 26%, 23% in hours 2 to
+  5, then to zero from hour 6 when it stops trading.  Strip that wallet out and the other nine's
+  share of toxic fills stays near its usual level: the gap "failed" because one identity-blind
+  participant took the flow the selectors stepped around.  This is the queue-game prediction
+  (the always-resting fringe absorbs the toxic spell) on one dated night.
+* **On BTC the gap holds through the whole episode** (+0.06 to +0.18 every hour) and the top-10
+  earn +0.95 bps in the drain hour itself: on the asset that moved on contagion rather than on
+  an informed seller, the selecting makers were the ones who stayed, and earned.
+* **The labels are about normal times.**  In hour 0 on ETH the wallets typed toxic realized a
+  *positive* maker markout (+0.38 bps): during the regime break the informed flow was not the
+  usual informed wallets.  Identity selection is a defence against the ordinary toxic flow, not
+  against a new attacker; that is the spell mechanism's job, and it is the lag L that decides it.
+* **FOMC (control):** ETH volatility doubled for one hour (9.7 bps), the gap dipped to +0.13
+  in that hour and was back at +0.37 the next; the fringe share did not move.  A macro shock
+  without an informed seller is absorbed inside the hour; the hack was not.
+
+## For the paper
+* `fig_event_hack.png` is the stress-episode figure the plan asked for (the Oct 2025 cascade
+  is no longer needed).  The sentence: on a public-wallet venue in a crisis, the makers who can
+  see step around the toxic flow and the participant that cannot see holds it, and on the asset
+  that is not the one being dumped the seeing makers stay and earn.
+* `data/events.csv` is the place for further dated events; `analysis/events.py` reruns the table.
