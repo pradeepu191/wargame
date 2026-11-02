@@ -149,12 +149,44 @@ def maker_persistence(tm: pd.DataFrame, horizon_s: int = 10, n_min: int = 100) -
     return per_rows, corr_rows
 
 
+def coin_job(c, args):
+    from pathlib import Path
+    from analysis.cache import marked_fills
+    raw, res = Path(args.raw), Path(args.results)
+    tm, book = marked_fills(raw, c, rebuild=args.rebuild)
+    if tm.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
+        print(f"{c}: missing trades, book or wallets_{c}.csv"); return None
+    feats = pd.read_csv(res / f"wallets_{c}.csv")
+    top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
+    h, d = by_hour_and_day(tm, top)
+    r = rolling_typing(tm, top, max_k=args.max_k)
+    m, mc = maker_persistence(tm)
+    if d:
+        dd = pd.DataFrame(d)
+        print(f"{c}: gap by day (benign - toxic top share): " + ", ".join(f"{g:+.2f}±{s:.2f}" for g, s in zip(dd.gap, dd.gap_se))
+              + f"  | days with gap > 2 SE: {(dd.gap > 2 * dd.gap_se).sum()}/{len(dd)}", flush=True)
+    if h:
+        hh = pd.DataFrame(h)
+        print(f"{c}: gap by UTC hour, min/median/max {hh.gap.min():+.2f} / {hh.gap.median():+.2f} / {hh.gap.max():+.2f}; "
+              f"hours with gap > 2 SE: {(hh.gap > 2 * hh.gap_se).sum()}/{len(hh)}", flush=True)
+    if r:
+        rr = pd.DataFrame(r).groupby("k").agg(gap=("gap", "mean"), holds=("type_holds_bps", "mean"), n=("gap", "size"))
+        print(f"{c}: rolling typing, gap by k days ahead: " + ", ".join(f"k={k}: {g:+.2f} (holds {hh:+.1f} bps, n={n})" for k, (g, hh, n) in rr.iterrows()), flush=True)
+    if mc:
+        cc = pd.DataFrame(mc)
+        prev = cc["rho_prev_day"].dropna() if "rho_prev_day" in cc else pd.Series(dtype=float)
+        first = cc["rho_first_day"].dropna() if "rho_first_day" in cc else pd.Series(dtype=float)
+        print(f"{c}: maker rank persistence, rho vs previous day: " + ", ".join(f"{x:+.2f}" for x in prev)
+              + "; vs first day: " + ", ".join(f"{x:+.2f}" for x in first), flush=True)
+    return {"hour": h, "day": d, "rolling": r, "makers": m, "makers_corr": mc}
+
+
 def main():
     import argparse
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from analysis.cache import marked_fills
+    from analysis.parallel import per_coin
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="data/raw/live")
     ap.add_argument("--results", default="results/live_2026_10")
@@ -162,40 +194,16 @@ def main():
     ap.add_argument("--top-k", type=int, default=10)
     ap.add_argument("--rebuild", action="store_true", help="ignore data/cache and re-mark every fill")
     ap.add_argument("--max-k", type=int, default=10)
+    ap.add_argument("--jobs", type=int, default=4, help="coins in parallel")
     args = ap.parse_args()
-    raw, res = Path(args.raw), Path(args.results)
-    H, D, R, M, MC = [], [], [], [], []
-    for c in args.coins.split(","):
-        tm, book = marked_fills(raw, c, rebuild=args.rebuild)
-        if tm.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
-            print(f"{c}: missing trades, book or wallets_{c}.csv"); continue
-        feats = pd.read_csv(res / f"wallets_{c}.csv")
-        top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
-        h, d = by_hour_and_day(tm, top)
-        r = rolling_typing(tm, top, max_k=args.max_k)
-        m, mc = maker_persistence(tm)
-        for rows, store in ((h, H), (d, D), (r, R), (m, M), (mc, MC)):
-            store.extend({"coin": c, **x} for x in rows)
-        if d:
-            dd = pd.DataFrame(d)
-            print(f"{c}: gap by day (benign - toxic top share): " + ", ".join(f"{g:+.2f}±{s:.2f}" for g, s in zip(dd.gap, dd.gap_se))
-                  + f"  | days with gap > 2 SE: {(dd.gap > 2 * dd.gap_se).sum()}/{len(dd)}", flush=True)
-        if h:
-            hh = pd.DataFrame(h)
-            print(f"{c}: gap by UTC hour, min/median/max {hh.gap.min():+.2f} / {hh.gap.median():+.2f} / {hh.gap.max():+.2f}; "
-                  f"hours with gap > 2 SE: {(hh.gap > 2 * hh.gap_se).sum()}/{len(hh)}", flush=True)
-        if r:
-            rr = pd.DataFrame(r).groupby("k").agg(gap=("gap", "mean"), holds=("type_holds_bps", "mean"), n=("gap", "size"))
-            print(f"{c}: rolling typing, gap by k days ahead: " + ", ".join(f"k={k}: {g:+.2f} (holds {hh:+.1f} bps, n={n})" for k, (g, hh, n) in rr.iterrows()), flush=True)
-        if mc:
-            cc = pd.DataFrame(mc)
-            prev = cc["rho_prev_day"].dropna() if "rho_prev_day" in cc else pd.Series(dtype=float)
-            first = cc["rho_first_day"].dropna() if "rho_first_day" in cc else pd.Series(dtype=float)
-            print(f"{c}: maker rank persistence, rho vs previous day: " + ", ".join(f"{x:+.2f}" for x in prev)
-                  + "; vs first day: " + ", ".join(f"{x:+.2f}" for x in first), flush=True)
-    for name, store in (("hour", H), ("day", D), ("rolling", R), ("makers", M), ("makers_corr", MC)):
-        pd.DataFrame(store).to_csv(res / f"longwindow_{name}.csv", index=False)
-    print("wrote", ", ".join(str(res / f"longwindow_{n}.csv") for n in ("hour", "day", "rolling", "makers", "makers_corr")))
+    res = Path(args.results)
+    coins = args.coins.split(",")
+    results = per_coin(coin_job, coins, args, args.jobs)
+    names = ("hour", "day", "rolling", "makers", "makers_corr")
+    for name in names:
+        rows = [{"coin": c, **x} for c, r in zip(coins, results) if r for x in r[name]]
+        pd.DataFrame(rows).to_csv(res / f"longwindow_{name}.csv", index=False)
+    print("wrote", ", ".join(str(res / f"longwindow_{n}.csv") for n in names))
 
 
 if __name__ == "__main__":

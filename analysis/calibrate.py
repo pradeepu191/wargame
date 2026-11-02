@@ -156,6 +156,63 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30,
     return row, feats
 
 
+def coin_job(c, args):
+    from analysis.cache import marked_fills
+    raw, out = Path(args.raw), Path(args.out)
+    tr = load_trades(raw, c)
+    if tr.empty:
+        print(f"{c}: no data"); return None
+    from analysis.cache import marked_fills
+    tm, book = marked_fills(raw, c, rebuild=args.rebuild)
+    row, feats = calibrate_coin(tr, n_min=args.n_min, book=book if len(book) else None, tm=tm if len(tm) else None)
+    makers = row.pop("_makers", None)
+    stress = row.pop("_stress", None)
+    feats.to_csv(out / f"wallets_{c}.csv", index=False)
+    if makers is not None and len(makers):
+        makers.to_csv(out / f"makers_{c}.csv", index=False)
+    if stress is not None and len(stress):
+        stress.to_csv(out / f"stress_{c}.csv", index=False)
+    print(f"{c}: {row['hours']:.1f} h, {row['prints']} prints, {row['orders']} orders, "
+          f"rho_order={row['rho_order']:.3f} (baseline {row['rho_order_baseline']:.3f}), "
+          f"markout_10s={row['markout_10_bps']:+.2f} bps, type rank corr={row['type_rank_corr']:.2f}, "
+          f"cond diff={row['cond_diff_bps']:+.2f} bps [id|anon-signal: {row['two_diff_id_given_anon_bps']:+.2f}, "
+          f"anon alone: {row['two_diff_anon_bps']:+.2f}], MMs={row.get('n_mm', 0)}"
+          + (f" | L2: {row['l2_coverage_h']:.1f} h in {row['l2_sessions']} session(s), gap {row['l2_median_gap_s']:.3f} s, "
+             f"{row['l2_fills_marked']} fills marked, quoted {row['spread_bps_median']:.2f} / effective "
+             f"{row['effective_spread_bps']:.2f} bps, true-mid markout_1/10/60 {row['mid_markout_1_bps']:+.2f} / "
+             f"{row['mid_markout_10_bps']:+.2f} / {row['mid_markout_60_bps']:+.2f} (proxy bias_10 {row['proxy_bias_10_bps']:+.2f}), "
+             f"cond diff {row.get('mid_cond_diff_bps', float('nan')):+.2f} | touch share {row['touch_share']:.2f}, "
+             f"effective touch/walk/order {row['effective_touch_bps']:.2f} / {row['effective_walk_bps']:.2f} / "
+             f"{row['effective_order_bps']:.2f}, markout_10 touch/walk {row['mid_markout_10_touch_bps']:+.2f} / "
+             f"{row['mid_markout_10_walk_bps']:+.2f}, {row['fills_per_order']:.2f} fills/order, "
+             f"{row['walk_order_share']:.2f} of orders walk"
+             if "spread_bps_median" in row else "")
+          + (f" | MAKERS: all {row['mk_all_markout_bps']:+.2f}±{row['mk_all_se_bps']:.2f}; top-{row.get('mk_top_k', 0)} MM "
+             f"{row.get('mk_top_markout_bps', float('nan')):+.2f}±{row.get('mk_top_se_bps', float('nan')):.2f} "
+             f"({row.get('mk_top_fill_share', float('nan')):.2f} of fills, touch {row.get('mk_top_touch_share', float('nan')):.2f}); "
+             f"other MM {row.get('mk_othermm_markout_bps', float('nan')):+.2f}; non-MM {row.get('mk_nonmm_markout_bps', float('nan')):+.2f}; "
+             f"at the touch top/rest {row.get('mk_top_touch_markout_bps', float('nan')):+.2f} / {row.get('mk_rest_touch_markout_bps', float('nan')):+.2f}; "
+             f"{row.get('mk_n_makers', 0)} makers>=100 fills, {row.get('mk_positive_share', float('nan')):.2f} positive "
+             f"({row.get('mk_positive_fill_share', float('nan')):.2f} of fills), {row.get('mk_sig_positive_n', 0)} significantly; "
+             f"split-half rank corr {row.get('mk_split_rank_corr', float('nan')):+.2f} (p={row.get('mk_split_rank_corr_p', float('nan')):.3f}, "
+             f"n={row.get('mk_split_n_makers', 0)}); across sessions {row.get('mk_session_rank_corr', float('nan')):+.2f} "
+             f"(p={row.get('mk_session_rank_corr_p', float('nan')):.3f}, n={row.get('mk_session_n_makers', 0)})"
+             if "mk_all_markout_bps" in row else "")
+          + (f" | STRESS ({row['st_n_blocks']} blocks): top share vs lagged vol {row.get('st_top_share_vs_vol_lag', float('nan')):+.2f} "
+             f"(p={row.get('st_top_share_vs_vol_lag_p', float('nan')):.3f}), vs lagged toxicity {row.get('st_top_share_vs_tox_rest_lag', float('nan')):+.2f} "
+             f"(p={row.get('st_top_share_vs_tox_rest_lag_p', float('nan')):.3f}), contemporaneous vol {row.get('st_top_share_vs_vol', float('nan')):+.2f}; "
+             f"top makers active vs lagged vol {row.get('st_n_top_active_vs_vol_lag', float('nan')):+.2f}; "
+             f"calm/mid/stress terciles: top share {row.get('st_calm_top_share', float('nan')):.2f} / {row.get('st_mid_top_share', float('nan')):.2f} / "
+             f"{row.get('st_stress_top_share', float('nan')):.2f}, active {row.get('st_calm_n_top_active', float('nan')):.1f} / "
+             f"{row.get('st_mid_n_top_active', float('nan')):.1f} / {row.get('st_stress_n_top_active', float('nan')):.1f}, "
+             f"top markout {row.get('st_calm_top_markout_bps', float('nan')):+.2f} / {row.get('st_mid_top_markout_bps', float('nan')):+.2f} / "
+             f"{row.get('st_stress_top_markout_bps', float('nan')):+.2f}, rest markout {row.get('st_calm_rest_markout_bps', float('nan')):+.2f} / "
+             f"{row.get('st_mid_rest_markout_bps', float('nan')):+.2f} / {row.get('st_stress_rest_markout_bps', float('nan')):+.2f}, "
+             f"vol {row.get('st_calm_vol_bps', float('nan')):.2f} / {row.get('st_mid_vol_bps', float('nan')):.2f} / {row.get('st_stress_vol_bps', float('nan')):.2f} bps"
+             if "st_n_blocks" in row else ""), flush=True)
+    return row
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="data/raw/live")
@@ -163,67 +220,16 @@ def main():
     ap.add_argument("--out", default="results")
     ap.add_argument("--n-min", type=int, default=30)
     ap.add_argument("--rebuild", action="store_true", help="ignore data/cache and re-mark every fill")
+    ap.add_argument("--jobs", type=int, default=4, help="coins in parallel")
     args = ap.parse_args()
     raw = Path(args.raw)
     coins = args.coins.split(",") if args.coins else sorted({Path(f).name.split("_")[1] for f in glob.glob(str(raw / "trades_*.parquet"))})
     if not coins:
         raise SystemExit(f"no trades_*.parquet under {raw}; run data/record.py first")
-    rows = []
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    for c in coins:
-        tr = load_trades(raw, c)
-        if tr.empty:
-            print(f"{c}: no data"); continue
-        from analysis.cache import marked_fills
-        tm, book = marked_fills(raw, c, rebuild=args.rebuild)
-        row, feats = calibrate_coin(tr, n_min=args.n_min, book=book if len(book) else None, tm=tm if len(tm) else None)
-        makers = row.pop("_makers", None)
-        stress = row.pop("_stress", None)
-        rows.append(row)
-        feats.to_csv(out / f"wallets_{c}.csv", index=False)
-        if makers is not None and len(makers):
-            makers.to_csv(out / f"makers_{c}.csv", index=False)
-        if stress is not None and len(stress):
-            stress.to_csv(out / f"stress_{c}.csv", index=False)
-        print(f"{c}: {row['hours']:.1f} h, {row['prints']} prints, {row['orders']} orders, "
-              f"rho_order={row['rho_order']:.3f} (baseline {row['rho_order_baseline']:.3f}), "
-              f"markout_10s={row['markout_10_bps']:+.2f} bps, type rank corr={row['type_rank_corr']:.2f}, "
-              f"cond diff={row['cond_diff_bps']:+.2f} bps [id|anon-signal: {row['two_diff_id_given_anon_bps']:+.2f}, "
-              f"anon alone: {row['two_diff_anon_bps']:+.2f}], MMs={row.get('n_mm', 0)}"
-              + (f" | L2: {row['l2_coverage_h']:.1f} h in {row['l2_sessions']} session(s), gap {row['l2_median_gap_s']:.3f} s, "
-                 f"{row['l2_fills_marked']} fills marked, quoted {row['spread_bps_median']:.2f} / effective "
-                 f"{row['effective_spread_bps']:.2f} bps, true-mid markout_1/10/60 {row['mid_markout_1_bps']:+.2f} / "
-                 f"{row['mid_markout_10_bps']:+.2f} / {row['mid_markout_60_bps']:+.2f} (proxy bias_10 {row['proxy_bias_10_bps']:+.2f}), "
-                 f"cond diff {row.get('mid_cond_diff_bps', float('nan')):+.2f} | touch share {row['touch_share']:.2f}, "
-                 f"effective touch/walk/order {row['effective_touch_bps']:.2f} / {row['effective_walk_bps']:.2f} / "
-                 f"{row['effective_order_bps']:.2f}, markout_10 touch/walk {row['mid_markout_10_touch_bps']:+.2f} / "
-                 f"{row['mid_markout_10_walk_bps']:+.2f}, {row['fills_per_order']:.2f} fills/order, "
-                 f"{row['walk_order_share']:.2f} of orders walk"
-                 if "spread_bps_median" in row else "")
-              + (f" | MAKERS: all {row['mk_all_markout_bps']:+.2f}±{row['mk_all_se_bps']:.2f}; top-{row.get('mk_top_k', 0)} MM "
-                 f"{row.get('mk_top_markout_bps', float('nan')):+.2f}±{row.get('mk_top_se_bps', float('nan')):.2f} "
-                 f"({row.get('mk_top_fill_share', float('nan')):.2f} of fills, touch {row.get('mk_top_touch_share', float('nan')):.2f}); "
-                 f"other MM {row.get('mk_othermm_markout_bps', float('nan')):+.2f}; non-MM {row.get('mk_nonmm_markout_bps', float('nan')):+.2f}; "
-                 f"at the touch top/rest {row.get('mk_top_touch_markout_bps', float('nan')):+.2f} / {row.get('mk_rest_touch_markout_bps', float('nan')):+.2f}; "
-                 f"{row.get('mk_n_makers', 0)} makers>=100 fills, {row.get('mk_positive_share', float('nan')):.2f} positive "
-                 f"({row.get('mk_positive_fill_share', float('nan')):.2f} of fills), {row.get('mk_sig_positive_n', 0)} significantly; "
-                 f"split-half rank corr {row.get('mk_split_rank_corr', float('nan')):+.2f} (p={row.get('mk_split_rank_corr_p', float('nan')):.3f}, "
-                 f"n={row.get('mk_split_n_makers', 0)}); across sessions {row.get('mk_session_rank_corr', float('nan')):+.2f} "
-                 f"(p={row.get('mk_session_rank_corr_p', float('nan')):.3f}, n={row.get('mk_session_n_makers', 0)})"
-                 if "mk_all_markout_bps" in row else "")
-              + (f" | STRESS ({row['st_n_blocks']} blocks): top share vs lagged vol {row.get('st_top_share_vs_vol_lag', float('nan')):+.2f} "
-                 f"(p={row.get('st_top_share_vs_vol_lag_p', float('nan')):.3f}), vs lagged toxicity {row.get('st_top_share_vs_tox_rest_lag', float('nan')):+.2f} "
-                 f"(p={row.get('st_top_share_vs_tox_rest_lag_p', float('nan')):.3f}), contemporaneous vol {row.get('st_top_share_vs_vol', float('nan')):+.2f}; "
-                 f"top makers active vs lagged vol {row.get('st_n_top_active_vs_vol_lag', float('nan')):+.2f}; "
-                 f"calm/mid/stress terciles: top share {row.get('st_calm_top_share', float('nan')):.2f} / {row.get('st_mid_top_share', float('nan')):.2f} / "
-                 f"{row.get('st_stress_top_share', float('nan')):.2f}, active {row.get('st_calm_n_top_active', float('nan')):.1f} / "
-                 f"{row.get('st_mid_n_top_active', float('nan')):.1f} / {row.get('st_stress_n_top_active', float('nan')):.1f}, "
-                 f"top markout {row.get('st_calm_top_markout_bps', float('nan')):+.2f} / {row.get('st_mid_top_markout_bps', float('nan')):+.2f} / "
-                 f"{row.get('st_stress_top_markout_bps', float('nan')):+.2f}, rest markout {row.get('st_calm_rest_markout_bps', float('nan')):+.2f} / "
-                 f"{row.get('st_mid_rest_markout_bps', float('nan')):+.2f} / {row.get('st_stress_rest_markout_bps', float('nan')):+.2f}, "
-                 f"vol {row.get('st_calm_vol_bps', float('nan')):.2f} / {row.get('st_mid_vol_bps', float('nan')):.2f} / {row.get('st_stress_vol_bps', float('nan')):.2f} bps"
-                 if "st_n_blocks" in row else ""), flush=True)
+    from analysis.parallel import per_coin
+    rows = [r for r in per_coin(coin_job, coins, args, args.jobs) if r is not None]
     df = pd.DataFrame(rows)
     df.to_csv(out / "calibration.csv", index=False)
     pd.set_option("display.width", 250)

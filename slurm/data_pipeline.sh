@@ -3,7 +3,7 @@
 #SBATCH --partition=xeon-p8
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #SBATCH --time=03:00:00
 #SBATCH --output=slurm-%j.out
 # The Hyperliquid data pipeline on the cluster: calibrate -> stress -> longwindow -> events, from

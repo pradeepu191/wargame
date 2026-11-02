@@ -228,12 +228,67 @@ def identity_selection(tm: pd.DataFrame, book: pd.DataFrame | None, top: list[st
     return out
 
 
+def coin_job(c, args):
+    from pathlib import Path
+    from analysis.cache import marked_fills
+    raw, res = Path(args.raw), Path(args.results)
+    blocks = [int(b) for b in args.blocks.split(",")]
+    windows = tuple(int(w) for w in args.windows.split(","))
+    scale_rows, fill_rows = [], []
+    tm, book = marked_fills(raw, c, rebuild=args.rebuild)
+    if tm.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
+        print(f"{c}: missing trades, book or wallets_{c}.csv"); return None
+    feats = pd.read_csv(res / f"wallets_{c}.csv")
+    top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
+    for b in blocks:
+        s = stress_summary(tm, feats, horizon_s=10, top_k=args.top_k, block_ms=b * 1000,
+                           n_min_block=max(8, round(20 * b / 300)))
+        s.pop("_stress_blocks", None)
+        scale_rows.append({"coin": c, "block_s": b, **s})
+        print(f"{c} {b:>4d}s blocks ({s.get('st_n_blocks', 0)}): top share vs lagged vol {s.get('st_top_share_vs_vol_lag', float('nan')):+.2f} "
+              f"(p={s.get('st_top_share_vs_vol_lag_p', float('nan')):.3f}), vs lagged toxicity {s.get('st_top_share_vs_tox_rest_lag', float('nan')):+.2f} "
+              f"(p={s.get('st_top_share_vs_tox_rest_lag_p', float('nan')):.3f}), contemporaneous vol {s.get('st_top_share_vs_vol', float('nan')):+.2f}; "
+              f"terciles of lagged vol: top share {s.get('st_calm_top_share', float('nan')):.3f} / {s.get('st_mid_top_share', float('nan')):.3f} / "
+              f"{s.get('st_stress_top_share', float('nan')):.3f}, top markout {s.get('st_calm_top_markout_bps', float('nan')):+.2f} / "
+              f"{s.get('st_mid_top_markout_bps', float('nan')):+.2f} / {s.get('st_stress_top_markout_bps', float('nan')):+.2f}, rest "
+              f"{s.get('st_calm_rest_markout_bps', float('nan')):+.2f} / {s.get('st_mid_rest_markout_bps', float('nan')):+.2f} / "
+              f"{s.get('st_stress_rest_markout_bps', float('nan')):+.2f}", flush=True)
+    f = fill_level_stress(tm, book, top, horizon_s=10, windows_s=windows)
+    f.update(identity_selection(tm, book, top, horizon_s=10, window_s=windows[0]))
+    fill_rows.append({"coin": c, **f})
+    for w in windows:
+        print(f"{c} fill-level, move over previous {w:>3d}s ({f.get(f'fl{w}_n', 0)} touch fills): corr(top, move) {f.get(f'fl{w}_top_vs_move', float('nan')):+.3f} "
+              f"(p={f.get(f'fl{w}_top_vs_move_p', float('nan')):.3f}); calm/mid/stress move {f.get(f'fl{w}_calm_move_bps', float('nan')):.2f} / "
+              f"{f.get(f'fl{w}_mid_move_bps', float('nan')):.2f} / {f.get(f'fl{w}_stress_move_bps', float('nan')):.2f} bps, top share "
+              f"{f.get(f'fl{w}_calm_top_share', float('nan')):.3f} / {f.get(f'fl{w}_mid_top_share', float('nan')):.3f} / {f.get(f'fl{w}_stress_top_share', float('nan')):.3f}, "
+              f"top markout {f.get(f'fl{w}_calm_top_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_calm_top_se_bps', float('nan')):.2f} / "
+              f"{f.get(f'fl{w}_mid_top_markout_bps', float('nan')):+.2f} / {f.get(f'fl{w}_stress_top_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_stress_top_se_bps', float('nan')):.2f}, "
+              f"rest {f.get(f'fl{w}_calm_rest_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_calm_rest_se_bps', float('nan')):.2f} / "
+              f"{f.get(f'fl{w}_mid_rest_markout_bps', float('nan')):+.2f} / {f.get(f'fl{w}_stress_rest_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_stress_rest_se_bps', float('nan')):.2f}", flush=True)
+    if "id_top_vs_past_tox" in f:
+        print(f"{c} identity selection ({f['id_n_typed_takers']} takers typed on the {'first night' if f['id_cut_is_session'] else 'first half'}, "
+              f"{f['id_n_fills_later']} later touch fills): corr(top, taker's past toxicity) {f['id_top_vs_past_tox']:+.3f} (p={f['id_top_vs_past_tox_p']:.3f}); "
+              f"top share of benign/middle/toxic/new takers' fills {f['id_benign_top_share']:.3f} / {f['id_middle_top_share']:.3f} / "
+              f"{f['id_toxic_top_share']:.3f} / {f['id_new_top_share']:.3f} (fill shares {f['id_benign_fill_share']:.2f} / {f['id_middle_fill_share']:.2f} / "
+              f"{f['id_toxic_fill_share']:.2f} / {f['id_new_fill_share']:.2f}); top markout benign/toxic {f['id_benign_top_markout_bps']:+.2f}±{f['id_benign_top_se_bps']:.2f} / "
+              f"{f['id_toxic_top_markout_bps']:+.2f}±{f['id_toxic_top_se_bps']:.2f}, rest {f['id_benign_rest_markout_bps']:+.2f}±{f['id_benign_rest_se_bps']:.2f} / "
+              f"{f['id_toxic_rest_markout_bps']:+.2f}±{f['id_toxic_rest_se_bps']:.2f}; typing held up by {f['id_type_holds_bps']:+.2f} bps"
+              + (f"; within calm tape: benign/toxic {f['id_calm_benign_top_share']:.3f} / {f['id_calm_toxic_top_share']:.3f}, within stressed tape: "
+                 f"{f['id_stress_benign_top_share']:.3f} / {f['id_stress_toxic_top_share']:.3f}" if "id_calm_benign_top_share" in f else "")
+              + (f"; QUIET fills (mid unmoved 1 s later, {f['id_quiet_share']:.2f} of fills): top share benign/toxic/new "
+                 f"{f['id_benign_quiet_top_share']:.3f} / {f['id_toxic_quiet_top_share']:.3f} / {f['id_new_quiet_top_share']:.3f} "
+                 f"(n {f['id_benign_quiet_n']} / {f['id_toxic_quiet_n']} / {f['id_new_quiet_n']}), markout_10 on quiet fills benign/toxic "
+                 f"{f['id_benign_quiet_markout_bps']:+.2f} / {f['id_toxic_quiet_markout_bps']:+.2f}; pick-offs: top share benign/toxic "
+                 f"{f['id_benign_pickoff_top_share']:.3f} / {f['id_toxic_pickoff_top_share']:.3f}" if "id_quiet_share" in f else ""), flush=True)
+    return scale_rows, fill_rows
+
+
 def main():
     import argparse
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))    # run from anywhere, no install needed
-    from analysis.cache import marked_fills
+    from analysis.parallel import per_coin
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="data/raw/live")
     ap.add_argument("--results", default="results/live_2026_10", help="holds wallets_<COIN>.csv; outputs go here")
@@ -242,57 +297,12 @@ def main():
     ap.add_argument("--windows", default="10,60", help="fill-level look-back windows in seconds")
     ap.add_argument("--top-k", type=int, default=10)
     ap.add_argument("--rebuild", action="store_true", help="ignore data/cache and re-mark every fill")
+    ap.add_argument("--jobs", type=int, default=4, help="coins in parallel")
     args = ap.parse_args()
-    raw, res = Path(args.raw), Path(args.results)
-    blocks = [int(b) for b in args.blocks.split(",")]
-    windows = tuple(int(w) for w in args.windows.split(","))
-    scale_rows, fill_rows = [], []
-    for c in args.coins.split(","):
-        tm, book = marked_fills(raw, c, rebuild=args.rebuild)
-        if tm.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
-            print(f"{c}: missing trades, book or wallets_{c}.csv"); continue
-        feats = pd.read_csv(res / f"wallets_{c}.csv")
-        top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
-        for b in blocks:
-            s = stress_summary(tm, feats, horizon_s=10, top_k=args.top_k, block_ms=b * 1000,
-                               n_min_block=max(8, round(20 * b / 300)))
-            s.pop("_stress_blocks", None)
-            scale_rows.append({"coin": c, "block_s": b, **s})
-            print(f"{c} {b:>4d}s blocks ({s.get('st_n_blocks', 0)}): top share vs lagged vol {s.get('st_top_share_vs_vol_lag', float('nan')):+.2f} "
-                  f"(p={s.get('st_top_share_vs_vol_lag_p', float('nan')):.3f}), vs lagged toxicity {s.get('st_top_share_vs_tox_rest_lag', float('nan')):+.2f} "
-                  f"(p={s.get('st_top_share_vs_tox_rest_lag_p', float('nan')):.3f}), contemporaneous vol {s.get('st_top_share_vs_vol', float('nan')):+.2f}; "
-                  f"terciles of lagged vol: top share {s.get('st_calm_top_share', float('nan')):.3f} / {s.get('st_mid_top_share', float('nan')):.3f} / "
-                  f"{s.get('st_stress_top_share', float('nan')):.3f}, top markout {s.get('st_calm_top_markout_bps', float('nan')):+.2f} / "
-                  f"{s.get('st_mid_top_markout_bps', float('nan')):+.2f} / {s.get('st_stress_top_markout_bps', float('nan')):+.2f}, rest "
-                  f"{s.get('st_calm_rest_markout_bps', float('nan')):+.2f} / {s.get('st_mid_rest_markout_bps', float('nan')):+.2f} / "
-                  f"{s.get('st_stress_rest_markout_bps', float('nan')):+.2f}", flush=True)
-        f = fill_level_stress(tm, book, top, horizon_s=10, windows_s=windows)
-        f.update(identity_selection(tm, book, top, horizon_s=10, window_s=windows[0]))
-        fill_rows.append({"coin": c, **f})
-        for w in windows:
-            print(f"{c} fill-level, move over previous {w:>3d}s ({f.get(f'fl{w}_n', 0)} touch fills): corr(top, move) {f.get(f'fl{w}_top_vs_move', float('nan')):+.3f} "
-                  f"(p={f.get(f'fl{w}_top_vs_move_p', float('nan')):.3f}); calm/mid/stress move {f.get(f'fl{w}_calm_move_bps', float('nan')):.2f} / "
-                  f"{f.get(f'fl{w}_mid_move_bps', float('nan')):.2f} / {f.get(f'fl{w}_stress_move_bps', float('nan')):.2f} bps, top share "
-                  f"{f.get(f'fl{w}_calm_top_share', float('nan')):.3f} / {f.get(f'fl{w}_mid_top_share', float('nan')):.3f} / {f.get(f'fl{w}_stress_top_share', float('nan')):.3f}, "
-                  f"top markout {f.get(f'fl{w}_calm_top_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_calm_top_se_bps', float('nan')):.2f} / "
-                  f"{f.get(f'fl{w}_mid_top_markout_bps', float('nan')):+.2f} / {f.get(f'fl{w}_stress_top_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_stress_top_se_bps', float('nan')):.2f}, "
-                  f"rest {f.get(f'fl{w}_calm_rest_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_calm_rest_se_bps', float('nan')):.2f} / "
-                  f"{f.get(f'fl{w}_mid_rest_markout_bps', float('nan')):+.2f} / {f.get(f'fl{w}_stress_rest_markout_bps', float('nan')):+.2f}±{f.get(f'fl{w}_stress_rest_se_bps', float('nan')):.2f}", flush=True)
-        if "id_top_vs_past_tox" in f:
-            print(f"{c} identity selection ({f['id_n_typed_takers']} takers typed on the {'first night' if f['id_cut_is_session'] else 'first half'}, "
-                  f"{f['id_n_fills_later']} later touch fills): corr(top, taker's past toxicity) {f['id_top_vs_past_tox']:+.3f} (p={f['id_top_vs_past_tox_p']:.3f}); "
-                  f"top share of benign/middle/toxic/new takers' fills {f['id_benign_top_share']:.3f} / {f['id_middle_top_share']:.3f} / "
-                  f"{f['id_toxic_top_share']:.3f} / {f['id_new_top_share']:.3f} (fill shares {f['id_benign_fill_share']:.2f} / {f['id_middle_fill_share']:.2f} / "
-                  f"{f['id_toxic_fill_share']:.2f} / {f['id_new_fill_share']:.2f}); top markout benign/toxic {f['id_benign_top_markout_bps']:+.2f}±{f['id_benign_top_se_bps']:.2f} / "
-                  f"{f['id_toxic_top_markout_bps']:+.2f}±{f['id_toxic_top_se_bps']:.2f}, rest {f['id_benign_rest_markout_bps']:+.2f}±{f['id_benign_rest_se_bps']:.2f} / "
-                  f"{f['id_toxic_rest_markout_bps']:+.2f}±{f['id_toxic_rest_se_bps']:.2f}; typing held up by {f['id_type_holds_bps']:+.2f} bps"
-                  + (f"; within calm tape: benign/toxic {f['id_calm_benign_top_share']:.3f} / {f['id_calm_toxic_top_share']:.3f}, within stressed tape: "
-                     f"{f['id_stress_benign_top_share']:.3f} / {f['id_stress_toxic_top_share']:.3f}" if "id_calm_benign_top_share" in f else "")
-                  + (f"; QUIET fills (mid unmoved 1 s later, {f['id_quiet_share']:.2f} of fills): top share benign/toxic/new "
-                     f"{f['id_benign_quiet_top_share']:.3f} / {f['id_toxic_quiet_top_share']:.3f} / {f['id_new_quiet_top_share']:.3f} "
-                     f"(n {f['id_benign_quiet_n']} / {f['id_toxic_quiet_n']} / {f['id_new_quiet_n']}), markout_10 on quiet fills benign/toxic "
-                     f"{f['id_benign_quiet_markout_bps']:+.2f} / {f['id_toxic_quiet_markout_bps']:+.2f}; pick-offs: top share benign/toxic "
-                     f"{f['id_benign_pickoff_top_share']:.3f} / {f['id_toxic_pickoff_top_share']:.3f}" if "id_quiet_share" in f else ""), flush=True)
+    res = Path(args.results)
+    results = per_coin(coin_job, args.coins.split(","), args, args.jobs)
+    scale_rows = [r for res_c in results if res_c for r in res_c[0]]
+    fill_rows = [r for res_c in results if res_c for r in res_c[1]]
     pd.DataFrame(scale_rows).to_csv(res / "stress_scale.csv", index=False)
     pd.DataFrame(fill_rows).to_csv(res / "stress_fill.csv", index=False)
     print("wrote", res / "stress_scale.csv", "and", res / "stress_fill.csv")
