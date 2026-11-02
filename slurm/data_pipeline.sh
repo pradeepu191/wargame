@@ -10,8 +10,14 @@
 # data/raw/live (pushed from the Mac; the cluster has no route to the VPS) with the marked-fill cache
 # under data/cache.  Outputs land in results/live_2026_10; commit them from the login node.
 # Usage: sbatch slurm/data_pipeline.sh
-set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")/..}"
+# the module function is not inherited when the job is submitted from a non-interactive ssh command
+if ! command -v module >/dev/null 2>&1; then
+  for f in /etc/profile.d/modules.sh /usr/share/lmod/lmod/init/bash /etc/profile.d/lmod.sh; do
+    [ -f "$f" ] && source "$f" && break
+  done
+fi
+set -euo pipefail
 module load anaconda/Python-ML-2025a
 source .venv/bin/activate
 export TMPDIR="$PWD/.tmp"; mkdir -p "$TMPDIR"
