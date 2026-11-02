@@ -1,0 +1,213 @@
+BTC: 643.7 h, 2854035 prints, 1379806 orders, rho_order=0.026 (baseline 0.004), markout_10s=-0.32 bps, type rank corr=0.17, cond diff=-0.83 bps [id|anon-signal: -0.82, anon alone: -0.41], MMs=1021 | L2: 217.1 h in 6 session(s), gap 0.108 s, 2477830 fills marked, quoted 0.13 / effective 1.02 bps, true-mid markout_1/10/60 -0.13 / -0.34 / -0.30 (proxy bias_10 +0.02), cond diff -0.88 | touch share 0.70, effective touch/walk/order 0.15 / 3.06 / 0.45, markout_10 touch/walk -0.27 / -0.51, 2.07 fills/order, 0.12 of orders walk | MAKERS: all -0.34±0.06; top-10 MM -0.03±0.03 (0.11 of fills, touch 0.72); other MM -0.29; non-MM -0.75; at the touch top/rest +0.05 / -0.31; 1068 makers>=100 fills, 0.15 positive (0.37 of fills), 35 significantly; split-half rank corr +0.43 (p=0.000, n=658); across sessions +0.68 (p=0.000, n=125) | STRESS (2609 blocks): top share vs lagged vol +0.02 (p=0.341), vs lagged toxicity -0.08 (p=0.000), contemporaneous vol -0.00; top makers active vs lagged vol +0.47; calm/mid/stress terciles: top share 0.11 / 0.11 / 0.11, active 4.7 / 5.7 / 6.9, top markout +0.04 / +0.04 / +0.07, rest markout -0.26 / -0.36 / -0.30, vol 0.78 / 1.15 / 2.04 bps
+ETH: 643.8 h, 1566560 prints, 811248 orders, rho_order=0.075 (baseline 0.012), markout_10s=-0.48 bps, type rank corr=0.27, cond diff=-0.74 bps [id|anon-signal: -0.75, anon alone: -0.20], MMs=620 | L2: 217.1 h in 6 session(s), gap 0.109 s, 1364438 fills marked, quoted 0.43 / effective 1.56 bps, true-mid markout_1/10/60 -0.13 / -0.40 / -0.47 (proxy bias_10 -0.08), cond diff -0.85 | touch share 0.78, effective touch/walk/order 0.48 / 5.28 / 0.86, markout_10 touch/walk -0.38 / -0.45, 1.94 fills/order, 0.11 of orders walk | MAKERS: all -0.40±0.08; top-10 MM +0.08±0.04 (0.20 of fills, touch 0.90); other MM -0.37; non-MM -0.80; at the touch top/rest +0.12 / -0.53; 671 makers>=100 fills, 0.19 positive (0.38 of fills), 33 significantly; split-half rank corr +0.40 (p=0.000, n=403); across sessions +0.64 (p=0.000, n=83) | STRESS (2609 blocks): top share vs lagged vol -0.21 (p=0.000), vs lagged toxicity -0.05 (p=0.015), contemporaneous vol -0.30; top makers active vs lagged vol +0.44; calm/mid/stress terciles: top share 0.28 / 0.25 / 0.23, active 5.7 / 6.6 / 7.8, top markout +0.14 / +0.20 / +0.07, rest markout -0.36 / -0.51 / -0.60, vol 1.10 / 1.69 / 2.93 bps
+HYPE: 643.7 h, 4413734 prints, 1504277 orders, rho_order=0.055 (baseline 0.011), markout_10s=-0.40 bps, type rank corr=0.08, cond diff=-0.71 bps [id|anon-signal: -0.71, anon alone: -0.20], MMs=809 | L2: 217.1 h in 6 session(s), gap 0.116 s, 4050527 fills marked, quoted 0.13 / effective 3.87 bps, true-mid markout_1/10/60 -0.01 / -0.37 / -0.53 (proxy bias_10 -0.04), cond diff -0.72 | touch share 0.44, effective touch/walk/order 0.37 / 6.67 / 0.89, markout_10 touch/walk -0.41 / -0.33, 2.95 fills/order, 0.23 of orders walk | MAKERS: all -0.37±0.07; top-10 MM +0.01±0.04 (0.17 of fills, touch 0.61); other MM -0.34; non-MM -0.72; at the touch top/rest +0.07 / -0.56; 1163 makers>=100 fills, 0.20 positive (0.38 of fills), 54 significantly; split-half rank corr +0.17 (p=0.000, n=716); across sessions +0.65 (p=0.000, n=85) | STRESS (2609 blocks): top share vs lagged vol -0.17 (p=0.000), vs lagged toxicity -0.02 (p=0.243), contemporaneous vol -0.22; top makers active vs lagged vol +0.37; calm/mid/stress terciles: top share 0.27 / 0.28 / 0.24, active 5.8 / 6.2 / 7.1, top markout +0.01 / -0.12 / +0.18, rest markout -0.55 / -0.66 / -0.52, vol 2.26 / 2.90 / 5.11 bps
+SOL: 643.8 h, 761536 prints, 402982 orders, rho_order=0.060 (baseline 0.016), markout_10s=-0.56 bps, type rank corr=0.11, cond diff=-0.82 bps [id|anon-signal: -0.83, anon alone: -0.31], MMs=416 | L2: 217.1 h in 6 session(s), gap 0.127 s, 657152 fills marked, quoted 0.97 / effective 1.97 bps, true-mid markout_1/10/60 -0.08 / -0.55 / -0.36 (proxy bias_10 -0.01), cond diff -0.70 | touch share 0.72, effective touch/walk/order 0.58 / 5.59 / 1.16, markout_10 touch/walk -0.49 / -0.71, 1.89 fills/order, 0.14 of orders walk | MAKERS: all -0.55±0.13; top-10 MM +0.24±0.08 (0.28 of fills, touch 0.87); other MM -0.70; non-MM -1.27; at the touch top/rest +0.31 / -0.90; 375 makers>=100 fills, 0.15 positive (0.42 of fills), 20 significantly; split-half rank corr +0.38 (p=0.000, n=232); across sessions +0.58 (p=0.000, n=62) | STRESS (2609 blocks): top share vs lagged vol -0.12 (p=0.000), vs lagged toxicity +0.05 (p=0.012), contemporaneous vol -0.24; top makers active vs lagged vol +0.29; calm/mid/stress terciles: top share 0.38 / 0.36 / 0.35, active 5.6 / 5.8 / 6.6, top markout +0.26 / +0.31 / +0.34, rest markout -0.64 / -0.73 / -1.09, vol 1.39 / 1.87 / 3.15 bps
+coin                                         BTC            ETH           HYPE           SOL
+hours                               6.437366e+02   6.437572e+02   6.437402e+02  6.437594e+02
+prints                              2.854035e+06   1.566560e+06   4.413734e+06  7.615360e+05
+orders                              1.379806e+06   8.112480e+05   1.504277e+06  4.029820e+05
+prints_per_min                      7.389241e+01   4.055773e+01   1.142732e+02  1.971586e+01
+orders_per_min                      3.572387e+01   2.100295e+01   3.894627e+01  1.043304e+01
+usd_volume                          2.462984e+10   9.915415e+09   7.028921e+09  1.959705e+09
+median_order_usd                    2.175390e+02   1.961970e+02   1.281324e+02  1.664928e+02
+n_takers                            8.114000e+04   4.051100e+04   4.331900e+04  3.103100e+04
+n_makers                            1.777500e+04   9.408000e+03   1.153900e+04  6.199000e+03
+px_mean                             7.985488e+04   2.333746e+03   8.707773e+01  1.007513e+02
+markout_1_bps                      -7.432911e-02  -8.434064e-02   3.787935e-02 -6.684682e-02
+markout_10_bps                     -3.234270e-01  -4.751887e-01  -4.039286e-01 -5.622071e-01
+markout_60_bps                     -1.931143e-01  -3.938063e-01  -5.282412e-01 -2.907309e-01
+rho_order                           2.614500e-02   7.535313e-02   5.486294e-02  5.982664e-02
+rho_order_baseline                  3.704717e-03   1.194325e-02   1.122050e-02  1.553189e-02
+rho_fill                            4.997730e-01   4.900658e-01   6.455930e-01  4.808170e-01
+rho_fill_baseline                   6.655696e-03   1.566819e-02   9.968101e-03  2.053951e-02
+type_rank_corr                      1.669502e-01   2.731360e-01   7.942441e-02  1.070107e-01
+type_rank_corr_p                    1.532611e-15   1.991732e-15   1.216523e-04  1.531708e-02
+type_n_takers                       2.252000e+03   8.160000e+02   2.336000e+03  5.130000e+02
+type_sd_bps                         2.211749e+00   5.376908e+00   4.929746e+00  4.347953e+00
+type_q25_bps                       -5.381508e-01  -5.874133e-01  -1.265566e+00 -5.974395e-01
+type_q75_bps                        3.683707e-01   8.029230e-01   1.707714e+00  8.122117e-01
+cond_after_toxic_bps               -7.526610e-01  -7.787118e-01  -7.710821e-01 -1.120210e+00
+cond_after_benign_bps               7.646501e-02  -3.388370e-02  -6.493570e-02 -2.989991e-01
+cond_diff_bps                      -8.291260e-01  -7.448281e-01  -7.061464e-01 -8.212111e-01
+cond_n_after_toxic                  1.395120e+05   1.623540e+05   1.569360e+05  5.918000e+04
+two_diff_id_bps                    -8.291260e-01  -7.448281e-01  -7.061464e-01 -8.212111e-01
+two_diff_anon_bps                  -4.125049e-01  -1.989029e-01  -2.005436e-01 -3.089512e-01
+two_diff_id_given_anon_bps         -8.247174e-01  -7.481793e-01  -7.064109e-01 -8.311566e-01
+two_p_adverse                       1.080175e-01   1.425856e-01   2.109633e-01  2.769148e-01
+two_p_toxic_given_adverse           5.256842e-01   6.444192e-01   3.737304e-01  5.572751e-01
+two_p_toxic_given_not_adverse       1.576747e-01   3.501894e-01   1.578916e-01  2.071477e-01
+l2_snapshots                        4.977221e+06   4.553846e+06   4.437315e+06  4.020671e+06
+l2_median_gap_s                     1.080000e-01   1.090000e-01   1.160000e-01  1.270000e-01
+l2_coverage_h                       2.171470e+02   2.171475e+02   2.171464e+02  2.171466e+02
+l2_sessions                         6.000000e+00   6.000000e+00   6.000000e+00  6.000000e+00
+spread_bps_median                   1.251557e-01   4.323109e-01   1.277310e-01  9.729046e-01
+spread_bps_p90                      1.294557e-01   4.484808e-01   1.188346e+00  9.963633e-01
+top_depth_usd_median                5.155115e+05   2.614484e+05   6.811487e+03  6.023796e+04
+l2_fills_marked                     2.477830e+06   1.364438e+06   4.050527e+06  6.571520e+05
+effective_spread_bps                1.017837e+00   1.557326e+00   3.874752e+00  1.969779e+00
+mid_markout_1_bps                  -1.347104e-01  -1.320441e-01  -8.720816e-03 -8.061625e-02
+mid_realized_1_bps                 -2.694207e-01  -2.640882e-01  -1.744163e-02 -1.612325e-01
+proxy_bias_1_bps                    6.038125e-02   4.770343e-02   4.660017e-02  1.376943e-02
+mid_markout_10_bps                 -3.389803e-01  -3.965787e-01  -3.656568e-01 -5.499211e-01
+mid_realized_10_bps                -6.779606e-01  -7.931574e-01  -7.313135e-01 -1.099842e+00
+proxy_bias_10_bps                   1.555327e-02  -7.861003e-02  -3.827183e-02 -1.228607e-02
+mid_markout_60_bps                 -3.002615e-01  -4.709293e-01  -5.286202e-01 -3.639115e-01
+mid_realized_60_bps                -6.005231e-01  -9.418586e-01  -1.057240e+00 -7.278229e-01
+proxy_bias_60_bps                   1.071472e-01   7.712296e-02   3.789842e-04  7.318053e-02
+touch_share                         7.009137e-01   7.754277e-01   4.441496e-01  7.233578e-01
+effective_touch_bps                 1.482092e-01   4.780086e-01   3.746084e-01  5.836400e-01
+effective_walk_bps                  3.055825e+00   5.284110e+00   6.671526e+00  5.594223e+00
+mid_markout_10_touch_bps           -2.657980e-01  -3.813151e-01  -4.091225e-01 -4.876687e-01
+mid_markout_10_walk_bps            -5.104842e-01  -4.492824e-01  -3.309257e-01 -7.126973e-01
+n_orders_marked                     1.194772e+06   7.036050e+05   1.374824e+06  3.471510e+05
+fills_per_order                     2.073894e+00   1.939210e+00   2.946215e+00  1.892986e+00
+effective_order_bps                 4.522023e-01   8.579735e-01   8.874107e-01  1.161341e+00
+walk_order_share                    1.173898e-01   1.068185e-01   2.343500e-01  1.419267e-01
+mk_n_fills                          2.477830e+06   1.364438e+06   4.050527e+06  6.571520e+05
+mk_all_markout_bps                 -3.389803e-01  -3.965787e-01  -3.656568e-01 -5.499211e-01
+mk_all_se_bps                       5.507783e-02   8.170832e-02   6.930183e-02  1.280314e-01
+mk_top_n                            2.770010e+05   2.721830e+05   7.020810e+05  1.869430e+05
+mk_top_fill_share                   1.117918e-01   1.994836e-01   1.733308e-01  2.844745e-01
+mk_top_markout_bps                 -3.186559e-02   7.766396e-02   1.269538e-02  2.382141e-01
+mk_top_se_bps                       3.130578e-02   3.650836e-02   4.306354e-02  8.310440e-02
+mk_top_touch_share                  7.232140e-01   8.962683e-01   6.077233e-01  8.700406e-01
+mk_othermm_n                        1.769773e+06   7.245790e+05   2.428311e+06  3.350910e+05
+mk_othermm_fill_share               7.142431e-01   5.310457e-01   5.995050e-01  5.099140e-01
+mk_othermm_markout_bps             -2.871857e-01  -3.679768e-01  -3.389018e-01 -6.999590e-01
+mk_othermm_se_bps                   3.252989e-02   6.646359e-02   7.984466e-02  1.411674e-01
+mk_othermm_touch_share              7.151324e-01   7.620881e-01   3.412771e-01  6.727217e-01
+mk_nonmm_n                          4.310560e+05   3.676760e+05   9.201350e+05  1.351180e+05
+mk_nonmm_fill_share                 1.739651e-01   2.694707e-01   2.271643e-01  2.056115e-01
+mk_nonmm_markout_bps               -7.489869e-01  -8.040164e-01  -7.249552e-01 -1.268256e+00
+mk_nonmm_se_bps                     1.897283e-01   1.743551e-01   9.653490e-02  1.969613e-01
+mk_nonmm_touch_share                6.282061e-01   7.122603e-01   5.908285e-01  6.459909e-01
+mk_top_k                            1.000000e+01   1.000000e+01   1.000000e+01  1.000000e+01
+mk_top_touch_markout_bps            5.367722e-02   1.194988e-01   6.698224e-02  3.138398e-01
+mk_top_touch_se_bps                 2.315724e-02   3.309367e-02   3.812288e-02  4.921621e-02
+mk_rest_touch_markout_bps          -3.074540e-01  -5.313912e-01  -5.571439e-01 -9.045552e-01
+mk_rest_touch_se_bps                1.660884e-02   3.942102e-02   4.582125e-02  7.580689e-02
+mk_n_makers                         1.068000e+03   6.710000e+02   1.163000e+03  3.750000e+02
+mk_positive_share                   1.535581e-01   1.892697e-01   1.994841e-01  1.546667e-01
+mk_positive_fill_share              3.723504e-01   3.822365e-01   3.836609e-01  4.196198e-01
+mk_sig_positive_n                   3.500000e+01   3.300000e+01   5.400000e+01  2.000000e+01
+mk_sig_positive_fill_share          1.900118e-01   2.558489e-01   2.625863e-01  2.724590e-01
+mk_best_markout_bps                 3.334924e+01   4.634970e+00   1.598057e+01  5.147831e+00
+mk_best_n_fills                     1.060000e+02   1.100000e+02   1.000000e+02  2.090000e+02
+mk_markout_sd_bps                   1.900160e+00   2.481135e+00   2.986750e+00  2.958899e+00
+mk_split_n_makers                   6.580000e+02   4.030000e+02   7.160000e+02  2.320000e+02
+mk_split_rank_corr                  4.347338e-01   4.032177e-01   1.700665e-01  3.803857e-01
+mk_split_rank_corr_p                1.028715e-31   3.458103e-17   4.737351e-06  2.108409e-09
+mk_session_n_makers                 1.250000e+02   8.300000e+01   8.500000e+01  6.200000e+01
+mk_session_rank_corr                6.849585e-01   6.443684e-01   6.534493e-01  5.791594e-01
+mk_session_rank_corr_p              1.263123e-18   4.938707e-11   1.210079e-11  8.158720e-07
+st_n_blocks                         2.609000e+03   2.609000e+03   2.609000e+03  2.609000e+03
+st_top_share_vs_tox_rest           -6.664190e-02  -1.123144e-01  -1.108860e-01 -6.937677e-02
+st_top_share_vs_tox_rest_p          6.589431e-04   8.804032e-09   1.357358e-08  3.907884e-04
+st_top_share_vs_vol                -1.895618e-03  -3.028132e-01  -2.233364e-01 -2.419306e-01
+st_top_share_vs_vol_p               9.229021e-01   1.843021e-56   7.524430e-31  4.613282e-36
+st_top_share_vs_tox_rest_lag       -8.139337e-02  -4.762049e-02  -2.285599e-02  4.894499e-02
+st_top_share_vs_tox_rest_lag_p      3.183040e-05   1.504928e-02   2.434656e-01  1.247513e-02
+st_top_share_vs_vol_lag             1.867409e-02  -2.113944e-01  -1.732429e-01 -1.198656e-01
+st_top_share_vs_vol_lag_p           3.406310e-01   1.034720e-27   5.240299e-19  8.407097e-10
+st_n_top_active_vs_tox_rest         2.221060e-01   9.596364e-02   1.124566e-01  1.253956e-01
+st_n_top_active_vs_tox_rest_p       1.604333e-30   9.077316e-07   8.429973e-09  1.298771e-10
+st_n_top_active_vs_vol              5.805944e-01   5.429693e-01   4.434880e-01  3.834324e-01
+st_n_top_active_vs_vol_p           4.963046e-235  5.262775e-200  3.693110e-126  3.869865e-92
+st_n_top_active_vs_tox_rest_lag     1.324047e-01   6.177733e-02   8.029121e-02  1.009935e-01
+st_n_top_active_vs_tox_rest_lag_p   1.154611e-11   1.604039e-03   4.070428e-05  2.399728e-07
+st_n_top_active_vs_vol_lag          4.670420e-01   4.387695e-01   3.658803e-01  2.898046e-01
+st_n_top_active_vs_vol_lag_p       2.435390e-141  4.341765e-123   2.311498e-83  1.397704e-51
+st_top_share_autocorr               3.753939e-01   4.870589e-01   5.512844e-01  4.707739e-01
+st_calm_n_blocks                    8.690000e+02   8.690000e+02   8.690000e+02  8.690000e+02
+st_calm_top_share                   1.149455e-01   2.807037e-01   2.731982e-01  3.829314e-01
+st_calm_n_top_active                4.720368e+00   5.729574e+00   5.759494e+00  5.560414e+00
+st_calm_top_markout_bps             3.976657e-02   1.362439e-01   1.343976e-02  2.557236e-01
+st_calm_rest_markout_bps           -2.587819e-01  -3.599003e-01  -5.540102e-01 -6.427062e-01
+st_calm_vol_bps                     7.758517e-01   1.097188e+00   2.264258e+00  1.394955e+00
+st_mid_n_blocks                     8.680000e+02   8.680000e+02   8.680000e+02  8.680000e+02
+st_mid_top_share                    1.108573e-01   2.537838e-01   2.761430e-01  3.648739e-01
+st_mid_n_top_active                 5.669355e+00   6.554147e+00   6.237327e+00  5.784562e+00
+st_mid_top_markout_bps              3.504855e-02   2.011963e-01  -1.151209e-01  3.117131e-01
+st_mid_rest_markout_bps            -3.572128e-01  -5.109000e-01  -6.633761e-01 -7.348159e-01
+st_mid_vol_bps                      1.146085e+00   1.687223e+00   2.898223e+00  1.866992e+00
+st_stress_n_blocks                  8.690000e+02   8.690000e+02   8.690000e+02  8.680000e+02
+st_stress_top_share                 1.143463e-01   2.286342e-01   2.402457e-01  3.468191e-01
+st_stress_n_top_active              6.926352e+00   7.799770e+00   7.062140e+00  6.574885e+00
+st_stress_top_markout_bps           6.892887e-02   7.069712e-02   1.848084e-01  3.413189e-01
+st_stress_rest_markout_bps         -3.007374e-01  -6.008675e-01  -5.179162e-01 -1.092439e+00
+st_stress_vol_bps                   2.037343e+00   2.930734e+00   5.108157e+00  3.146298e+00
+mid_cond_after_toxic_bps           -7.775417e-01  -9.764497e-01  -8.039330e-01 -1.061867e+00
+mid_cond_after_benign_bps           9.888662e-02  -1.291460e-01  -8.523150e-02 -3.585941e-01
+mid_cond_diff_bps                  -8.764283e-01  -8.473038e-01  -7.187015e-01 -7.032733e-01
+n_mm                                1.021000e+03   6.200000e+02   8.090000e+02  4.160000e+02
+mm_volume_share                     6.563883e-01   5.007530e-01   5.328456e-01  6.288656e-01
+mm_maker_fill_share                 8.231262e-01   7.274857e-01   7.766046e-01  7.902870e-01
+mm_avoidance_ratio                  8.615408e-01   9.038066e-01   9.180447e-01  9.332703e-01
+mm_leader_switch_1s                 6.578454e-01   7.199790e-01   7.730889e-01  7.468075e-01
+mm_leader_switch_10s                7.776577e-01   7.776174e-01   7.702771e-01  8.120185e-01
+mm_top10_volume_share               1.955076e-01   2.009414e-01   2.211484e-01  2.669136e-01
+mm_top10_leader_switch_10s          6.063180e-01   5.218009e-01   6.445335e-01  6.063601e-01
+mm_top10_leader_switch_10s_null     8.319717e-01   7.104357e-01   8.177906e-01  7.751250e-01
+mm_top10_avoidance_ratio            5.565942e-01   4.506476e-01   4.989458e-01  4.180348e-01
+mm_markout_1_bps                   -3.956619e-01  -5.796403e-01  -1.775928e-01 -6.782269e-01
+nonmm_markout_1_bps                -2.761000e-01  -9.641024e-01  -4.497449e-01 -8.149021e-01
+mm_markout_10_bps                  -9.292449e-01  -1.200998e+00  -9.855588e-01 -1.551264e+00
+nonmm_markout_10_bps               -1.010245e+00  -2.066456e+00  -1.556437e+00 -2.887384e+00
+mm_markout_60_bps                  -5.051478e-01  -3.788445e-01  -1.458927e+00 -1.111519e+00
+nonmm_markout_60_bps               -8.265215e-01  -8.942463e-01  -1.529667e+00 -1.739352e+00
+wrote results/live_2026_10/calibration.csv
+BTC   30s blocks (26050): top share vs lagged vol +0.14 (p=0.000), vs lagged toxicity +0.05 (p=0.000), contemporaneous vol +0.11; terciles of lagged vol: top share 0.116 / 0.116 / 0.115, top markout +0.07 / +0.01 / +0.07, rest -0.25 / -0.31 / -0.33
+BTC   60s blocks (13030): top share vs lagged vol +0.11 (p=0.000), vs lagged toxicity +0.02 (p=0.005), contemporaneous vol +0.08; terciles of lagged vol: top share 0.116 / 0.112 / 0.115, top markout +0.05 / +0.07 / +0.05, rest -0.25 / -0.34 / -0.32
+BTC  300s blocks (2609): top share vs lagged vol +0.02 (p=0.341), vs lagged toxicity -0.08 (p=0.000), contemporaneous vol -0.00; terciles of lagged vol: top share 0.115 / 0.111 / 0.114, top markout +0.04 / +0.04 / +0.07, rest -0.26 / -0.36 / -0.30
+BTC fill-level, move over previous  10s (1736638 touch fills): corr(top, move) +0.005 (p=0.000); calm/mid/stress move 0.03 / 0.99 / 4.90 bps, top share 0.113 / 0.113 / 0.119, top markout +0.10±0.01 / +0.04 / +0.02±0.05, rest -0.33±0.01 / -0.29 / -0.31±0.04
+BTC fill-level, move over previous  60s (1736210 touch fills): corr(top, move) +0.008 (p=0.000); calm/mid/stress move 0.78 / 3.41 / 12.72 bps, top share 0.110 / 0.118 / 0.117, top markout +0.07±0.02 / +0.04 / +0.06±0.06, rest -0.28±0.02 / -0.29 / -0.35±0.04
+BTC identity selection (119 takers typed on the first night, 1707009 later touch fills): corr(top, taker's past toxicity) -0.150 (p=0.000); top share of benign/middle/toxic/new takers' fills 0.131 / 0.123 / 0.042 / 0.129 (fill shares 0.02 / 0.04 / 0.15 / 0.79); top markout benign/toxic +0.20±0.08 / -0.29±0.13, rest +0.16±0.07 / -1.39±0.03; typing held up by +1.50 bps; within calm tape: benign/toxic 0.143 / 0.023, within stressed tape: 0.128 / 0.060; QUIET fills (mid unmoved 1 s later, 0.56 of fills): top share benign/toxic/new 0.143 / 0.089 / 0.149 (n 18510 / 58694 / 836523), markout_10 on quiet fills benign/toxic +0.11 / -0.41; pick-offs: top share benign/toxic 0.100 / 0.029
+ETH   30s blocks (24559): top share vs lagged vol -0.05 (p=0.000), vs lagged toxicity -0.00 (p=0.829), contemporaneous vol -0.15; terciles of lagged vol: top share 0.287 / 0.271 / 0.241, top markout +0.15 / +0.12 / +0.10, rest -0.43 / -0.51 / -0.59
+ETH   60s blocks (13006): top share vs lagged vol -0.10 (p=0.000), vs lagged toxicity -0.02 (p=0.051), contemporaneous vol -0.20; terciles of lagged vol: top share 0.291 / 0.267 / 0.239, top markout +0.15 / +0.22 / +0.06, rest -0.40 / -0.53 / -0.58
+ETH  300s blocks (2609): top share vs lagged vol -0.21 (p=0.000), vs lagged toxicity -0.05 (p=0.015), contemporaneous vol -0.30; terciles of lagged vol: top share 0.281 / 0.254 / 0.229, top markout +0.14 / +0.20 / +0.07, rest -0.36 / -0.51 / -0.60
+ETH fill-level, move over previous  10s (1057940 touch fills): corr(top, move) -0.024 (p=0.000); calm/mid/stress move 0.16 / 1.70 / 7.99 bps, top share 0.231 / 0.249 / 0.211, top markout +0.15±0.02 / +0.13 / +0.07±0.08, rest -0.55±0.03 / -0.50 / -0.54±0.10
+ETH fill-level, move over previous  60s (1057763 touch fills): corr(top, move) -0.045 (p=0.000); calm/mid/stress move 1.19 / 4.98 / 19.72 bps, top share 0.253 / 0.234 / 0.205, top markout +0.13±0.02 / +0.11 / +0.11±0.10, rest -0.48±0.03 / -0.53 / -0.59±0.10
+ETH identity selection (77 takers typed on the first night, 1037686 later touch fills): corr(top, taker's past toxicity) -0.151 (p=0.000); top share of benign/middle/toxic/new takers' fills 0.343 / 0.341 / 0.125 / 0.263 (fill shares 0.02 / 0.02 / 0.26 / 0.71); top markout benign/toxic +0.50±0.05 / -0.67±0.12, rest +0.10±0.06 / -1.31±0.06; typing held up by +1.46 bps; within calm tape: benign/toxic 0.339 / 0.097, within stressed tape: 0.318 / 0.151; QUIET fills (mid unmoved 1 s later, 0.48 of fills): top share benign/toxic/new 0.375 / 0.194 / 0.309 (n 12188 / 56040 / 417251), markout_10 on quiet fills benign/toxic +0.24 / -0.24; pick-offs: top share benign/toxic 0.276 / 0.107
+SOL   30s blocks (18412): top share vs lagged vol -0.01 (p=0.483), vs lagged toxicity +0.01 (p=0.068), contemporaneous vol -0.14; terciles of lagged vol: top share 0.366 / 0.373 / 0.356, top markout +0.26 / +0.27 / +0.36, rest -0.75 / -0.76 / -1.16
+SOL   60s blocks (12459): top share vs lagged vol -0.05 (p=0.000), vs lagged toxicity +0.02 (p=0.020), contemporaneous vol -0.18; terciles of lagged vol: top share 0.386 / 0.379 / 0.357, top markout +0.23 / +0.33 / +0.35, rest -0.73 / -0.76 / -1.06
+SOL  300s blocks (2609): top share vs lagged vol -0.12 (p=0.000), vs lagged toxicity +0.05 (p=0.012), contemporaneous vol -0.24; terciles of lagged vol: top share 0.383 / 0.365 / 0.347, top markout +0.26 / +0.31 / +0.34, rest -0.64 / -0.73 / -1.09
+SOL fill-level, move over previous  10s (475310 touch fills): corr(top, move) -0.022 (p=0.000); calm/mid/stress move 0.18 / 1.88 / 8.64 bps, top share 0.343 / 0.363 / 0.321, top markout +0.27±0.03 / +0.36 / +0.31±0.13, rest -0.80±0.03 / -0.74 / -1.15±0.19
+SOL fill-level, move over previous  60s (475211 touch fills): corr(top, move) -0.048 (p=0.000); calm/mid/stress move 1.48 / 5.66 / 21.93 bps, top share 0.360 / 0.357 / 0.310, top markout +0.28±0.02 / +0.30 / +0.36±0.13, rest -0.68±0.03 / -0.82 / -1.20±0.19
+SOL identity selection (46 takers typed on the first night, 463059 later touch fills): corr(top, taker's past toxicity) -0.144 (p=0.000); top share of benign/middle/toxic/new takers' fills 0.401 / 0.362 / 0.130 / 0.403 (fill shares 0.01 / 0.02 / 0.21 / 0.76); top markout benign/toxic +0.72±0.09 / -0.52±0.16, rest +0.23±0.10 / -1.90±0.05; typing held up by +2.15 bps; within calm tape: benign/toxic 0.412 / 0.095, within stressed tape: 0.385 / 0.164; QUIET fills (mid unmoved 1 s later, 0.48 of fills): top share benign/toxic/new 0.433 / 0.188 / 0.469 (n 2692 / 17527 / 199601), markout_10 on quiet fills benign/toxic +0.44 / -0.59; pick-offs: top share benign/toxic 0.308 / 0.118
+HYPE   30s blocks (25925): top share vs lagged vol -0.09 (p=0.000), vs lagged toxicity -0.02 (p=0.005), contemporaneous vol -0.14; terciles of lagged vol: top share 0.284 / 0.282 / 0.249, top markout -0.03 / -0.11 / +0.20, rest -0.53 / -0.61 / -0.54
+HYPE   60s blocks (13029): top share vs lagged vol -0.12 (p=0.000), vs lagged toxicity -0.01 (p=0.343), contemporaneous vol -0.16; terciles of lagged vol: top share 0.280 / 0.280 / 0.245, top markout -0.04 / -0.05 / +0.17, rest -0.58 / -0.56 / -0.55
+HYPE  300s blocks (2609): top share vs lagged vol -0.17 (p=0.000), vs lagged toxicity -0.02 (p=0.243), contemporaneous vol -0.22; terciles of lagged vol: top share 0.273 / 0.276 / 0.240, top markout +0.01 / -0.12 / +0.18, rest -0.55 / -0.66 / -0.52
+HYPE fill-level, move over previous  10s (1798969 touch fills): corr(top, move) -0.064 (p=0.000); calm/mid/stress move 0.71 / 3.20 / 12.87 bps, top share 0.262 / 0.252 / 0.198, top markout -0.03±0.03 / +0.01 / +0.27±0.10, rest -0.62±0.03 / -0.62 / -0.44±0.11
+HYPE fill-level, move over previous  60s (1798710 touch fills): corr(top, move) -0.081 (p=0.000); calm/mid/stress move 2.42 / 8.92 / 34.85 bps, top share 0.270 / 0.251 / 0.191, top markout -0.05±0.03 / -0.09 / +0.44±0.11, rest -0.56±0.03 / -0.69 / -0.43±0.11
+HYPE identity selection (83 takers typed on the first night, 1773521 later touch fills): corr(top, taker's past toxicity) -0.183 (p=0.000); top share of benign/middle/toxic/new takers' fills 0.309 / 0.280 / 0.170 / 0.252 (fill shares 0.03 / 0.04 / 0.22 / 0.71); top markout benign/toxic +0.36±0.06 / -0.77±0.07, rest +0.09±0.04 / -1.43±0.06; typing held up by +1.49 bps; within calm tape: benign/toxic 0.325 / 0.169, within stressed tape: 0.274 / 0.163; QUIET fills (mid unmoved 1 s later, 0.24 of fills): top share benign/toxic/new 0.357 / 0.195 / 0.327 (n 24852 / 53101 / 321093), markout_10 on quiet fills benign/toxic +0.16 / -0.63; pick-offs: top share benign/toxic 0.274 / 0.167
+wrote results/live_2026_10/stress_scale.csv and results/live_2026_10/stress_fill.csv
+BTC: gap by day (benign - toxic top share): +0.10±0.02, +0.07±0.01, +0.09±0.02, +0.07±0.01, +0.07±0.01, +0.08±0.01, +0.13±0.01, +0.12±0.01, +0.11±0.01, +0.08±0.02  | days with gap > 2 SE: 10/10
+BTC: gap by UTC hour, min/median/max +0.02 / +0.09 / +0.13; hours with gap > 2 SE: 22/24
+BTC: rolling typing, gap by k days ahead: k=1: +0.07 (holds +1.2 bps, n=9.0), k=2: +0.07 (holds +1.3 bps, n=7.0), k=3: +0.07 (holds +1.2 bps, n=6.0), k=4: +0.08 (holds +1.2 bps, n=5.0), k=5: +0.08 (holds +1.2 bps, n=5.0), k=6: +0.08 (holds +1.3 bps, n=4.0), k=7: +0.08 (holds +1.3 bps, n=3.0), k=8: +0.08 (holds +1.5 bps, n=3.0), k=9: +0.09 (holds +1.6 bps, n=2.0), k=10: +0.11 (holds +1.4 bps, n=1.0)
+BTC: maker rank persistence, rho vs previous day: +0.91, +0.75, +0.72, +0.71, +0.57, +0.63, +0.65, +0.65, +0.67, +0.75, +0.75; vs first day: +0.91, +0.53, +0.57, +0.67, +0.72, +0.81, +0.34, +0.75, +0.72, +0.93, +0.71
+ETH: gap by day (benign - toxic top share): +0.34±0.03, +0.29±0.04, +0.29±0.01, +0.29±0.02, +0.27±0.01, +0.18±0.01, +0.09±0.02, +0.09±0.03, +0.16±0.04, +0.15±0.02  | days with gap > 2 SE: 10/10
+ETH: gap by UTC hour, min/median/max +0.11 / +0.23 / +0.35; hours with gap > 2 SE: 24/24
+ETH: rolling typing, gap by k days ahead: k=1: +0.19 (holds +1.3 bps, n=9.0), k=2: +0.15 (holds +1.3 bps, n=7.0), k=3: +0.12 (holds +1.3 bps, n=6.0), k=4: +0.11 (holds +1.1 bps, n=5.0), k=5: +0.17 (holds +1.4 bps, n=5.0), k=6: +0.18 (holds +1.3 bps, n=4.0), k=7: +0.17 (holds +1.2 bps, n=3.0), k=8: +0.24 (holds +1.6 bps, n=3.0), k=9: +0.19 (holds +1.1 bps, n=2.0), k=10: +0.08 (holds +1.6 bps, n=1.0)
+ETH: maker rank persistence, rho vs previous day: +0.71, +0.54, +0.89, +0.59, +0.65, +0.63, +0.67, +0.65, +0.77, +0.82, +0.47; vs first day: +0.71, +0.80, +0.70, +0.73, +0.62, +0.50, -0.01, +0.13, +0.76, +0.79, +0.55
+SOL: gap by day (benign - toxic top share): +0.35±0.04, +0.18±0.07, +0.37±0.01, +0.30±0.04, +0.20±0.03, +0.24±0.04, +0.36±0.08, +0.46±0.06, +0.31±0.05, +0.06±0.08  | days with gap > 2 SE: 9/10
+SOL: gap by UTC hour, min/median/max +0.04 / +0.28 / +0.41; hours with gap > 2 SE: 23/24
+SOL: rolling typing, gap by k days ahead: k=1: +0.29 (holds +2.1 bps, n=9.0), k=2: +0.29 (holds +1.8 bps, n=7.0), k=3: +0.29 (holds +1.6 bps, n=6.0), k=4: +0.27 (holds +1.8 bps, n=5.0), k=5: +0.33 (holds +1.8 bps, n=5.0), k=6: +0.33 (holds +1.9 bps, n=4.0), k=7: +0.33 (holds +2.0 bps, n=3.0), k=8: +0.27 (holds +2.3 bps, n=2.0), k=9: +0.31 (holds +2.1 bps, n=2.0), k=10: +0.29 (holds +1.5 bps, n=1.0)
+SOL: maker rank persistence, rho vs previous day: +0.42, +0.84, +0.63, +0.86, +0.70, +0.57, +0.63, +0.70, +0.64, +0.61; vs first day: 
+HYPE: gap by day (benign - toxic top share): +0.18±0.02, +0.17±0.01, +0.17±0.02, +0.16±0.01, +0.15±0.01, +0.07±0.01, +0.16±0.01, +0.16±0.01, +0.12±0.02, +0.14±0.02  | days with gap > 2 SE: 10/10
+HYPE: gap by UTC hour, min/median/max +0.09 / +0.14 / +0.19; hours with gap > 2 SE: 24/24
+HYPE: rolling typing, gap by k days ahead: k=1: +0.13 (holds +1.6 bps, n=9.0), k=2: +0.12 (holds +1.7 bps, n=7.0), k=3: +0.11 (holds +1.7 bps, n=6.0), k=4: +0.10 (holds +1.5 bps, n=5.0), k=5: +0.12 (holds +1.3 bps, n=5.0), k=6: +0.14 (holds +1.2 bps, n=4.0), k=7: +0.17 (holds +1.5 bps, n=3.0), k=8: +0.17 (holds +1.6 bps, n=3.0), k=9: +0.14 (holds +1.6 bps, n=2.0), k=10: +0.16 (holds +2.1 bps, n=1.0)
+HYPE: maker rank persistence, rho vs previous day: +0.66, +0.58, +0.74, +0.57, +0.54, +0.74, +0.57, +0.53, +0.49, +0.65, +0.68; vs first day: +0.66, +0.55, +0.14, +0.74, +0.76, +0.69, +0.49, +0.35, +0.63, +0.64, +0.60
+wrote results/live_2026_10/longwindow_hour.csv, results/live_2026_10/longwindow_day.csv, results/live_2026_10/longwindow_rolling.csv, results/live_2026_10/longwindow_makers.csv, results/live_2026_10/longwindow_makers_corr.csv
+BTC | FOMC holds rates (10-2); statement: hours -24..-1 vs 0..5: vol 2.34 -> 3.33 bps, toxic fill share 0.17 -> 0.19, top share 0.093 -> 0.090, gap +0.08 -> +0.07, top markout +0.06 -> +0.02, rest -0.37 -> -0.38, fringe share of top fills 0.03 -> 0.03
+BTC | Binance hot wallet drained (~$6.3B; BTC 80.3k -> 78.8k in 40: hours -24..-1 vs 0..5: vol 2.95 -> 9.12 bps, toxic fill share 0.17 -> 0.13, top share 0.092 -> 0.117, gap +0.08 -> +0.08, top markout +0.10 -> +0.14, rest -0.30 -> -0.14, fringe share of top fills 0.03 -> 0.02
+BTC | Binance suspends deposits and withdrawals (BTC low 76.4k at : hours -24..-1 vs 0..5: vol 4.01 -> 5.75 bps, toxic fill share 0.16 -> 0.13, top share 0.093 -> 0.178, gap +0.08 -> +0.12, top markout +0.13 -> +0.07, rest -0.27 -> -0.18, fringe share of top fills 0.03 -> 0.01
+ETH | FOMC holds rates (10-2); statement: hours -24..-1 vs 0..5: vol 3.55 -> 5.15 bps, toxic fill share 0.29 -> 0.36, top share 0.235 -> 0.201, gap +0.27 -> +0.28, top markout +0.34 -> +0.18, rest -0.62 -> -0.64, fringe share of top fills 0.02 -> 0.03
+ETH | Binance hot wallet drained (~$6.3B; BTC 80.3k -> 78.8k in 40: hours -24..-1 vs 0..5: vol 4.56 -> 13.93 bps, toxic fill share 0.32 -> 0.26, top share 0.228 -> 0.223, gap +0.28 -> +0.02, top markout +0.28 -> -0.13, rest -0.58 -> -0.50, fringe share of top fills 0.07 -> 0.24
+ETH | Binance suspends deposits and withdrawals (BTC low 76.4k at : hours -24..-1 vs 0..5: vol 6.18 -> 8.29 bps, toxic fill share 0.31 -> 0.26, top share 0.234 -> 0.179, gap +0.23 -> +0.09, top markout +0.17 -> +0.20, rest -0.56 -> -0.54, fringe share of top fills 0.11 -> 0.08
+SOL | FOMC holds rates (10-2); statement: hours -24..-1 vs 0..5: vol 3.54 -> 5.99 bps, toxic fill share 0.18 -> 0.18, top share 0.328 -> 0.341, gap +0.26 -> +nan, top markout +0.50 -> +0.41, rest -0.44 -> -0.55, fringe share of top fills 0.00 -> 0.00
+SOL | Binance hot wallet drained (~$6.3B; BTC 80.3k -> 78.8k in 40: hours -24..-1 vs 0..5: vol 4.77 -> 16.26 bps, toxic fill share 0.21 -> 0.20, top share 0.328 -> 0.326, gap +0.16 -> +0.10, top markout +0.51 -> +0.44, rest -0.59 -> -1.22, fringe share of top fills 0.00 -> 0.00
+SOL | Binance suspends deposits and withdrawals (BTC low 76.4k at : hours -24..-1 vs 0..5: vol 6.49 -> 10.65 bps, toxic fill share 0.21 -> 0.25, top share 0.319 -> 0.387, gap +0.15 -> +nan, top markout +0.53 -> +0.15, rest -0.75 -> -1.21, fringe share of top fills 0.00 -> 0.00
+HYPE | FOMC holds rates (10-2); statement: hours -24..-1 vs 0..5: vol 4.61 -> 6.12 bps, toxic fill share 0.25 -> 0.30, top share 0.255 -> 0.240, gap +0.16 -> +0.16, top markout -0.05 -> -0.09, rest -0.59 -> -0.60, fringe share of top fills 0.18 -> 0.18
+HYPE | Binance hot wallet drained (~$6.3B; BTC 80.3k -> 78.8k in 40: hours -24..-1 vs 0..5: vol 9.94 -> 20.29 bps, toxic fill share 0.25 -> 0.20, top share 0.229 -> 0.148, gap +0.10 -> +0.09, top markout +0.14 -> +0.69, rest -0.45 -> -0.52, fringe share of top fills 0.17 -> 0.08
+HYPE | Binance suspends deposits and withdrawals (BTC low 76.4k at : hours -24..-1 vs 0..5: vol 12.72 -> 12.85 bps, toxic fill share 0.24 -> 0.20, top share 0.211 -> 0.194, gap +0.09 -> +0.16, top markout +0.24 -> +0.58, rest -0.46 -> -0.53, fringe share of top fills 0.16 -> 0.00
+wrote results/live_2026_10/events.csv
