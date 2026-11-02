@@ -215,7 +215,7 @@ def fig_touch(res: Path):
     ax.set_xticks(x); ax.set_xticklabels(COINS)
     ax.set_ylabel("maker's profit per fill vs the mid\n10 s later (bps)")
     ax.set_ylim(-1.1, 0.85)
-    ax.set_title("Same price, same tick: the ordinary fill at the touch loses,\nthe top makers' fills break even or earn (Hyperliquid, Oct 6 to 31)", fontsize=10)
+    ax.set_title("Same price, same tick: the ordinary fill at the touch loses,\nthe top makers' fills break even or earn (Hyperliquid, Oct 6 to Nov 2)", fontsize=10)
     ax.legend(loc="upper left", ncol=1)
     grid(ax)
     save(fig, res / "fig_touch")
@@ -240,7 +240,7 @@ def fig_identity_selection(res: Path):
     axes[0].set_ylabel("top-10 makers' share of that\nwallet type's fills, later sessions")
     axes[0].set_ylim(0, 0.62)
     axes[0].legend(loc="upper left", fontsize=8.5, ncol=1, handlelength=1.2, borderaxespad=0.2)
-    fig.suptitle("The top-10 makers are missing from the fills of wallets that were toxic in the first sessions (typed Oct 6 to 12, scored on 4.2M fills from Oct 20 to 31)", x=0.01, y=0.995, ha="left", fontsize=10.5, fontweight="bold")
+    fig.suptitle("The top-10 makers are missing from the fills of wallets that were toxic in the first sessions (typed Oct 6 to 12, scored on 5.0M fills from Oct 20 to Nov 2)", x=0.01, y=0.995, ha="left", fontsize=10.5, fontweight="bold")
     fig.get_layout_engine().set(rect=(0, 0, 1, 0.95))
     save(fig, res / "fig_identity_selection")
 
