@@ -53,7 +53,7 @@ def load_trades(raw: Path, coin: str) -> pd.DataFrame:
 
 
 def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30,
-                   book: pd.DataFrame | None = None) -> tuple[dict, pd.DataFrame]:
+                   book: pd.DataFrame | None = None, tm: pd.DataFrame | None = None) -> tuple[dict, pd.DataFrame]:
     t = with_roles(trades)
     orders = collapse_orders(t)
     hours = (t.time_ms.max() - t.time_ms.min()) / 3.6e6
@@ -97,7 +97,8 @@ def calibrate_coin(trades: pd.DataFrame, horizons=(1, 10, 60), n_min: int = 30,
     if book is not None and len(book):
         # true-mid markouts (bid-ask bounce removed) and the book itself
         row.update(book_summary(book))
-        tm = true_mid_markouts(t, book, horizons_s=horizons)
+        if tm is None:
+            tm = true_mid_markouts(t, book, horizons_s=horizons)
         row["l2_fills_marked"] = len(tm)
         row["effective_spread_bps"] = float(tm.effective_bps.mean())
         for d in horizons:
@@ -161,6 +162,7 @@ def main():
     ap.add_argument("--coins", default=None, help="comma list; default: every coin with files")
     ap.add_argument("--out", default="results")
     ap.add_argument("--n-min", type=int, default=30)
+    ap.add_argument("--rebuild", action="store_true", help="ignore data/cache and re-mark every fill")
     args = ap.parse_args()
     raw = Path(args.raw)
     coins = args.coins.split(",") if args.coins else sorted({Path(f).name.split("_")[1] for f in glob.glob(str(raw / "trades_*.parquet"))})
@@ -173,8 +175,9 @@ def main():
         tr = load_trades(raw, c)
         if tr.empty:
             print(f"{c}: no data"); continue
-        book = load_l2(raw, c)
-        row, feats = calibrate_coin(tr, n_min=args.n_min, book=book if len(book) else None)
+        from analysis.cache import marked_fills
+        tm, book = marked_fills(raw, c, rebuild=args.rebuild)
+        row, feats = calibrate_coin(tr, n_min=args.n_min, book=book if len(book) else None, tm=tm if len(tm) else None)
         makers = row.pop("_makers", None)
         stress = row.pop("_stress", None)
         rows.append(row)

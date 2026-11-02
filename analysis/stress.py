@@ -233,9 +233,7 @@ def main():
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))    # run from anywhere, no install needed
-    from analysis.calibrate import load_trades
-    from analysis.l2 import load_l2, true_mid_markouts
-    from analysis.wallets import with_roles
+    from analysis.cache import marked_fills
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="data/raw/live")
     ap.add_argument("--results", default="results/live_2026_10", help="holds wallets_<COIN>.csv; outputs go here")
@@ -243,18 +241,18 @@ def main():
     ap.add_argument("--blocks", default="30,60,300", help="block lengths in seconds")
     ap.add_argument("--windows", default="10,60", help="fill-level look-back windows in seconds")
     ap.add_argument("--top-k", type=int, default=10)
+    ap.add_argument("--rebuild", action="store_true", help="ignore data/cache and re-mark every fill")
     args = ap.parse_args()
     raw, res = Path(args.raw), Path(args.results)
     blocks = [int(b) for b in args.blocks.split(",")]
     windows = tuple(int(w) for w in args.windows.split(","))
     scale_rows, fill_rows = [], []
     for c in args.coins.split(","):
-        tr, book = load_trades(raw, c), load_l2(raw, c)
-        if tr.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
+        tm, book = marked_fills(raw, c, rebuild=args.rebuild)
+        if tm.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
             print(f"{c}: missing trades, book or wallets_{c}.csv"); continue
         feats = pd.read_csv(res / f"wallets_{c}.csv")
         top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
-        tm = true_mid_markouts(with_roles(tr), book, horizons_s=(1, 10))
         for b in blocks:
             s = stress_summary(tm, feats, horizon_s=10, top_k=args.top_k, block_ms=b * 1000,
                                n_min_block=max(8, round(20 * b / 300)))

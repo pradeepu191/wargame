@@ -154,25 +154,23 @@ def main():
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from analysis.calibrate import load_trades
-    from analysis.l2 import load_l2, true_mid_markouts
-    from analysis.wallets import with_roles
+    from analysis.cache import marked_fills
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="data/raw/live")
     ap.add_argument("--results", default="results/live_2026_10")
     ap.add_argument("--coins", default="BTC,ETH,SOL,HYPE")
     ap.add_argument("--top-k", type=int, default=10)
+    ap.add_argument("--rebuild", action="store_true", help="ignore data/cache and re-mark every fill")
     ap.add_argument("--max-k", type=int, default=10)
     args = ap.parse_args()
     raw, res = Path(args.raw), Path(args.results)
     H, D, R, M, MC = [], [], [], [], []
     for c in args.coins.split(","):
-        tr, book = load_trades(raw, c), load_l2(raw, c)
-        if tr.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
+        tm, book = marked_fills(raw, c, rebuild=args.rebuild)
+        if tm.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
             print(f"{c}: missing trades, book or wallets_{c}.csv"); continue
         feats = pd.read_csv(res / f"wallets_{c}.csv")
         top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
-        tm = true_mid_markouts(with_roles(tr), book, horizons_s=(1, 10))
         h, d = by_hour_and_day(tm, top)
         r = rolling_typing(tm, top, max_k=args.max_k)
         m, mc = maker_persistence(tm)
