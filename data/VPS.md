@@ -45,3 +45,15 @@ it in a `cron` line. `data/raw/` is gitignored; raw data never goes into the rep
 * `ls -la data/raw/live | tail` on the VPS — one `trades_`, `l2_` and `bbo_` file per coin per
   hour, written a few minutes after the hour closes.
 * `df -h` on the VPS once a week.
+
+## Running the analysis on SuperCloud instead of the Mac
+The cluster cannot reach the VPS, so the raw data goes Mac -> cluster (300 MB per month, a
+minute on campus):
+```bash
+rsync -avz --ignore-existing data/raw/live/ dpradeep@txe1-login.mit.edu:wargame/data/raw/live/
+ssh dpradeep@txe1-login.mit.edu "cd wargame && git pull && sbatch slurm/data_pipeline.sh"
+```
+When the job finishes (`squeue -u dpradeep` empty; `tail slurm-*.out`), commit the outputs from
+the login node: `cd wargame && git add results/live_2026_10 && git commit -m "live data" && git push`.
+Both the Mac and the cluster keep a marked-fill cache under `data/cache/` (gitignored), so a daily
+pull marks one day of fills, not the whole month; `--rebuild` on any script forces a full re-mark.

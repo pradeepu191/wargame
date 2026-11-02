@@ -69,42 +69,50 @@ def event_table(tm: pd.DataFrame, top: list[str], events: pd.DataFrame, horizon_
     return rows
 
 
+def coin_job(c, args):
+    from pathlib import Path
+    from analysis.cache import marked_fills
+    raw, res = Path(args.raw), Path(args.results)
+    events = pd.read_csv(args.events)
+    tm, book = marked_fills(raw, c, rebuild=args.rebuild)
+    if tm.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
+        print(f"{c}: missing trades, book or wallets_{c}.csv"); return None
+    feats = pd.read_csv(res / f"wallets_{c}.csv")
+    top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
+    rows = event_table(tm, top, events, before_h=args.before, after_h=args.after)
+    if not rows:
+        print(f"{c}: no fills inside any event window"); return []
+    d = pd.DataFrame(rows)
+    for ev, g in d.groupby("event", sort=False):
+        pre, post = g[g.k_hours < 0], g[(g.k_hours >= 0) & (g.k_hours < 6)]
+        print(f"{c} | {ev[:60]}: hours -{args.before}..-1 vs 0..5: vol {pre.vol_bps.mean():.2f} -> {post.vol_bps.mean():.2f} bps, "
+              f"toxic fill share {pre.toxic_fill_share.mean():.2f} -> {post.toxic_fill_share.mean():.2f}, top share {pre.top_share.mean():.3f} -> {post.top_share.mean():.3f}, "
+              f"gap {pre.gap.mean():+.2f} -> {post.gap.mean():+.2f}, top markout {pre.top_markout_bps.mean():+.2f} -> {post.top_markout_bps.mean():+.2f}, "
+              f"rest {pre.rest_markout_bps.mean():+.2f} -> {post.rest_markout_bps.mean():+.2f}, fringe share of top fills {pre.fringe_share.mean():.2f} -> {post.fringe_share.mean():.2f}", flush=True)
+    return rows
+
+
 def main():
     import argparse
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from analysis.calibrate import load_trades
-    from analysis.l2 import load_l2, true_mid_markouts
-    from analysis.wallets import with_roles
+    from analysis.parallel import per_coin
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="data/raw/live")
     ap.add_argument("--results", default="results/live_2026_10")
     ap.add_argument("--events", default="data/events.csv")
     ap.add_argument("--coins", default="BTC,ETH,SOL,HYPE")
     ap.add_argument("--top-k", type=int, default=10)
+    ap.add_argument("--rebuild", action="store_true", help="ignore data/cache and re-mark every fill")
     ap.add_argument("--before", type=int, default=24)
     ap.add_argument("--after", type=int, default=24)
+    ap.add_argument("--jobs", type=int, default=4, help="coins in parallel")
     args = ap.parse_args()
-    raw, res = Path(args.raw), Path(args.results)
-    events = pd.read_csv(args.events)
-    out = []
-    for c in args.coins.split(","):
-        tr, book = load_trades(raw, c), load_l2(raw, c)
-        if tr.empty or book.empty or not (res / f"wallets_{c}.csv").exists():
-            print(f"{c}: missing trades, book or wallets_{c}.csv"); continue
-        feats = pd.read_csv(res / f"wallets_{c}.csv")
-        top = list(feats[feats.is_mm].sort_values("volume", ascending=False).wallet.head(args.top_k))
-        tm = true_mid_markouts(with_roles(tr), book, horizons_s=(1, 10))
-        rows = event_table(tm, top, events, before_h=args.before, after_h=args.after)
-        out.extend({"coin": c, **r} for r in rows)
-        d = pd.DataFrame(rows)
-        for ev, g in d.groupby("event", sort=False):
-            pre, post = g[g.k_hours < 0], g[(g.k_hours >= 0) & (g.k_hours < 6)]
-            print(f"{c} | {ev[:60]}: hours -{args.before}..-1 vs 0..5: vol {pre.vol_bps.mean():.2f} -> {post.vol_bps.mean():.2f} bps, "
-                  f"toxic fill share {pre.toxic_fill_share.mean():.2f} -> {post.toxic_fill_share.mean():.2f}, top share {pre.top_share.mean():.3f} -> {post.top_share.mean():.3f}, "
-                  f"gap {pre.gap.mean():+.2f} -> {post.gap.mean():+.2f}, top markout {pre.top_markout_bps.mean():+.2f} -> {post.top_markout_bps.mean():+.2f}, "
-                  f"rest {pre.rest_markout_bps.mean():+.2f} -> {post.rest_markout_bps.mean():+.2f}, fringe share of top fills {pre.fringe_share.mean():.2f} -> {post.fringe_share.mean():.2f}", flush=True)
+    res = Path(args.results)
+    coins = args.coins.split(",")
+    results = per_coin(coin_job, coins, args, args.jobs)
+    out = [{"coin": c, **r} for c, rows in zip(coins, results) if rows for r in rows]
     pd.DataFrame(out).to_csv(res / "events.csv", index=False)
     print("wrote", res / "events.csv")
 

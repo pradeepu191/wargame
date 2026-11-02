@@ -8,6 +8,7 @@ dist/
 # data and run outputs are never committed
 data/raw/
 data/processed/
+data/cache/
 results/*_seed*/
 !results/demo_cartel/
 results/_configs/
