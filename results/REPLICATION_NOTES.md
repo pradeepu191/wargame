@@ -1822,3 +1822,46 @@ scheduled macro shock with no informed seller of one asset.  Hour-by-hour, hour 
   see step around the toxic flow and the participant that cannot see holds it, and on the asset
   that is not the one being dumped the seeing makers stay and earn.
 * `data/events.csv` is the place for further dated events; `analysis/events.py` reruns the table.
+
+---
+
+# Cluster runs, Nov 3: the full no-regret grid and the public-information attacker on all 60 cartels (`no_regret.csv`, `public_attacker.csv`; SuperCloud, 48 cores)
+
+## No-regret grid (ᾱ = 0.1, 0.3, 0.5 × η = 0.02, 0.05, 0.2; 3 selection + 7 evaluation seeds)
+
+| | single EXP3 learner | two EXP3 learners |
+|---|---|---|
+| rent alone C | 0.89 to 0.98 at every ᾱ, η | −0.16 to +0.12 (nothing) |
+| undercut rule, entrant earns (second half) | 0.64 to 0.94 (0.55 to 0.83) | −0.01 to −0.47 (inside h^C) |
+| same, floored at h^C | 0.64 to 0.94 | +0.03 to +0.08 |
+| Q-learning entrant | 0.11 to 0.56 | ≈ 0 |
+| lure/undercut cycle | 0.31 to 0.54 | 0 |
+| Stackelberg value | 0.11 / 0.15 / 0.21 | 0.07 / 0.10 / 0.06 |
+
+* The ᾱ = 0.3, η = 0.05 cell of the first run holds across the grid: a single mean-based
+  learner finds the monopoly quote and is then taken for 4 to 8 times its Stackelberg value by
+  the one-line undercut rule, giving up its whole rent (learner loses 1.00 to 1.15) at every
+  learning rate.  Faster learning (η = 0.2) does not help it: the rule follows one tick inside
+  whatever it moves to.
+* Two stateless learners never earn a rent at any ᾱ or η.  Memory is necessary for the rent.
+* The Q-learning entrant is weaker against the toxic market (0.11 to 0.20 at ᾱ = 0.5): it has
+  to learn where h^C is from losses, the rule is told.
+
+## Public-information attacker, 60 cartels (N = 2 and 3), five budgets
+
+| probing budget | N = 2 (0.1 / 0.3 / 0.5) | N = 3 (0.1 / 0.3 / 0.5) | coverage |
+|---|---|---|---|
+| oracle | 1.21 / 1.09 / 1.17 | 1.20 / 1.08 / 1.16 | 1 |
+| 0 | 0.21 / 0.09 / 0.18 | 0.22 / 0.09 / 0.21 | .09 to .23 |
+| 200 | 1.12 / 1.06 / 1.15 | 1.10 / 1.07 / 1.14 | .53 to .75 |
+| 1000 | 1.20 / 1.08 / 1.16 | 1.20 / 1.09 / 1.16 | .92 to 1.00 |
+| 5000 | 1.21 / 1.09 / 1.16 | 1.21 / 1.09 / 1.16 | 1.00 |
+| 20000 | 1.21 / 1.09 / 1.17 | 1.21 / 1.08 / 1.16 | 1.00 |
+
+(entrant's profit after probing, rent units; "full" including the probing periods peaks at
+1000 and falls at 20000 because random quoting earns nothing: the budget has a cost, and two
+to ten episodes is the right one.)
+
+* Three incumbents are no harder than two: the reaction table has 1728 cells instead of 1152
+  and the path uses a few more of them, but 1000 random periods still cover 96 to 100% of it.
+  The oracle caveat is closed for frozen cartels of either size.

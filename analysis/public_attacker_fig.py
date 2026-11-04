@@ -41,7 +41,7 @@ def main():
         m = [g[g.probe == p].entrant_norm_post.mean() for p in probes]
         e = [ci(g[g.probe == p].entrant_norm_post) for p in probes]
         ax.bar(x + (k - 1) * w, m, w, color=COL[a], yerr=e, error_kw=dict(ecolor=INK, lw=0.8, capsize=2),
-               label=rf"$\bar\alpha$ = {a} ({g.run.nunique()} cartels)")
+               label=rf"$\bar\alpha$ = {a} ({g.run.nunique()} cartels, N = 2 and 3)")
         ex = g.exact_entrant_norm.mean()
         ax.hlines(ex, x[0] - 0.5, x[-1] + 0.5, color=COL[a], lw=1, ls="--")
         ax.annotate(f"oracle {ex:.2f}", (x[-1] + 0.5, ex), xytext=(2, 0), textcoords="offset points", fontsize=7.5, color=COL[a], va="center")
