@@ -18,7 +18,11 @@ anon / id / oracle (the wallet entrant's regime filter with each information set
 a tabular Q-learner (the incumbents' own algorithm, state = own and best rival quote) trained
 against the defended, frozen incumbents for --n-train episodes and then frozen -- the learned best
 response, which is the adversary that can exploit a reaction function and the one randomisation
-and hysteresis are meant to blunt.
+and hysteresis are meant to blunt.  Two model-based attackers close the list: `dp`, the exact best
+response to the UNDEFENDED cartel's reaction function (it knows the Q-tables but not the defence), and
+`public`, the public-information attacker: it probes the DEFENDED cartel for 1000 periods before the
+evaluation, estimates each reaction-table cell as the answer seen most often (so a randomised
+defence is averaged out), solves the estimate and keeps updating it during the evaluation.
 
 Per (population, defence, adversary): the defenders' profit alone (Pi_nominal), under attack
 (E and the 5% CVaR over episodes of the defenders' per-episode profit), L_BR and kappa_A, the
@@ -45,8 +49,11 @@ from sim import BenchmarkTable, GlostenMilgromEnv, MarketConfig
 from sim.agents import Agent, QConfig, QLearningAgent
 from sim.entrants import CompetitiveEntrant, MarkoutEntrant, UndercutEntrant, WalletEntrant, hC_function
 from experiments.entry import FrozenQ
+from experiments.best_response import CartelMDP, DPEntrant
+from experiments.public_attacker_relearn import WindowedIdentifyingEntrant
 
-ADVERSARIES = ("competitive", "undercut", "markout", "anon", "id", "oracle", "learned")
+ADVERSARIES = ("competitive", "undercut", "markout", "anon", "id", "oracle", "learned", "dp", "public")
+PUBLIC_PROBE = 1000          # probing periods of the public-information attacker (before the evaluation)
 DEFENCES = ("none", "random:0.1", "random:0.3", "hold:2", "hold:5", "floor:anon", "floor:id")
 HET = dict(n_wallets=50, wallet_concentration=1.0, wallet_persistence=0.0, regime_persistence=0.9, mark_lag=5)
 
@@ -109,6 +116,22 @@ def train_learned(env_factory, inc_factory, K, N, n_train, seed):
             ent.update(obs, actions[N], float(r[N]), obs_n, done)
             obs = obs_n
     ent.set_eval(True)
+    return ent
+
+
+def warm_public(env_factory, inc_factory, N, hC, cfg, seed):
+    """The public-information attacker after PUBLIC_PROBE probing periods against the defended incumbents."""
+    ent = WindowedIdentifyingEntrant(cfg, N, PUBLIC_PROBE, 500, "competitive", hC, window=10 ** 9, seed=seed)
+    env = env_factory()
+    inc = inc_factory(env)
+    while ent.t_global < PUBLIC_PROBE:
+        obs = env.reset()
+        for ag in inc:
+            ag.reset()
+        ent.reset()
+        done = False
+        while not done:
+            obs, _, done, _ = env.step([ag.act(obs, i) for i, ag in enumerate(inc)] + [ent.act(obs, N)])
     return ent
 
 
@@ -184,6 +207,12 @@ def one_population(args):
             if aname == "learned":
                 adv = train_learned(lambda: GlostenMilgromEnv(MarketConfig(**{**m_entry.__dict__, "seed": 20_000 + seed})),
                                     inc_factory, K, N, n_train, seed=30_000 + seed)
+            elif aname == "public":
+                adv = warm_public(lambda: GlostenMilgromEnv(MarketConfig(**{**m_entry.__dict__, "seed": 20_000 + seed})),
+                                  inc_factory, N, hC, m_entry, seed=30_000 + seed)
+            elif aname == "dp":
+                mdp = CartelMDP(Q, m_entry, m_entry.horizon)
+                adv = DPEntrant(mdp, mdp.solve(1.0)[0])
             else:
                 adv = make_adversary(aname, hC, hC_fn, alpha, m_entry, env)
             r = play(env, inc + [adv], n_episodes, N, E=N)
