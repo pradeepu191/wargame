@@ -212,9 +212,8 @@ def main():
         for k, r in enumerate(ex.map(one_cartel, jobs)):
             rows.extend(r)
             print(f"[{k + 1}/{len(jobs)}] {r[0]['run']}", flush=True)
+            pd.DataFrame(rows).to_csv(args.out, index=False)          # incremental: a stopped run keeps what finished
     df = pd.DataFrame(rows)
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(args.out, index=False)
     pd.set_option("display.width", 200)
     print("\nentrant's profit, rent units, mean over cartels (rows: attacker; columns: episode block end)")
     print(df.pivot_table(index="attacker", columns="episode", values="entrant_norm").round(2).to_string())

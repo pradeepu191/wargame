@@ -119,7 +119,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
     ap.add_argument("--alpha", type=float, default=0.5)
-    ap.add_argument("--y", default="attack_cvar_norm", choices=["J_attack_norm", "attack_cvar_norm"])
+    ap.add_argument("--y", default="J_attack_norm", choices=["J_attack_norm", "attack_cvar_norm"])
     ap.add_argument("--rho-z", type=float, default=0.9)
     ap.add_argument("--mark-lag", type=int, default=5)
     ap.add_argument("--above", type=int, default=0)

@@ -48,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sim import BenchmarkTable, GlostenMilgromEnv, MarketConfig
 from sim.agents import Agent, QConfig, QLearningAgent
 from sim.entrants import CompetitiveEntrant, MarkoutEntrant, UndercutEntrant, WalletEntrant, hC_function
+from sim.benchmarks import taker_surplus_curve
 from experiments.entry import FrozenQ
 from experiments.best_response import CartelMDP, DPEntrant
 from experiments.public_attacker_relearn import WindowedIdentifyingEntrant
@@ -150,7 +151,8 @@ def play(env, agents, n_episodes, N, E=None):
     half-spread quoted; fill rate; informed share of the defenders' and the adversary's fills."""
     n = env.cfg.n_mm
     pnl = np.zeros(n); fills = np.zeros(n); inf = np.zeros(n); periods = 0
-    ep_inc = []; best_h = 0.0
+    ep_inc = []; best_h = 0.0; surplus = 0.0
+    S = taker_surplus_curve(env.cfg, env.alpha_eff)          # uninformed taker's expected gain from trade, by best quote
     ent = agents[E] if E is not None else None
     for _ in range(n_episodes):
         obs = env.reset()
@@ -159,7 +161,7 @@ def play(env, agents, n_episodes, N, E=None):
         done = False; ep = 0.0
         while not done:
             actions = [ag.act(obs, i) for i, ag in enumerate(agents)]
-            best_h += min(actions)
+            best_h += min(actions); surplus += S[min(actions) - 1]
             obs, r, done, info = env.step(actions)
             pnl += r; periods += 1; ep += float(r[:N].sum())
             f = info["filled"]
@@ -172,7 +174,7 @@ def play(env, agents, n_episodes, N, E=None):
     k = max(1, int(np.ceil(0.05 * len(ep_inc))))
     cvar = float(np.sort(ep_inc)[:k].mean())
     return dict(pnl=pnl / periods, fills=fills, inf=inf, periods=periods, cvar=cvar, ep_sd=float(ep_inc.std()),
-                best_h=best_h / periods, fill_rate=float(fills.sum() / periods))
+                best_h=best_h / periods, fill_rate=float(fills.sum() / periods), taker_surplus=surplus / periods)
 
 
 def one_population(args):
@@ -198,6 +200,7 @@ def one_population(args):
                 "hC": hC, "hM": hM, "PiC": PiC, "PiM": PiM,
                 "Pi_nominal": Pi_nom, "Pi_nominal_norm": Pi_nom / (PiM - PiC), "C": (Pi_nom - PiC) / (PiM - PiC),
                 "nominal_cvar": r0["cvar"], "nominal_best_h": r0["best_h"], "nominal_fill_rate": r0["fill_rate"],
+                "nominal_taker_surplus": r0["taker_surplus"],
                 "nominal_informed_share": float(r0["inf"].sum() / max(r0["fills"].sum(), 1)),
                 "nominal_requotes": float(np.mean([a.changes for a in inc0]) / r0["periods"])}
         for aname in adversaries:
@@ -223,7 +226,7 @@ def one_population(args):
                          "attack_cvar": r["cvar"], "attack_cvar_norm": r["cvar"] / (PiM - PiC), "attack_ep_sd": r["ep_sd"],
                          "adversary_pnl": float(r["pnl"][N]), "adversary_pnl_norm": float(r["pnl"][N]) / (PiM - PiC),
                          "adversary_fill_share": float(r["fills"][N] / max(r["fills"].sum(), 1)),
-                         "attack_best_h": r["best_h"], "attack_fill_rate": r["fill_rate"],
+                         "attack_best_h": r["best_h"], "attack_fill_rate": r["fill_rate"], "attack_taker_surplus": r["taker_surplus"],
                          "defender_informed_share": float(r["inf"][:N].sum() / max(r["fills"][:N].sum(), 1)),
                          "adversary_informed_share": float(r["inf"][N] / max(r["fills"][N], 1))})
     return rows
