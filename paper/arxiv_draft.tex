@@ -123,11 +123,21 @@ oracle (true tables) & 1.21 / 1.09 / 1.17 & 1.20 / 1.08 / 1.16 & 1 \\
 \caption{The public-information attacker against the probing budget.}\label{fig:public}
 \end{figure}
 
-%%NEW-RELEARN%%
+\paragraph{A cartel that keeps learning.}\prelim{} A frozen cartel is the easy case for identification. We let the cartel resume Q-learning under attack for 3000 episodes, with fresh exploration, and compare four entrants (Figure~\ref{fig:relearn}; first 6 two-maker cartels of an ongoing run). While the cartel learns, an oracle that re-solves from its current Q-tables earns $0.50$--$0.63$ rent units instead of $1.2$, because the exploring cartel quotes tighter and there is less to take; the public-information attacker earns $0.45$--$0.59$, within $0.05$ of the oracle throughout, and $1.14$ against $1.16$ once the cartel stops. The cartel's own profit is at the Nash level for the whole period ($-0.02$ to $+0.03$ rent units above it): learning under attack destroys the rent and does not defend it. Forgetting old observations, the natural design against a drifting target, lowers the attacker's profit by $0.03$--$0.07$: the reaction function drifts slowly enough that an old observation is worth more than none. The only attacker the cartel recovers against is a stale one that never re-solves (the cartel keeps $0.16$--$0.21$).
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{fig_relearn_attack.pdf}
+\caption{Attackers against a cartel that re-learns until the dotted line and is then frozen. Bands: 95\% intervals over cartels.}\label{fig:relearn}
+\end{figure}
 
 \paragraph{Does learning defend the cartel? The double oracle.} The cartel resumes learning against the fixed best response, is frozen again, and the entrant re-solves; this is repeated. In three rounds on 60 cartels, re-learning buys back half of what the now-stale attacker takes (its profit falls from $1.2$ to $0.5$) and nothing against the re-solved one ($\LBR\ge0.9\,C$ in every cartel and round), while the cartel's own rent erodes from $0.83$ to $0.69$.
 
-%%NEW-PSRO%%
+\paragraph{Running the loop long.}\prelim{} Three rounds might be too few for the cartel to find a defence. We run six, in two modes: the cartel re-learns against the latest best response, or against a uniform mixture of every best response found so far (an adversarially trained cartel). On the first cartels of an ongoing run (four and three, $\bar\alpha=0.1$; Figure~\ref{fig:psro}) the loop does not settle anywhere better for the cartel: its loss to the re-solved best response equals its rent plus $0.21$ in every round and both modes, the best response earns $1.18$--$1.19$ every time, and the rent wanders between $0.62$ and $0.86$ without trend. Training against the mixture buys robustness to the attackers trained against (the previous round's attacker falls to $0.38$) and nothing against a new one. The public-information attacker equals the oracle in every round, so the realistic entrant is the one in the loop. Adversarial training makes the cartel neither less exploitable nor reliably less collusive.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{fig_psro.pdf}
+\caption{The double oracle over six rounds, by what the cartel re-learns against, and the path of (rent, loss to the exact best response) by round.}\label{fig:psro}
+\end{figure}
 
 \paragraph{No-regret learners.} The same holds for a different class of learner. A single EXP3 learner over quotes, still learning throughout the attack, finds the monopoly quote alone ($C=0.89$--$0.98$) and is then taken for four to eight times its Stackelberg value by the one-tick undercut rule, losing its whole rent ($1.00$--$1.15$ rent units) at every learning rate: the mean-based learner moves slowly toward tighter quotes and the rule follows one tick inside. This is the ``strictly more than Stackelberg'' case of \cite{dss}, observed.
 
@@ -175,15 +185,25 @@ We use the public order-level archive \cite{albers} and our own recorder of trad
 
 \paragraph{Learned incumbents.} Tabular Q-learning cannot learn to queue: time priority pays only after several consecutive periods in line, which exploration breaks. Incumbents that run a no-regret rule (EXP3) over complete policies (always rest, never rest, select on the anonymous tape), alongside a \emph{fringe} of always-resting makers, learn to select within a few hundred episodes. Identity is then worth more to the entrant ($+0.05$ to $+0.06$ per period at every lag, five of five seeds), and the fringe's payoff falls from about zero to $-0.02$ to $-0.10$: identity-blind resting liquidity is the counterparty of the selection rent, in the model as on the book.
 
-%%NEW-STEER%%
+\paragraph{Steering the queue incumbents.}\prelim{} A no-regret learner can be steered by an opponent that commits to a policy while it learns \cite{dss}, and in the spread mode steering is worth the whole rent. In the queue mode it is worth nothing we can measure. An entrant that always rests while the incumbents learn and switches to identity selection afterwards earns $0.084$ per period against $0.083$ when it was absent during their learning (three seeds, $\rho_z=0.9$). Its presence does change what the incumbents learn (the weight on selecting rises from $0.38$ to $0.68$ when the entrant itself selects), but its own profit moves by $+0.009$, inside the seed noise. The entrant's take in the queue comes from selection against the taker flow, and there is no reaction function to steer.
 
 \paragraph{Venue levers.} \emph{Anonymity.} With a late mark and no identities, incumbents cannot tell a toxic spell in time and keep resting: an uninformed taker is filled 71--75\% of the time in the toxic regime and incumbents earn about zero. With identities they withdraw (fill probability $0.23$--$0.30$; incumbents earn $0.12$--$0.14$) and an identity-blind maker among them earns $-0.13$ to $-0.29$. Anonymity is a transfer from makers to uninformed takers in stress. \emph{Priority fee.} A fee to be served ahead of non-payers turns the queue into an all-pay auction: at the venue's revenue-maximising level it collects two to four times the makers' total rent and leaves every maker at or below zero; a cheap fee doubles the best-informed maker's profit; the fringe pays.
 
-%%NEW-BUDGET%%
+\emph{Request allowance.}\prelim{} Hyperliquid ties the number of orders an address may place to its traded volume. A selector is exactly a maker that cancels and re-places, so we give every maker an allowance of placements per episode, plus one per fill (Figure~\ref{fig:budget}; three seeds). Unconstrained, the identity selector earns $+0.10$ per period more than a maker that simply rests, and the always-resting fringe earns $-0.025$. At an allowance of two placements per hundred periods the selector's edge is $+0.03$; at one it is gone ($-0.015$) and the fringe earns $+0.030$. A tight allowance is the one lever here that removes the selection rent and returns the toxic flow to the makers who were stepping around it. Its cost is depth: selecting makers are locked out of 38--48\% of the periods in which they want to rest. Holding each decision for a minimum time does not help the selector. When regimes are long ($\rho_z=0.99$) selectors rarely change state and the allowance hardly binds.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{fig_queue_budget.pdf}
+\caption{The request allowance: the entrant's profit by policy, its order placements, and the incumbents' profit.}\label{fig:budget}
+\end{figure}
 
 \paragraph{The makers' own levers.} We wrap 20 spread-mode cartels in each of three defences and face them with a set of adversaries. Requoting only every 2--5 periods costs everything against the rule adversaries ($\kappa_A\to1.0$--$1.3$). Randomising the quote costs profit and buys nothing. Never quoting inside the break-even of the identity-based toxicity forecast is the only lever that raises both profit alone and profit under attack by the rule adversaries, and only where the toxic regime bites ($\bar\alpha=0.5$: worst case $0.08\to0.19$).
 
-%%NEW-FRONTIER%%
+\paragraph{One frontier.}\prelim{} Figure~\ref{fig:frontier} places every lever on the same two axes: what the incumbents earn with no attack and what they earn against the worst attacker in our set. In the spread mode the rule adversaries leave a defended cartel part of its rent; the exact best response and the public-information attacker, which estimates a randomised reaction function by the most frequent answer, are being added to this comparison (\texttt{slurm/workshop2.sh}, step 5), and on the first cartel they leave it nothing under every defence tested. In the queue mode the levers move incumbents along the diagonal: what they lose to the worst entrant is what the lever took from everyone.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{fig_frontier.pdf}
+\caption{Profit alone against profit under the worst attacker, for the makers' levers (left, spread mode) and the venue's levers (right, queue mode).}\label{fig:frontier}
+\end{figure}
 
 \section{Discussion and limitations}
 

@@ -1934,3 +1934,64 @@ is the degenerate case: nobody can place an order and there is no market.)
 * No inducement channel: selectors react to the tape, and in this model a maker cannot change
   what prints.  "Draining" another maker's allowance is not possible here; the allowance acts as
   a tax on selection, not as an attack surface.
+
+---
+
+# Both sides learning, Nov 15: the public attacker against a re-learning cartel, and the double oracle run long (`public_attacker_relearn.csv`, `psro.csv`, `fig_relearn_attack.png`, `fig_psro.png`; laptop; INTERIM: the runs were still in progress when this was written, see the cartel counts; full size is `slurm/workshop2.sh` steps 1 and 2)
+
+## The public-information attacker against a cartel that keeps learning (`experiments/public_attacker_relearn.py`; first 6 of 15 two-maker cartels: five at ᾱ = 0.1, one at 0.3)
+
+The cartel resumes Q-learning under attack for 3000 episodes (ε from 0.3, 0.18 → 0.015 over the
+run), then is frozen for 500.  Entrant's profit, rent units, by block of 500 episodes:
+
+| attacker | 500 | 1000 | 1500 | 2000 | 2500 | 3000 | frozen after |
+|---|---|---|---|---|---|---|---|
+| oracle, re-solves from the current Q-tables | 0.50 | 0.52 | 0.56 | 0.60 | 0.61 | 0.63 | 1.16 |
+| public attacker, keeps every observation | 0.45 | 0.47 | 0.52 | 0.56 | 0.57 | 0.59 | 1.14 |
+| public attacker, window 2000 periods | 0.43 | 0.44 | 0.50 | 0.52 | 0.54 | 0.56 | 1.06 |
+| public attacker, window 20000 periods | 0.42 | 0.40 | 0.45 | 0.48 | 0.50 | 0.52 | 1.08 |
+| exact best response to the original cartel, never re-solved | 0.41 | 0.38 | 0.42 | 0.45 | 0.47 | 0.48 | 0.55 |
+
+Cartel's profit above Nash (rent units) while re-learning: −0.02 to +0.03 against the oracle and
+every public attacker; +0.16 to +0.21 against the stale attacker (alone: C = 0.81 to 0.92).
+
+* **Learning halves the attacker's take and saves none of the rent.**  While the cartel explores
+  and re-learns, the best attacker earns 0.5 to 0.6 instead of 1.2: the cartel quotes tighter
+  (8.3 to 10 ticks against 15.9 when frozen under attack), so there is less to take.  The cartel
+  itself is at the Nash profit throughout.  The rent is destroyed, not defended.
+* **The public attacker tracks the oracle within 0.04 to 0.05 at every stage**, and within 0.02
+  once the cartel stops.  The moving target costs it almost nothing.
+* **Forgetting hurts.**  The windowed estimators (mode of the answers seen in the last 2000 or
+  20000 periods, plus 2% continued probing) earn 0.03 to 0.07 less than keeping the last answer
+  for ever.  The reaction function drifts slowly enough that an old observation is better than
+  none, and continued probing is a direct cost.  The Nov 3 note's proposal (identification with
+  a forgetting window) is answered: not needed.
+* **A stale attacker is the only one the cartel recovers against** (+0.16 to +0.21 of rent kept,
+  attacker stuck at 0.55 after the freeze): the double-oracle result, reproduced inside one run.
+
+## Double oracle run long, two modes (`experiments/psro.py`; 6 rounds of 3000 re-learning episodes; first 4 cartels in mode `last`, 3 in `uniform`, all ᾱ = 0.1)
+
+| round | C, last / uniform | loss to the re-solved best response | best response earns | last round's attacker earns | public attacker earns | undercut rule (held out) |
+|---|---|---|---|---|---|---|
+| 0 | 0.86 / 0.85 | 1.07 / 1.06 | 1.19 / 1.19 | | 1.19 / 1.19 | 0.55 / 0.54 |
+| 1 | 0.72 / 0.73 | 0.93 / 0.94 | 1.19 / 1.19 | 0.55 / 0.57 | 1.18 / 1.18 | 0.44 / 0.43 |
+| 2 | 0.75 / 0.62 | 0.96 / 0.83 | 1.19 / 1.18 | 0.60 / 0.54 | 1.18 / 1.18 | 0.47 / 0.53 |
+| 3 | 0.68 / 0.76 | 0.89 / 0.97 | 1.18 / 1.19 | 0.55 / 0.52 | 1.18 / 1.18 | 0.59 / 0.48 |
+| 4 | 0.79 / 0.77 | 1.00 / 0.98 | 1.19 / 1.18 | 0.65 / 0.44 | 1.19 / 1.18 | 0.47 / 0.48 |
+| 5 | 0.79 / 0.75 | 1.00 / 0.96 | 1.19 / 1.19 | 0.56 / 0.56 | 1.18 / 1.18 | 0.54 / 0.47 |
+| 6 | 0.75 / 0.84 | 0.96 / 1.06 | 1.19 / 1.18 | 0.63 / 0.38 | 1.19 / 1.17 | 0.47 / 0.43 |
+
+(`last`: the cartel re-learns against the most recent best response; `uniform`: against a
+uniform mixture of every best response so far, one per episode.)
+
+* **It does not settle anywhere better for the cartel.**  The loss to the re-solved best
+  response equals the rent plus 0.21 in every round and both modes; the best response earns 1.18
+  to 1.19 every time.  The rent wanders between 0.62 and 0.86 with no trend.
+* **Adversarial training buys robustness only to the attackers trained against.**  Under
+  `uniform` the previous round's attacker falls to 0.38 by round 6 (0.63 under `last`), and the
+  re-solved one is untouched.  The Workshop 2 question (less exploitable, or just less
+  collusive?) has the answer "neither": the path of (C, L_BR) stays on a line parallel to the
+  diagonal.
+* **The public attacker equals the oracle in every round** (1.17 to 1.19): the learned,
+  realistic entrant is the one in the loop.
+* ᾱ = 0.3 and 0.5 cartels are still running.
