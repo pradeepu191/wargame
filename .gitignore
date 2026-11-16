@@ -11,6 +11,9 @@ data/processed/
 data/cache/
 results/*_seed*/
 !results/demo_cartel/
+!results/demo_cartel_a05/
+results/demo/
+.claude/
 results/_configs/
 # LaTeX
 paper/*.aux
