@@ -1937,7 +1937,7 @@ is the degenerate case: nobody can place an order and there is no market.)
 
 ---
 
-# Both sides learning, Nov 15: the public attacker against a re-learning cartel, and the double oracle run long (`public_attacker_relearn.csv`, `psro.csv`, `fig_relearn_attack.png`, `fig_psro.png`; laptop; INTERIM: the runs were still in progress when this was written, see the cartel counts; full size is `slurm/workshop2.sh` steps 1 and 2)
+# Both sides learning, Nov 15: the public attacker against a re-learning cartel, and the double oracle run long (`public_attacker_relearn.csv`, `psro.csv`, `fig_relearn_attack.png`, `fig_psro.png`; laptop, finished Nov 16; full size is `slurm/workshop2.sh` steps 1 and 2)
 
 ## The public-information attacker against a cartel that keeps learning (`experiments/public_attacker_relearn.py`; 15 two-maker cartels, five each at ᾱ = 0.1, 0.3, 0.5; finished Nov 16)
 
@@ -1971,29 +1971,31 @@ attacker (alone: C = 0.72 to 0.98, mean 0.86).  The pattern is the same at each 
 * **A stale attacker is the only one the cartel recovers against** (+0.05 to +0.13 of rent kept,
   attacker stuck at 0.48 after the freeze): the double-oracle result, reproduced inside one run.
   With all 15 cartels the recovery is smaller than in the first six (+0.16 to +0.21).
-## Double oracle run long, two modes (`experiments/psro.py`; 6 rounds of 3000 re-learning episodes; first 4 cartels in mode `last`, 3 in `uniform`, all ᾱ = 0.1)
+## Double oracle run long, two modes (`experiments/psro.py`; 6 rounds of 3000 re-learning episodes; 12 two-maker cartels, four each at ᾱ = 0.1, 0.3, 0.5, both modes; finished Nov 16)
 
 | round | C, last / uniform | loss to the re-solved best response | best response earns | last round's attacker earns | public attacker earns | undercut rule (held out) |
 |---|---|---|---|---|---|---|
-| 0 | 0.86 / 0.85 | 1.07 / 1.06 | 1.19 / 1.19 | | 1.19 / 1.19 | 0.55 / 0.54 |
-| 1 | 0.72 / 0.73 | 0.93 / 0.94 | 1.19 / 1.19 | 0.55 / 0.57 | 1.18 / 1.18 | 0.44 / 0.43 |
-| 2 | 0.75 / 0.62 | 0.96 / 0.83 | 1.19 / 1.18 | 0.60 / 0.54 | 1.18 / 1.18 | 0.47 / 0.53 |
-| 3 | 0.68 / 0.76 | 0.89 / 0.97 | 1.18 / 1.19 | 0.55 / 0.52 | 1.18 / 1.18 | 0.59 / 0.48 |
-| 4 | 0.79 / 0.77 | 1.00 / 0.98 | 1.19 / 1.18 | 0.65 / 0.44 | 1.19 / 1.18 | 0.47 / 0.48 |
-| 5 | 0.79 / 0.75 | 1.00 / 0.96 | 1.19 / 1.19 | 0.56 / 0.56 | 1.18 / 1.18 | 0.54 / 0.47 |
-| 6 | 0.75 / 0.84 | 0.96 / 1.06 | 1.19 / 1.18 | 0.63 / 0.38 | 1.19 / 1.17 | 0.47 / 0.43 |
+| 0 | 0.86 / 0.86 | 1.02 / 1.02 | 1.14 / 1.14 | | 1.14 / 1.14 | 0.53 / 0.53 |
+| 1 | 0.78 / 0.78 | 0.94 / 0.94 | 1.14 / 1.14 | 0.55 / 0.55 | 1.13 / 1.13 | 0.36 / 0.36 |
+| 2 | 0.67 / 0.72 | 0.83 / 0.88 | 1.13 / 1.14 | 0.59 / 0.51 | 1.13 / 1.13 | 0.44 / 0.36 |
+| 3 | 0.73 / 0.72 | 0.89 / 0.88 | 1.14 / 1.14 | 0.53 / 0.57 | 1.13 / 1.14 | 0.43 / 0.38 |
+| 4 | 0.77 / 0.77 | 0.93 / 0.93 | 1.14 / 1.14 | 0.65 / 0.59 | 1.14 / 1.13 | 0.37 / 0.32 |
+| 5 | 0.71 / 0.71 | 0.86 / 0.86 | 1.14 / 1.14 | 0.63 / 0.63 | 1.13 / 1.14 | 0.48 / 0.45 |
+| 6 | 0.73 / 0.68 | 0.88 / 0.84 | 1.14 / 1.14 | 0.68 / 0.64 | 1.14 / 1.13 | 0.50 / 0.40 |
 
 (`last`: the cartel re-learns against the most recent best response; `uniform`: against a
 uniform mixture of every best response so far, one per episode.)
 
 * **It does not settle anywhere better for the cartel.**  The loss to the re-solved best
-  response equals the rent plus 0.21 in every round and both modes; the best response earns 1.18
-  to 1.19 every time.  The rent wanders between 0.62 and 0.86 with no trend.
-* **Adversarial training buys robustness only to the attackers trained against.**  Under
-  `uniform` the previous round's attacker falls to 0.38 by round 6 (0.63 under `last`), and the
-  re-solved one is untouched.  The Workshop 2 question (less exploitable, or just less
-  collusive?) has the answer "neither": the path of (C, L_BR) stays on a line parallel to the
-  diagonal.
-* **The public attacker equals the oracle in every round** (1.17 to 1.19): the learned,
+  response equals the rent plus 0.16 in every round and both modes; the best response earns 1.13
+  to 1.14 every time.  The rent falls from 0.86 to 0.78 in round 1 and then stays between 0.67
+  and 0.78 with no trend.
+* **Re-learning buys robustness only to attackers already seen, and the mixture adds nothing.**
+  The previous round's attacker falls from 1.14 to 0.51–0.68, the same under `last` and
+  `uniform`; the re-solved one is untouched.  (The first ᾱ = 0.1 cartels suggested `uniform`
+  pushed the previous attacker lower, to 0.38; that does not hold on 12 cartels.)  The Workshop 2
+  question (less exploitable, or just less collusive?) has the answer "slightly less collusive,
+  no less exploitable": the path of (C, L_BR) stays on a line parallel to the diagonal.
+* **The public attacker equals the oracle in every round** (1.13 to 1.14): the learned,
   realistic entrant is the one in the loop.
-* ᾱ = 0.3 and 0.5 cartels are still running.
+* The held-out undercut rule earns less after re-learning (0.32 to 0.50 against 0.53).
