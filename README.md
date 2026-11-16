@@ -151,8 +151,12 @@ tests/          pytest (38)
       steering the cartel off its training path; the damage-maximiser imposes 2–3× the rent at no
       cost; re-learning (double oracle, 3 rounds) buys back half of a stale attacker's take and
       nothing against one that re-solves. κ_A ≈ 0.7 was a property of the undercut rules.
-- [ ] The realistic version: a model-based attacker on F^anon that identifies the reaction function
-      from public quotes and solves it; its gap to the exact best response
+- [x] The realistic version: a public-information attacker on F^anon that identifies the reaction
+      function from public quotes and solves it; it reaches the exact best response after ~1000
+      probing periods (60 cartels, N = 2 and 3)
+- [ ] Workshop 2 / preprint plan, item by item: `paper/WORKSHOP2_PLAN.md`
+- [ ] Visual demonstration: trace exporter + browser player with playback-rate control (talk, paper)
+- [ ] Public attacker vs re-learning cartels (forgetting window); PSRO to convergence with a learned entrant
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow
 - [ ] Defences and the profit–resilience frontier (RQ4); preprint by mid-December
