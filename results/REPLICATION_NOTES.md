@@ -1865,3 +1865,72 @@ to ten episodes is the right one.)
 * Three incumbents are no harder than two: the reaction table has 1728 cells instead of 1152
   and the path uses a few more of them, but 1000 random periods still cover 96 to 100% of it.
   The oracle caveat is closed for frozen cartels of either size.
+
+---
+
+# Queue-mode attacks, Nov 15: steering no-regret incumbents, and the request allowance (`queue_steer.csv`, `queue_budget.csv`, `fig_queue_steer.png`, `fig_queue_budget.png`; laptop, 3 seeds, ᾱ = 0.3, break-even spread, L = 5, fringe 2; PRELIMINARY, full grid is `slurm/workshop2.sh` steps 3 and 4)
+
+`experiments/queue_attacks.py`.  Tabular Q-learners cannot learn to queue (above), so "steering
+memory learners in the queue" is not a well-posed attack; the queue incumbents are the EXP3
+learners over {always rest, never rest, anonymous selector}.
+
+## Steering: the entrant commits to a policy while the incumbents learn (800 training episodes), then switches
+
+Entrant's profit per period after the incumbents freeze, ρ_z = 0.9 (rows: what it played during
+their learning; columns: what it plays after):
+
+| trained against | then always | then anon | then id | incumbents end at (always / select) |
+|---|---|---|---|---|
+| entrant absent | 0.026 | 0.032 | 0.083 | .62 / .38 |
+| always | 0.026 | 0.032 | 0.084 | .63 / .37 |
+| anon | 0.016 | 0.032 | 0.092 | .49 / .51 |
+| id | 0.011 | 0.034 | 0.092 | .32 / .68 |
+
+* **Lure-then-switch buys nothing.**  Resting always while the incumbents learn and then
+  selecting on identity earns 0.084 against 0.083 with no entrant during learning (per seed
+  −0.002, +0.001, +0.003).
+* **The entrant's presence does move what the incumbents learn** (weight on the selector .38 →
+  .68 when the entrant selects on identity during their learning: a selecting rival makes
+  always-resting dirtier), but its own profit moves by +0.009 (per seed −0.001, +0.030, 0.000),
+  inside the noise of three seeds.
+* At ρ_z = 0.99 the incumbents become selectors whatever the entrant does (weight 0.99 to 1.00)
+  and every cell of the table is the same to the third decimal.
+* Reading: in the spread game the attacker's take comes from the incumbents' reaction to its
+  quote, so steering is worth the whole rent.  In the queue game its take comes from selection
+  against the taker flow; the incumbents' policy matters only through who else is in line.
+  There is no reaction function to steer.  This is a null result on three seeds, to be confirmed.
+
+## The request allowance as a venue lever
+
+`BudgetQueueEnv`: every maker may place `budget0` orders per episode of 100 periods, +1 per fill;
+joining the queue (and re-joining after a fill) costs one; cancelling is free; a maker with no
+allowance cannot join.  Incumbents: two anonymous selectors + two always-resting fringe makers.
+Entrant's profit per period by its policy, ρ_z = 0.9:
+
+| allowance | always | anon | id | id, min lifetime 5 | id − always (3 seeds) | fringe profit (id entrant) | incumbents blocked |
+|---|---|---|---|---|---|---|---|
+| none | −0.003 | 0.030 | 0.097 | 0.093 | +.105 / +.087 / +.107 | −0.025 | 0 |
+| 8 | 0.001 | 0.029 | 0.098 | 0.094 | +.106 / +.086 / +.098 | −0.026 | .03 |
+| 4 | −0.003 | 0.023 | 0.100 | 0.091 | +.113 / +.077 / +.119 | −0.018 | .20 |
+| 2 | 0.024 | 0.012 | 0.055 | 0.062 | +.001 / +.035 / +.057 | +0.013 | .38 |
+| 1 | 0.043 | 0.008 | 0.028 | 0.028 | −.035 / −.019 / +.009 | +0.030 | .48 |
+
+("blocked": share of periods an incumbent wanted to rest and had no allowance left.  Allowance 0
+is the degenerate case: nobody can place an order and there is no market.)
+
+* **A tight allowance is the first lever that removes the selection rent.**  Selecting means
+  cancelling and re-placing (0.14 to 0.15 placements per period for a selector that is filled
+  about once in ten periods).  At an allowance of 2 the identity selector's edge over simply
+  resting falls from +0.10 to +0.03, and at 1 it is gone (−0.015).
+* **The fringe is the beneficiary**: its profit goes from −0.025 to +0.030.  The allowance moves
+  the toxic flow back from identity-blind resting liquidity to the makers who were stepping
+  around it, the opposite direction to public identities.
+* **The cost is depth**: selectors are locked out 38 to 48% of the periods in which they want
+  to rest, and their profit falls from 0.038 to 0.010.
+* **Hysteresis (hold a decision at least 5 periods) does not help the selector**: +0.007 at
+  allowance 2, 0 at 1, −0.004 unconstrained, all inside the intervals.
+* At ρ_z = 0.99 regimes last long, selectors seldom change state, and the allowance barely binds
+  (blocked ≤ .15; identity entrant 0.088 to 0.094 at every allowance ≥ 1).
+* No inducement channel: selectors react to the tape, and in this model a maker cannot change
+  what prints.  "Draining" another maker's allowance is not possible here; the allowance acts as
+  a tax on selection, not as an attack surface.
