@@ -5,7 +5,7 @@
 | Step of §3 | Status | Where |
 |---|---|---|
 | 1 Visual demonstration | **Done** | `experiments/trace.py`, `demo/index.html`, `analysis/trace_video.py`, `tests/test_trace.py` |
-| 2 Public attacker vs re-learning cartels | **Interim** (6 of 15 two-maker cartels; laptop run in progress) | `experiments/public_attacker_relearn.py`, `fig_relearn_attack` |
+| 2 Public attacker vs re-learning cartels | **Done at laptop size** (15 two-maker cartels; full size is on the cluster script) | `experiments/public_attacker_relearn.py`, `fig_relearn_attack` |
 | 3 Scripted grids on the cluster | **Not submitted** (no cluster login on the laptop). The queue identity and fee grids were already in the repo at 5 seeds. | `sbatch slurm/workshop2.sh` |
 | 4 Double oracle to convergence | **Interim** (10 of 24 runs, six rounds) | `experiments/psro.py`, `fig_psro` |
 | 5 Queue-mode attacks | **Preliminary** (3 seeds): steering is a null; the request allowance removes the selection rent | `experiments/queue_attacks.py`, `fig_queue_steer`, `fig_queue_budget` |

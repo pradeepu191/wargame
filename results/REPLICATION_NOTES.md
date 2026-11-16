@@ -1939,36 +1939,38 @@ is the degenerate case: nobody can place an order and there is no market.)
 
 # Both sides learning, Nov 15: the public attacker against a re-learning cartel, and the double oracle run long (`public_attacker_relearn.csv`, `psro.csv`, `fig_relearn_attack.png`, `fig_psro.png`; laptop; INTERIM: the runs were still in progress when this was written, see the cartel counts; full size is `slurm/workshop2.sh` steps 1 and 2)
 
-## The public-information attacker against a cartel that keeps learning (`experiments/public_attacker_relearn.py`; first 6 of 15 two-maker cartels: five at ᾱ = 0.1, one at 0.3)
+## The public-information attacker against a cartel that keeps learning (`experiments/public_attacker_relearn.py`; 15 two-maker cartels, five each at ᾱ = 0.1, 0.3, 0.5; finished Nov 16)
 
 The cartel resumes Q-learning under attack for 3000 episodes (ε from 0.3, 0.18 → 0.015 over the
 run), then is frozen for 500.  Entrant's profit, rent units, by block of 500 episodes:
 
 | attacker | 500 | 1000 | 1500 | 2000 | 2500 | 3000 | frozen after |
 |---|---|---|---|---|---|---|---|
-| oracle, re-solves from the current Q-tables | 0.50 | 0.52 | 0.56 | 0.60 | 0.61 | 0.63 | 1.16 |
-| public attacker, keeps every observation | 0.45 | 0.47 | 0.52 | 0.56 | 0.57 | 0.59 | 1.14 |
-| public attacker, window 2000 periods | 0.43 | 0.44 | 0.50 | 0.52 | 0.54 | 0.56 | 1.06 |
-| public attacker, window 20000 periods | 0.42 | 0.40 | 0.45 | 0.48 | 0.50 | 0.52 | 1.08 |
-| exact best response to the original cartel, never re-solved | 0.41 | 0.38 | 0.42 | 0.45 | 0.47 | 0.48 | 0.55 |
+| oracle, re-solves from the current Q-tables | 0.45 | 0.48 | 0.54 | 0.60 | 0.61 | 0.64 | 1.13 |
+| public attacker, keeps every observation | 0.40 | 0.44 | 0.50 | 0.56 | 0.58 | 0.60 | 1.12 |
+| public attacker, window 2000 periods | 0.39 | 0.42 | 0.47 | 0.52 | 0.55 | 0.57 | 1.04 |
+| public attacker, window 20000 periods | 0.39 | 0.40 | 0.45 | 0.50 | 0.53 | 0.55 | 1.07 |
+| exact best response to the original cartel, never re-solved | 0.39 | 0.38 | 0.41 | 0.46 | 0.47 | 0.49 | 0.48 |
 
-Cartel's profit above Nash (rent units) while re-learning: −0.02 to +0.03 against the oracle and
-every public attacker; +0.16 to +0.21 against the stale attacker (alone: C = 0.81 to 0.92).
+Cartel's profit above Nash (rent units) while re-learning: −0.09 to −0.03 against the oracle,
+−0.08 to −0.01 against the public attacker, −0.15 once frozen; +0.05 to +0.13 against the stale
+attacker (alone: C = 0.72 to 0.98, mean 0.86).  The pattern is the same at each ᾱ.
 
 * **Learning halves the attacker's take and saves none of the rent.**  While the cartel explores
-  and re-learns, the best attacker earns 0.5 to 0.6 instead of 1.2: the cartel quotes tighter
-  (8.3 to 10 ticks against 15.9 when frozen under attack), so there is less to take.  The cartel
-  itself is at the Nash profit throughout.  The rent is destroyed, not defended.
-* **The public attacker tracks the oracle within 0.04 to 0.05 at every stage**, and within 0.02
+  and re-learns, the best attacker earns 0.45 to 0.64 instead of 1.13: the cartel quotes tighter
+  (9.8 to 12 ticks against 17 when frozen under attack), so there is less to take.  The cartel
+  itself is at or slightly below the Nash profit throughout.  The rent is destroyed, not defended.
+* **The public attacker tracks the oracle within 0.04 to 0.05 at every stage**, and within 0.01
   once the cartel stops.  The moving target costs it almost nothing.
 * **Forgetting hurts.**  The windowed estimators (mode of the answers seen in the last 2000 or
-  20000 periods, plus 2% continued probing) earn 0.03 to 0.07 less than keeping the last answer
-  for ever.  The reaction function drifts slowly enough that an old observation is better than
-  none, and continued probing is a direct cost.  The Nov 3 note's proposal (identification with
-  a forgetting window) is answered: not needed.
-* **A stale attacker is the only one the cartel recovers against** (+0.16 to +0.21 of rent kept,
-  attacker stuck at 0.55 after the freeze): the double-oracle result, reproduced inside one run.
-
+  20000 periods, plus 2% continued probing) earn 0.01 to 0.06 less than keeping the last answer
+  for ever while the cartel learns, and 0.05 to 0.08 less once it stops.  The reaction function
+  drifts slowly enough that an old observation is better than none, and continued probing is a
+  direct cost.  The Nov 3 note's proposal (identification with a forgetting window) is answered:
+  not needed.
+* **A stale attacker is the only one the cartel recovers against** (+0.05 to +0.13 of rent kept,
+  attacker stuck at 0.48 after the freeze): the double-oracle result, reproduced inside one run.
+  With all 15 cartels the recovery is smaller than in the first six (+0.16 to +0.21).
 ## Double oracle run long, two modes (`experiments/psro.py`; 6 rounds of 3000 re-learning episodes; first 4 cartels in mode `last`, 3 in `uniform`, all ᾱ = 0.1)
 
 | round | C, last / uniform | loss to the re-solved best response | best response earns | last round's attacker earns | public attacker earns | undercut rule (held out) |
