@@ -1,0 +1,203 @@
+\documentclass[aspectratio=169,9pt]{beamer}
+% Build the slides:        pdflatex slides_workshop2.tex
+% Build slides + notes:    pdflatex -jobname=slides_workshop2_notes "\def\shownotes{1}\input{slides_workshop2.tex}"
+\usetheme[progressbar=frametitle,numbering=fraction,block=fill,sectionpage=none]{metropolis}
+\usepackage[T1]{fontenc}
+\usepackage{helvet}\renewcommand{\familydefault}{\sfdefault}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit}
+\tikzset{pl/.style={draw=#1,fill=#1!12,rounded corners=3pt,text width=3.5cm,align=left,inner sep=7pt}}
+\usepackage{graphicx}
+\usepackage[skins]{tcolorbox}
+\ifdefined\shownotes
+  \usepackage{pgfpages}
+  \setbeameroption{show notes on second screen=right}
+  \setbeamertemplate{note page}[plain]
+  \setbeamerfont{note page}{size=\small}
+\fi
+\graphicspath{{../results/}{../results/live_2026_10/}}
+\definecolor{ink}{HTML}{0b0b0b}
+\definecolor{muted}{HTML}{52514e}
+\definecolor{navy}{HTML}{0d366b}
+\definecolor{blue}{HTML}{2a78d6}
+\definecolor{paleblue}{HTML}{eaf2fc}
+\definecolor{orange}{HTML}{eb6834}
+\definecolor{paleorange}{HTML}{fdf0e9}
+\definecolor{aqua}{HTML}{1baf7a}
+\definecolor{red}{HTML}{e34948}
+\definecolor{grey}{HTML}{9a9890}
+\definecolor{paper}{HTML}{fcfcfb}
+\setbeamercolor{normal text}{fg=ink,bg=paper}
+\setbeamercolor{frametitle}{bg=navy,fg=white}
+\setbeamercolor{progress bar}{fg=orange,bg=navy!25}
+\setbeamercolor{alerted text}{fg=orange}
+\setbeamercolor{block title}{bg=paleblue,fg=navy}
+\setbeamercolor{block body}{bg=paleblue,fg=ink}
+\setbeamercolor{itemize item}{fg=blue}
+\setbeamercolor{enumerate item}{fg=blue}
+\setbeamercolor{title separator}{fg=orange}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamerfont{caption}{size=\scriptsize}
+\setbeamertemplate{caption}{\insertcaption}
+\setbeamertemplate{itemize items}{\textcolor{blue}{$\blacktriangleright$}}
+\setlength{\leftmargini}{1.1em}
+\newcommand{\Fanon}{\mathcal{F}^{\mathrm{anon}}}
+\newcommand{\Fid}{\mathcal{F}^{\mathrm{id}}}
+\newcommand{\For}{\mathcal{F}^{\mathrm{oracle}}}
+\newcommand{\LBR}{L_{\mathrm{BR}}}
+\newcommand{\takeaway}[1]{\vspace{3pt}\begin{tcolorbox}[enhanced,colback=paleorange,colframe=paleorange,borderline west={2.5pt}{0pt}{orange},boxrule=0pt,arc=1.5pt,left=6pt,right=6pt,top=3pt,bottom=3pt]\small\textbf{#1}\end{tcolorbox}}
+\newcommand{\rqbox}[3]{\begin{tcolorbox}[enhanced,colback=paleblue,colframe=paleblue,borderline north={2.5pt}{0pt}{#1},boxrule=0pt,arc=1.5pt,left=6pt,right=6pt,top=5pt,bottom=5pt,height=2.6cm,valign=top]\raggedright\textcolor{#1}{\textbf{#2}}\par\vspace{3pt}\small #3\end{tcolorbox}}
+\newcommand{\stat}[3]{\begin{tcolorbox}[enhanced,colback=paleblue,colframe=paleblue,borderline north={2.5pt}{0pt}{#1},boxrule=0pt,arc=1.5pt,left=5pt,right=5pt,top=4pt,bottom=4pt]\centering{\LARGE\textbf{\textcolor{#1}{#2}}}\par\vspace{2pt}{\footnotesize #3}\end{tcolorbox}}
+\newcommand{\partlabel}[1]{\vspace{-10pt}\par\noindent\hfill{\scriptsize\textcolor{muted}{\textsc{#1}}}\par\vspace{-4pt}}
+\newcommand{\subline}[1]{\par\vspace{3pt}{\small #1}\par}
+
+\title{\huge Can learning market makers defend their profits?}
+\subtitle{What an attacker needs, what learning buys, and which exchange rules move the losses\\ {\small\textcolor{white!70!navy}{Rent or toxicity: strategic exploitability of learning market makers with public wallet information}}}
+\author{Deepu Pradeep \quad Miguel Betran Menz}
+\institute{6.S974 Games, Learning, and Security, Workshop 2 (draft)\\ Example 4: an algorithmic market with adaptive agents}
+\date{November 2026}
+
+\begin{document}
+{\setbeamercolor{background canvas}{bg=navy}\setbeamercolor{normal text}{fg=white}\setbeamercolor{title}{fg=white}\setbeamercolor{subtitle}{fg=white!85!navy}\setbeamercolor{author}{fg=white}\setbeamercolor{institute}{fg=white!80!navy}\setbeamercolor{date}{fg=white!80!navy}\usebeamercolor[fg]{normal text}
+\maketitle}
+
+\begin{frame}{The words we use today}
+\partlabel{Recap: definitions}
+\small
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\begin{itemize}\setlength{\itemsep}{4pt}
+\item \textbf{Maker}: posts standing offers to buy and sell. \textbf{Taker}: accepts one.
+\item \textbf{Half-spread} $h$: how far a maker's prices sit from the mid, in \textbf{ticks} (smallest price step).
+\item \textbf{Informed taker}: trades only when the maker loses. \textbf{Toxicity}: the informed share of the flow.
+\item \textbf{Nash quote} $h^C$: break-even. \textbf{Monopoly quote} $h^M$: what a single maker would choose.
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{itemize}\setlength{\itemsep}{4pt}
+\item \textbf{Cartel}: learning makers that settle above Nash without communicating. \textbf{Rent}: their profit above Nash.
+\item \textbf{Reaction function}: how the cartel answers last period's quotes.
+\item \textbf{Entrant}: the attacker, one more maker. \textbf{Rent units}: profit divided by (monopoly $-$ Nash).
+\item \textbf{Period}: one taker arriving.
+\end{itemize}
+\end{column}
+\end{columns}
+\takeaway{Workshop 1: the rent exists, and an attacker who knows the reaction function takes all of it.}
+\note{One slide to recall the vocabulary. Every word on later slides is defined here.}
+\end{frame}
+
+\begin{frame}{What Workshop 2 set out to answer}
+\partlabel{The plan the feedback endorsed}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\rqbox{orange}{1~~Public information}{Can the attacker learn the reaction function from the public book alone?}\end{column}
+\begin{column}{0.5\textwidth}\rqbox{blue}{2~~Both sides learning}{If the cartel keeps learning, does it defend its rent?}\end{column}
+\end{columns}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}\rqbox{aqua}{3~~One-tick books}{When the spread cannot move, what can an attacker do?}\end{column}
+\begin{column}{0.5\textwidth}\rqbox{navy}{4~~Defences}{Which maker and exchange rules hold up against the worst attacker?}\end{column}
+\end{columns}
+\note{The four items of our Workshop 1 plan, in the order of the talk.}
+\end{frame}
+
+\begin{frame}{Live: the model, period by period}
+\partlabel{Demonstration}
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}\small
+\texttt{demo/index.html} replays recorded runs of the real simulator.
+\begin{itemize}\setlength{\itemsep}{3pt}
+\item makers' quotes against the Nash and monopoly quotes
+\item each taker's order, coloured after the fact
+\item the hidden toxic regime and the entrant's belief
+\item the public tape, with outcomes arriving late
+\item running profit per maker
+\end{itemize}
+Controls: play, step, seek, \textbf{playback rate} 1--200 periods per second, two runs side by side.
+\end{column}
+\begin{column}{0.45\textwidth}\small
+\textbf{Show, in this order}
+\begin{enumerate}\setlength{\itemsep}{3pt}
+\item The cartel alone (slow: 5 periods/s)
+\item The exact best response (step through the first 10 periods)
+\item The public attacker: probing, then exploiting
+\item Anonymous against identity entrant, side by side
+\end{enumerate}
+\end{column}
+\end{columns}
+\takeaway{The replay holds no model logic: a test pins it to the experiment code.}
+\note{Switch to the browser. Backup if there is no browser: the GIFs in results/demo.}
+\end{frame}
+
+\begin{frame}{Result 1: the attack needs only the public book}
+\partlabel{Item 1, final: 60 cartels}
+\begin{columns}[c]
+\begin{column}{0.58\textwidth}\centering\includegraphics[width=\textwidth]{fig_public_attacker.pdf}\end{column}
+\begin{column}{0.42\textwidth}\small
+\stat{orange}{1000 periods}{of random quotes are enough to match the attacker who knows the cartel's tables}
+\vspace{4pt}
+Two episodes already take the rent. Three incumbents are no harder than two.
+\end{column}
+\end{columns}
+\takeaway{A learned reaction function on a public book is identifiable, and what is identifiable is solvable.}
+\note{Every answer of the cartel is on the book next to the state it answered. The attacker fills in the table and solves it.}
+\end{frame}
+
+\begin{frame}{Result 2: a cartel that keeps learning destroys its rent, and keeps none of it}
+\partlabel{Item 2, interim: 6 of 15 cartels}
+\centering\includegraphics[width=0.95\textwidth]{fig_relearn_attack.pdf}
+\takeaway{Learning halves the attacker's take. The cartel sits at the Nash profit throughout. Forgetting old observations makes the attacker worse.}
+\note{Left: attacker's profit. Middle: the cartel's profit above Nash, zero against any attacker that re-solves. Right: how much of the moving reaction table the attacker knows.}
+\end{frame}
+
+\begin{frame}{Result 3: repeated adversarial training does not help either}
+\partlabel{Item 2, interim: 10 of 24 runs}
+\centering\includegraphics[width=0.95\textwidth]{fig_psro.pdf}
+\takeaway{After six rounds the loss to a fresh best response is still the whole rent. Training against past attackers protects only against past attackers.}
+\note{Two modes: re-learn against the last attacker, or against all of them. Neither less exploitable nor reliably less collusive.}
+\end{frame}
+
+\begin{frame}{Result 4: on a one-tick book there is nothing to steer}
+\partlabel{Item 3, preliminary: 3 seeds}
+\centering\includegraphics[width=0.78\textwidth]{fig_queue_steer.pdf}
+\takeaway{The attacker changes what the incumbents learn, not what it earns. Its profit comes from choosing takers, not from the incumbents' reaction.}
+\note{Queue game: the spread is pinned, makers rest or step out. Lure-then-switch earns 0.084 against 0.083.}
+\end{frame}
+
+\begin{frame}{Result 5: a tight request allowance removes the selection rent}
+\partlabel{Items 3 and 4, preliminary: 3 seeds}
+\centering\includegraphics[width=0.9\textwidth]{fig_queue_budget.pdf}
+\takeaway{Selecting fills means cancelling and re-placing. Cap that, and the losses move back from identity-blind liquidity to the selectors. The cost is depth.}
+\note{Request allowance: the exchange's cap on order placements, earned back by trading. Top row: short toxic spells. Bottom: long spells, where it barely binds.}
+\end{frame}
+
+\begin{frame}{Result 6: every lever on one frontier}
+\partlabel{Item 4, strong attackers being added}
+\centering\includegraphics[width=0.95\textwidth]{fig_frontier.pdf}
+\takeaway{No lever protects the rent. The levers decide who holds the toxic flow.}
+\note{Each point: profit with no attack against profit under the worst attacker. Up and right is better.}
+\end{frame}
+
+\begin{frame}{The same mechanism on Hyperliquid, four weeks}
+\partlabel{Data, final for Oct 6 -- Nov 1}
+\centering\includegraphics[width=0.9\textwidth]{fig_longwindow.pdf}
+\takeaway{The makers who earn take 2 to 3.6 times fewer fills from previously toxic wallets: 33 of 35 coin-days, labels valid for ten days.}
+\note{Fourteen times the Workshop 1 sample. In the Oct 29 stress episode one identity-blind wallet absorbed the toxic flow.}
+\end{frame}
+
+\begin{frame}{If you remember three things}
+\partlabel{Summary and next steps}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Memory is the attack surface}{What lets learners hold a rent is a reaction function, and it is public.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Learning is not a defence}{Re-learning and adversarial training destroy the rent or leave it exposed.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~Rules move the losses}{Identity, priority and the request allowance decide who holds the toxic flow.}\end{column}
+\end{columns}
+\vspace{8pt}
+\small\textbf{Next:} full-size runs on the cluster; customer outcomes under each rule; preprint in mid-December.\\[3pt]
+\centering\texttt{github.com/pradeepu191/wargame}
+\note{Close. Interim numbers are from laptop runs and will be replaced.}
+\end{frame}
+\end{document}

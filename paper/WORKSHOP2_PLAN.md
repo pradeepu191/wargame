@@ -1,5 +1,30 @@
 # Workshop 2 and the preprint: feedback, status, next steps (Nov 15 2026)
 
+## 0. Status on Nov 16 (what was done after this plan was written)
+
+| Step of §3 | Status | Where |
+|---|---|---|
+| 1 Visual demonstration | **Done** | `experiments/trace.py`, `demo/index.html`, `analysis/trace_video.py`, `tests/test_trace.py` |
+| 2 Public attacker vs re-learning cartels | **Interim** (6 of 15 two-maker cartels; laptop run in progress) | `experiments/public_attacker_relearn.py`, `fig_relearn_attack` |
+| 3 Scripted grids on the cluster | **Not submitted** (no cluster login on the laptop). The queue identity and fee grids were already in the repo at 5 seeds. | `sbatch slurm/workshop2.sh` |
+| 4 Double oracle to convergence | **Interim** (10 of 24 runs, six rounds) | `experiments/psro.py`, `fig_psro` |
+| 5 Queue-mode attacks | **Preliminary** (3 seeds): steering is a null; the request allowance removes the selection rent | `experiments/queue_attacks.py`, `fig_queue_steer`, `fig_queue_budget` |
+| 6 Data: full recording, December archive | Full-recording analysis was already in the repo (Nov 2). **December archive not started**: raw data is not on the laptop. | `slurm/data_pipeline.sh` |
+| 7 One frontier figure | **Draft** from existing results; strong attackers (exact best response, public attacker) coded into `experiments/defences.py`, run pending | `analysis/frontier_fig.py`, `fig_frontier` |
+| 8 Workshop 2 report and talk | **Drafts** with interim numbers | `paper/deliverable3.tex`, `paper/slides_workshop2.tex` |
+| 9 Reproducibility pass, arXiv draft | **Draft** (17 pages); `make figures` added. Licence, citation file and Zenodo archive need the authors' decision. | `paper/arxiv_draft.tex` |
+
+Findings are logged in `results/REPLICATION_NOTES.md` (two sections dated Nov 15). Two things in
+this plan turned out differently: "steering memory learners in the queue" (step 5a) is not
+well-posed, because tabular Q-learners cannot learn to queue, so the steering experiment targets
+the no-regret incumbents; and "identification with a forgetting window" (step 2) was tested and
+makes the attacker worse.
+
+Not yet covered, and promised on the Workshop 1 slides: the customer-outcome comparison (taker
+surplus and fringe profit under each venue rule, with loss-making participants allowed to leave)
+and delayed wallet disclosure as a rule. The taker-surplus measure exists
+(`sim.benchmarks.taker_surplus_curve`) and is recorded by the defence grid.
+
 ## 1. Feedback on Deliverable 2 (Workshop 1 report and prototype)
 
 > 60/60. Very good report. I appreciate the definition of the technical jargon. You have done a
