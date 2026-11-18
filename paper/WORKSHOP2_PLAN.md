@@ -1,5 +1,88 @@
 # Workshop 2 and the preprint: feedback, status, next steps (Nov 15 2026)
 
+## READ THIS FIRST (Nov 18): what this branch is, and what you need to do
+
+### Which branch is this?
+
+You are reading `workshop2-lecture15` (pull request #2). There are two branches:
+
+| | `workshop2-next-steps` (PR #1) | `workshop2-lecture15` (PR #2, this one) |
+|---|---|---|
+| History | the base | every commit of PR #1 **plus four more**; no file deleted |
+| Code, experiments, results, figures, tests | everything up to Nov 16 | the same, plus the planning view, the ordinary trader, 7 more tests (79) |
+| arXiv draft | 17 pages | the same text plus a planning paragraph, "The ordinary trader" section and an ethics paragraph (20 pages) |
+| Workshop 2 report and slides | the full version: seven results (public attacker, re-learning cartel, double oracle, queue steering, request allowance, frontier, data) | **rewritten shorter** in the frame of Lecture 15: myopic vs optimal attacker, public attacker, re-learning cartel, identity as state, the ordinary trader; the queue game, allowance and frontier are on one backup slide |
+| Demo | nine market scenarios | the same, plus the myopic entrant, five "betting savings" runs, and the fix for screens with display scaling |
+
+So PR #2 = PR #1 + more, except that the report and slides of PR #1 were replaced by the shorter
+version on purpose (the supervisor's Lecture 15 showed the level he wants). The fuller wording of
+those two files is still in PR #1 and in git history; all of the underlying work is still here.
+
+**Suggested:** present and submit Workshop 2 from this branch; merge PR #2 into `main` and close PR #1
+(merging #1 first and then #2 also works, with no conflicts).
+
+### Your to-do list, in order
+
+1. **Read the drafts** (all in `paper/`): `deliverable3.pdf` (report, 3 pages), `slides_workshop2.pdf`
+   (13 slides), `arxiv_draft.pdf` (20 pages). Check that you can explain every slide; every term is
+   defined in `paper/glossary.tex` (section G is the Lecture 15 vocabulary). Tell Claude what to change.
+2. **Rehearse the live demo.** Double-click `demo/index.html` (no server or internet needed).
+   Space = play/pause, arrow keys = step, the slider sets the speed. Order used on the slides:
+   1. "The cartel alone" at about 5 periods/s;
+   2. Scenario "Myopic entrant", compare with "Exact best response" (step through ~10 periods: the
+      myopic one drives the cartel down, the optimal one keeps it wide);
+   3. "Attacker with public information only";
+   4. "Betting savings: never updates" next to "myopic Bayesian" (choosing the first fills in the
+      second), then "Real edge: myopic Bayesian" next to "patient Bayesian" (the trap).
+   Backup without a browser: `python analysis/trace_video.py --all` writes GIFs to `results/demo/`.
+3. **Run the full-size experiments on SuperCloud** (Claude cannot log in to the cluster). From a terminal:
+   ```bash
+   ssh <your-username>@txe1-login.mit.edu
+   cd ~/wargame        # first time only: git clone https://github.com/pradeepu191/wargame.git ~/wargame && cd ~/wargame && bash slurm/setup.sh
+   git fetch && git checkout workshop2-lecture15 && git pull
+   ls results | grep -c cfl_exp2_    # the trained cartels; if 0, first: sbatch slurm/sweep.sh experiments/configs/replicate_cfl_exp.yaml --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9
+   sbatch slurm/workshop2.sh         # five experiments, up to 12 hours on one 48-core node
+   squeue -u $USER                   # is it still running?
+   ```
+   When it has finished:
+   ```bash
+   python analysis/workshop2_figs.py
+   git add results/*.csv results/fig_*.png results/fig_*.pdf && git commit -m "Workshop 2 grids at full size" && git push
+   ```
+   Then tell Claude "refresh the numbers": it updates the report, slides and paper from the new CSVs.
+   Step 5 of that script also replaces the strong-attacker defence run that died on the laptop.
+4. **December order-level archive** (whoever has the raw data; it is not on the laptop). Download
+   instructions are in `data/README.md` section B. No analysis script exists yet for the order-status
+   stream; the question for it is in the report (plan item 2): do makers that avoid a wallet return to it
+   when it turns benign? Claude can write the script, but it can only be tested where the data is.
+5. **Decide, with Deepu, before the repository goes public:** a licence (`LICENSE`), a citation file
+   (`CITATION.cff`) and a Zenodo archive with a DOI at submission.
+6. **Send Claude the Workshop 2 report template** if the course published one; the draft copies the
+   Workshop 1 layout.
+7. Optional: install the `microtype` package in MiKTeX (MiKTeX Console > Packages), so the older
+   Workshop 1 report builds on this laptop.
+
+### Running things on the laptop
+
+Nothing is running now. Claude Code sessions and anything they start stop when the laptop sleeps or
+shuts down: keep it on, plugged in and awake, or use the cluster. Useful commands (PowerShell, in the
+project folder, with the project's Python `.\.venv\Scripts\python`):
+
+| What | Command |
+|---|---|
+| all tests (about 2 min) | `.\.venv\Scripts\python -m pytest -q` |
+| every figure from the committed CSVs | `make figures` (or run the scripts in `analysis/` one by one) |
+| re-record the demo | `.\.venv\Scripts\python experiments\trace.py --all` |
+| myopic vs optimal attacker table (needs the locally trained cartels) | `.\.venv\Scripts\python experiments\planning_view.py --simulate 100 --jobs 6` |
+| the ordinary trader (part A needs the local cartels) | `.\.venv\Scripts\python experiments\retail_trader.py` then `analysis\retail_fig.py` |
+| a PDF (run twice, inside `paper\`) | `pdflatex deliverable3.tex` (slow while experiments use the CPU) |
+
+### Where to read more
+
+* What each experiment found, with every number: `results/REPLICATION_NOTES.md` (newest sections at the end).
+* How Lecture 15 maps onto our code: section 00 below.
+* The status of each plan item: section 0 below.
+
 ## 00. Realignment with Lecture 15 (Nov 17, branch `workshop2-lecture15`)
 
 The supervisor's Lecture 15 ("Planning with a Model", Nov 5) shows the form he wants: one small
@@ -35,7 +118,7 @@ steering and request-allowance experiments, the one frontier for all levers, and
 as a headline (it is one sentence in b3). Claims are worded more carefully ("in our runs", "we do not
 claim an equilibrium"), and new planning words are in `paper/glossary.tex` §G.
 
-## 0. Status on Nov 16 (what was done after this plan was written)
+## 0. Status on Nov 18 (what was done after this plan was written)
 
 | Step of §3 | Status | Where |
 |---|---|---|
@@ -45,9 +128,9 @@ claim an equilibrium"), and new planning words are in `paper/glossary.tex` §G.
 | 4 Double oracle to convergence | **Done at laptop size** (12 two-maker cartels, two modes, six rounds; no convergence to a defence) | `experiments/psro.py`, `fig_psro` |
 | 5 Queue-mode attacks | **Preliminary** (3 seeds): steering is a null; the request allowance removes the selection rent | `experiments/queue_attacks.py`, `fig_queue_steer`, `fig_queue_budget` |
 | 6 Data: full recording, December archive | Full-recording analysis was already in the repo (Nov 2). **December archive not started**: raw data is not on the laptop. | `slurm/data_pipeline.sh` |
-| 7 One frontier figure | **Draft** from existing results; strong attackers (exact best response, public attacker) coded into `experiments/defences.py`, run pending | `analysis/frontier_fig.py`, `fig_frontier` |
-| 8 Workshop 2 report and talk | **Drafts** with interim numbers | `paper/deliverable3.tex`, `paper/slides_workshop2.tex` |
-| 9 Reproducibility pass, arXiv draft | **Draft** (17 pages); `make figures` added. Licence, citation file and Zenodo archive need the authors' decision. | `paper/arxiv_draft.tex` |
+| 7 One frontier figure | **Draft** from existing results; strong attackers (exact best response, public attacker) coded into `experiments/defences.py`. The laptop run died; it is step 5 of the cluster script | `analysis/frontier_fig.py`, `fig_frontier` |
+| 8 Workshop 2 report and talk | **Drafts**, final laptop numbers, rewritten in the frame of Lecture 15 (section 00) | `paper/deliverable3.tex`, `paper/slides_workshop2.tex` |
+| 9 Reproducibility pass, arXiv draft | **Draft** (20 pages, with the ordinary trader and an ethics paragraph); `make figures` added. Licence, citation file and Zenodo archive need the authors' decision. | `paper/arxiv_draft.tex` |
 
 Findings are logged in `results/REPLICATION_NOTES.md` (two sections dated Nov 15). Two things in
 this plan turned out differently: "steering memory learners in the queue" (step 5a) is not
