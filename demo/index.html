@@ -163,7 +163,10 @@ class Run {
     this.cv = { book: el.querySelector(".book"), time: el.querySelector(".time"), pnl: el.querySelector(".pnl") };
   }
   ctx(cv) {
-    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = +cv.getAttribute("height");
+    // the CSS height is read once from the markup: setting cv.height below rewrites the attribute
+    // (height x devicePixelRatio), and reading it back would grow the canvas on every frame
+    if (!cv.dataset.h) cv.dataset.h = cv.getAttribute("height");
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = +cv.dataset.h;
     if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + "px";
     }
