@@ -83,10 +83,13 @@ def stackelberg_line(d: pd.DataFrame) -> float:
     from sim import MarketConfig
     from sim.benchmarks import stackelberg_value
     vals = []
+    # run directories are not committed: without one, fall back to the cfl_exp2 market the runs were trained on,
+    # so the figure regenerates from the committed CSVs alone
+    base = yaml.safe_load(open(Path(__file__).resolve().parents[1] / "experiments" / "configs" / "replicate_cfl_exp.yaml"))["market"]
     for run, g in d.groupby("run"):
         cfg_path = Path("results") / run / "config.yaml"
         m = yaml.safe_load(open(cfg_path))["market"] if cfg_path.exists() else {}
-        cfg = MarketConfig(**{**dict(alpha=float(g.alpha.iloc[0]), n_mm=int(g.n_mm.iloc[0])), **m})
+        cfg = MarketConfig(**{**base, **m, "alpha": float(g.alpha.iloc[0]), "n_mm": int(g.n_mm.iloc[0])})
         sv = stackelberg_value(cfg, cfg.alpha, int(g.n_mm.iloc[0]))["strong"]["value"]
         vals.append(sv / (float(g.PiM.iloc[0]) - float(g.PiC.iloc[0])))
     return float(np.mean(vals))

@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wargame replay</title>
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d2126; --muted: #6a7078; --line: #dcdad3; --grid: #ecebe6;
+  --a0: #2f6fb3; --a1: #1f9d8f; --a2: #7a5cc0; --ent: #e0701b;
+  --tox: #c8372d; --calm: #7fb58a; --ok: #3d8b55; --ref: #8a8f97; --accent: #1d2126;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --panel: #1e2125; --ink: #e8e6e1; --muted: #9aa0a8; --line: #33373d; --grid: #272b30;
+    --a0: #6aa6e6; --a1: #4cc9ba; --a2: #a995e6; --ent: #f29a4e;
+    --tox: #ef6a5f; --calm: #4f8f62; --ok: #6fc089; --ref: #7d838b; --accent: #e8e6e1;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --panel: #1e2125; --ink: #e8e6e1; --muted: #9aa0a8; --line: #33373d; --grid: #272b30;
+  --a0: #6aa6e6; --a1: #4cc9ba; --a2: #a995e6; --ent: #f29a4e;
+  --tox: #ef6a5f; --calm: #4f8f62; --ok: #6fc089; --ref: #7d838b; --accent: #e8e6e1;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+header { padding: 18px 16px 6px; max-width: 1500px; margin: 0 auto; }
+h1 { font-size: 20px; margin: 0 0 2px; font-weight: 650; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 90ch; }
+.bar { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bar-in { max-width: 1500px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.bar label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+select, button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 10px; }
+button { cursor: pointer; min-width: 40px; }
+button:hover, select:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); min-width: 76px; font-weight: 600; }
+input[type=range] { accent-color: var(--ent); }
+#rate { width: 150px; }
+#seek { flex: 1 1 220px; min-width: 160px; }
+.num { font-variant-numeric: tabular-nums; }
+.clock { font-size: 13px; color: var(--muted); white-space: nowrap; }
+main { max-width: 1500px; margin: 0 auto; padding: 14px 16px 40px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+main.two { grid-template-columns: 1fr 1fr; }
+@media (max-width: 1000px) { main.two { grid-template-columns: 1fr; } }
+.run { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+.run h2 { font-size: 16px; margin: 0; font-weight: 650; }
+.run .text { color: var(--muted); margin: 2px 0 10px; font-size: 14px; max-width: 95ch; }
+.grid { display: grid; gap: 12px; grid-template-columns: minmax(200px, 250px) minmax(0, 1fr); }
+main.two .grid { grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); }
+@media (max-width: 720px) { .grid, main.two .grid { grid-template-columns: 1fr; } }
+.cap { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 4px; }
+canvas { display: block; width: 100%; }
+.lower { display: grid; gap: 12px; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); margin-top: 12px; }
+@media (max-width: 720px) { .lower { grid-template-columns: 1fr; } }
+main.two .lower { grid-template-columns: 1fr; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 500; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; font-size: 13px; }
+.chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; color: var(--muted); }
+.chip b { color: var(--ink); font-weight: 600; }
+.chip.tox { border-color: var(--tox); color: var(--tox); }
+.chip.tox b { color: var(--tox); }
+.tapewrap { overflow-x: auto; }
+.tape td.loss { color: var(--tox); } .tape td.gain { color: var(--ok); } .tape td.pend { color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 16px; height: 0; border-top: 2px dashed var(--ref); vertical-align: middle; margin-right: 5px; }
+.legend i.d { width: 9px; height: 9px; border: 0; border-radius: 50%; }
+footer { max-width: 1500px; margin: 0 auto; padding: 0 16px 30px; color: var(--muted); font-size: 13px; }
+footer code { font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rent or toxicity? A replay of the market-making wargame</h1>
+  <p>Every frame is a recorded period of the simulator used in the paper. One <b>period</b> is one taker arriving.
+     A <b>tick</b> is the smallest price step; quotes are half-spreads measured in ticks from the mid price.</p>
+</header>
+<div class="bar"><div class="bar-in">
+  <label>Scenario <select id="scen"></select></label>
+  <label>Compare with <select id="cmp"></select></label>
+  <button id="play" class="primary">Play</button>
+  <button id="step" title="One period forward (right arrow)">Step</button>
+  <button id="restart" title="Back to period 0">Restart</button>
+  <label>Playback rate <input id="rate" type="range" min="0" max="100" value="38">
+    <span class="num" id="rateLbl"></span></label>
+  <input id="seek" type="range" min="0" max="1" value="0" aria-label="Position in the run">
+  <span class="clock num" id="clock"></span>
+</div></div>
+<main id="main"></main>
+<footer>
+  Regenerate the recordings with <code>python experiments/trace.py --all</code>. The taker's type (informed or not) is never
+  public in the model; it is shown here only after the fill, to explain what happened. Marks (what a fill turned out to be
+  worth) become public after the mark lag. A replay is one short run and its profits are noisy; the numbers in the paper
+  are averages over many cartels and seeds. In the identity and one-tick scenarios the entrant has already watched the
+  tape for 3000 periods when the replay starts. The "betting savings" runs are the ordinary trader of
+  <code>experiments/retail_trader.py</code>: one bet a day for a year on a one-tick book, all five runs with the same luck;
+  a stylised model, not investment advice.
+</footer>
+<script src="traces.js"></script>
+<script>
+"use strict";
+const T = window.TRACES || {};
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const EVN = ["no trade", "buys", "sells", "no liquidity"];
+
+function colours() {
+  return { ink: css("--ink"), muted: css("--muted"), line: css("--line"), grid: css("--grid"), panel: css("--panel"),
+           a: [css("--a0"), css("--a1"), css("--a2")], ent: css("--ent"), tox: css("--tox"), calm: css("--calm"),
+           ok: css("--ok"), ref: css("--ref") };
+}
+
+/* One replayed run: precomputes running sums so any period can be shown without replaying. */
+class Run {
+  constructor(tr, host) {
+    this.tr = tr; this.m = tr.meta; this.p = tr.p; this.n = this.p.t.length; this.nA = this.m.agents.length;
+    this.queue = this.m.mode === "queue";
+    const n = this.n, A = this.nA;
+    this.cp = Array.from({length: A}, () => new Float64Array(n + 1));   // cumulative profit
+    this.cf = Array.from({length: A}, () => new Int32Array(n + 1));     // cumulative fills
+    this.ci = Array.from({length: A}, () => new Int32Array(n + 1));     // cumulative informed fills
+    this.cx = new Float64Array(n + 1);
+    for (let t = 0; t < n; t++) {
+      for (let a = 0; a < A; a++) {
+        this.cp[a][t + 1] = this.cp[a][t] + this.p.r[t][a];
+        const hit = this.p.f[t] === a ? 1 : 0;
+        this.cf[a][t + 1] = this.cf[a][t] + hit;
+        this.ci[a][t + 1] = this.ci[a][t] + (hit && this.p.inf[t] ? 1 : 0);
+      }
+      this.cx[t + 1] = this.cx[t] + (this.p.x ? this.p.x[t] : 0);
+    }
+    const b = this.m.benchmarks;
+    this.unit = this.queue ? Math.abs(b.fill_value_calm) || 1 : b.rent;
+    this.build(host);
+  }
+  colour(c, a) { return this.m.agents[a].role === "entrant" ? c.ent : c.a[a % 3]; }
+  build(host) {
+    const m = this.m, el = document.createElement("section");
+    el.className = "run";
+    const bookCap = this.queue ? "The queue now (front first)" : "The book now";
+    const timeCap = this.queue ? "Who is resting, and who gets filled" : "Quotes over time (half-spread, ticks)";
+    el.innerHTML = `<h2>${m.title}</h2><p class="text">${m.text}</p>
+      <div class="grid">
+        <div><p class="cap">${bookCap}</p><canvas class="book" height="330"></canvas></div>
+        <div><p class="cap">${timeCap}</p><canvas class="time" height="330"></canvas>
+          <div class="legend">${this.queue ? "" : "<span><i></i>Nash quote and monopoly quote</span>"}
+            <span><i class="d" style="background:var(--tox)"></i>fill by an informed taker</span>
+            <span><i class="d" style="background:var(--ok)"></i>fill by an uninformed taker</span>
+            ${m.config.regime_persistence > 0 ? '<span><i class="d" style="background:var(--tox);border-radius:2px"></i>toxic regime (hidden from the makers)</span>' : ""}
+          </div></div>
+      </div>
+      <div class="chips"></div>
+      <div class="lower">
+        <div><p class="cap">Cumulative profit (${this.queue ? "calm-fill units" : "rent units"})</p><canvas class="pnl" height="190"></canvas>
+          <table class="stats"></table></div>
+        <div><p class="cap">Public tape (most recent first)</p><div class="tapewrap"><table class="tape"></table></div></div>
+      </div>`;
+    host.appendChild(el);
+    this.el = el;
+    this.cv = { book: el.querySelector(".book"), time: el.querySelector(".time"), pnl: el.querySelector(".pnl") };
+  }
+  ctx(cv) {
+    // the CSS height is read once from the markup: setting cv.height below rewrites the attribute
+    // (height x devicePixelRatio), and reading it back would grow the canvas on every frame
+    if (!cv.dataset.h) cv.dataset.h = cv.getAttribute("height");
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = +cv.dataset.h;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + "px";
+    }
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    g.font = '12px "Segoe UI", system-ui, sans-serif'; g.textBaseline = "middle";
+    return [g, w, h];
+  }
+  /* i = number of periods already played (0..n); the "current" period is i-1. */
+  draw(i) {
+    const c = colours();
+    const k = Math.max(0, Math.min(this.n, i)), cur = k - 1;
+    if (this.queue) this.drawQueue(c, cur); else this.drawBook(c, cur);
+    this.drawTime(c, cur); this.drawPnl(c, k); this.drawStats(c, k); this.drawTape(cur); this.drawChips(k);
+  }
+  drawBook(c, cur) {
+    const [g, w, h] = this.ctx(this.cv.book), m = this.m, K = m.K, b = m.benchmarks;
+    const top = 14, bot = h - 14, y = v => top + (bot - top) * (K + 1 - v) / (2 * K + 2);
+    g.strokeStyle = c.grid; g.lineWidth = 1;
+    for (let v = -K; v <= K; v += 4) { g.beginPath(); g.moveTo(34, y(v)); g.lineTo(w - 4, y(v)); g.stroke(); }
+    g.fillStyle = c.muted; g.textAlign = "left";
+    g.fillText("ask", 2, y(K - 1)); g.fillText("bid", 2, y(-K + 1));
+    g.strokeStyle = c.ink; g.beginPath(); g.moveTo(34, y(0)); g.lineTo(w - 4, y(0)); g.stroke();
+    g.fillStyle = c.ink; g.fillText("mid", 2, y(0));
+    g.setLineDash([5, 4]); g.strokeStyle = c.ref; g.fillStyle = c.ref; g.textAlign = "left";
+    for (const [v, lab] of [[b.hC, "Nash"], [b.hM, "monopoly"]]) {
+      for (const s of [1, -1]) { g.beginPath(); g.moveTo(34, y(s * v)); g.lineTo(w - 4, y(s * v)); g.stroke(); }
+      g.fillText(lab, 36, y(v) - 8);
+    }
+    g.setLineDash([]);
+    if (cur < 0) return;
+    const a = this.p.a[cur], best = Math.min(...a), x0 = 92, dx = (w - x0 - 8) / this.nA;
+    for (let j = 0; j < this.nA; j++) {
+      const x = x0 + dx * (j + 0.5), col = this.colour(c, j), isBest = a[j] === best;
+      g.globalAlpha = isBest ? 1 : 0.45;
+      g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y(a[j])); g.lineTo(x, y(-a[j])); g.stroke();
+      g.fillStyle = col;
+      for (const s of [1, -1]) { g.beginPath(); g.roundRect(x - 13, y(s * a[j]) - 6, 26, 12, 6); g.fill(); }
+      g.globalAlpha = 1; g.fillStyle = c.panel; g.textAlign = "center"; g.font = 'bold 11px "Segoe UI", sans-serif';
+      for (const s of [1, -1]) g.fillText(a[j], x, y(s * a[j]) + 0.5);
+      g.font = '12px "Segoe UI", system-ui, sans-serif';
+    }
+    const ev = this.p.ev[cur], f = this.p.f[cur];
+    if (f >= 0) {                                    // the taker's order, coloured by what it turned out to be
+      const s = ev === 1 ? 1 : -1, x = x0 + dx * (f + 0.5), yy = y(s * best), col = this.p.inf[cur] ? c.tox : c.ok;
+      g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 2.5;
+      const tip = yy - s * 9, base = tip - s * 9;     // arrow from outside the quote, pointing at it
+      g.beginPath(); g.moveTo(x, base - s * 16); g.lineTo(x, base); g.stroke();
+      g.beginPath(); g.moveTo(x, tip); g.lineTo(x - 5, base); g.lineTo(x + 5, base); g.closePath(); g.fill();
+      g.textAlign = "center";
+      g.fillText((this.p.inf[cur] ? "informed" : "uninformed") + " taker " + EVN[ev], Math.min(Math.max(x, 80), w - 80), s > 0 ? top - 4 : bot + 6);
+    }
+  }
+  drawQueue(c, cur) {
+    const [g, w, h] = this.ctx(this.cv.book), b = this.m.benchmarks;
+    g.fillStyle = c.muted; g.textAlign = "left";
+    g.fillText("spread fixed at " + b.half_spread + " ticks each side", 4, 12);
+    g.fillText("front of the queue", 4, 38);
+    const sv = cur >= 0 ? this.p.sv[cur] : [], rowH = 40, x = 10, bw = w - 20;
+    for (let s = 0; s < this.nA; s++) {
+      const yy = 52 + s * rowH;
+      g.strokeStyle = c.line; g.lineWidth = 1; g.setLineDash([3, 3]); g.strokeRect(x, yy, bw, rowH - 8); g.setLineDash([]);
+      if (s < sv.length) {
+        const j = sv[s];
+        g.fillStyle = this.colour(c, j); g.beginPath(); g.roundRect(x, yy, bw, rowH - 8, 6); g.fill();
+        g.fillStyle = c.panel; g.textAlign = "left"; g.fillText(this.m.agents[j].name, x + 10, yy + (rowH - 8) / 2);
+        if (cur >= 0 && this.p.f[cur] === j) {
+          g.textAlign = "right"; g.fillText("filled", x + bw - 10, yy + (rowH - 8) / 2);
+        }
+      }
+    }
+    const yo = 52 + this.nA * rowH + 14;
+    g.fillStyle = c.muted; g.textAlign = "left"; g.fillText("stepped out", 4, yo);
+    let k = 0;
+    for (let j = 0; j < this.nA; j++) if (cur >= 0 && !sv.includes(j)) {
+      g.globalAlpha = 0.5; g.fillStyle = this.colour(c, j); g.beginPath(); g.roundRect(x, yo + 12 + k * 30, bw, 24, 6); g.fill();
+      g.globalAlpha = 1; g.fillStyle = c.panel; g.fillText(this.m.agents[j].name, x + 10, yo + 24 + k * 30); k++;
+    }
+    if (cur >= 0 && this.p.f[cur] >= 0) {
+      g.fillStyle = this.p.inf[cur] ? c.tox : c.ok; g.textAlign = "left";
+      g.fillText((this.p.inf[cur] ? "informed" : "uninformed") + " taker " + EVN[this.p.ev[cur]], 4, h - 10);
+    }
+  }
+  drawTime(c, cur) {
+    const [g, w, h] = this.ctx(this.cv.time), m = this.m, p = this.p, K = m.K, W = 120;
+    const hasZ = m.config.regime_persistence > 0, hasB = !!p.b;
+    const L = 30, R = w - 6, top = 10, stripH = hasZ ? (hasB ? 46 : 14) : 0, bot = h - 20 - stripH - (hasZ ? 8 : 0);
+    const end = Math.max(cur, W - 1), start = end - W + 1, x = t => L + (R - L) * (t - start + 0.5) / W;
+    g.strokeStyle = c.grid; g.lineWidth = 1; g.fillStyle = c.muted;
+    for (let t = Math.ceil(start / 20) * 20; t <= end; t += 20) {
+      g.beginPath(); g.moveTo(x(t), top); g.lineTo(x(t), bot); g.stroke();
+      g.textAlign = "center"; g.fillText(t, x(t), h - 8);
+    }
+    g.textAlign = "left"; g.fillText("period", R - 40, h - 8);
+    if (this.queue) {
+      const rowH = (bot - top) / this.nA;
+      for (let j = 0; j < this.nA; j++) {
+        const y0 = top + j * rowH + 6, col = this.colour(c, j);
+        g.fillStyle = c.muted; g.textAlign = "left"; g.fillText(j + 1 === this.nA ? "sel" : "m" + (j + 1), 2, y0 + (rowH - 12) / 2);
+        for (let t = Math.max(0, start); t <= cur; t++) {
+          if (p.a[t][j] >= 1) { g.fillStyle = col; g.globalAlpha = 0.55; g.fillRect(x(t) - (R - L) / W / 2, y0, (R - L) / W + 0.5, rowH - 12); g.globalAlpha = 1; }
+          if (p.f[t] === j) { g.fillStyle = p.inf[t] ? c.tox : c.ok; g.beginPath(); g.arc(x(t), y0 + (rowH - 12) / 2, 3.2, 0, 7); g.fill(); }
+        }
+      }
+    } else {
+      const y = v => bot - (bot - top) * v / (K + 1), b = m.benchmarks;
+      g.fillStyle = c.muted; g.textAlign = "right";
+      for (let v = 0; v <= K; v += 4) {
+        g.strokeStyle = c.grid; g.beginPath(); g.moveTo(L, y(v)); g.lineTo(R, y(v)); g.stroke(); g.fillText(v, L - 5, y(v));
+      }
+      g.setLineDash([5, 4]); g.strokeStyle = c.ref;
+      for (const v of [b.hC, b.hM]) { g.beginPath(); g.moveTo(L, y(v)); g.lineTo(R, y(v)); g.stroke(); }
+      g.setLineDash([]); g.fillStyle = c.ref; g.textAlign = "left";
+      g.fillText("Nash quote", L + 4, y(b.hC) + 9); g.fillText("monopoly quote", L + 4, y(b.hM) + 9);
+      for (let t = Math.max(1, start); t <= cur; t++) if (p.t[t] === 0) {            // episode boundary
+        g.strokeStyle = c.line; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x(t) - (R - L) / W / 2, top); g.lineTo(x(t) - (R - L) / W / 2, bot); g.stroke(); g.setLineDash([]);
+      }
+      for (let j = 0; j < this.nA; j++) {
+        g.strokeStyle = this.colour(c, j); g.lineWidth = m.agents[j].role === "entrant" ? 2.4 : 1.8; g.beginPath();
+        let on = false;
+        for (let t = Math.max(0, start); t <= cur; t++) {
+          const xx = x(t), yy = y(p.a[t][j]) + (j - (this.nA - 1) / 2) * 1.2;
+          if (!on || p.t[t] === 0) { g.moveTo(xx, yy); on = true; } else { g.lineTo(xx, g._py); g.lineTo(xx, yy); }
+          g._py = yy;
+        }
+        g.stroke();
+      }
+      for (let t = Math.max(0, start); t <= cur; t++) if (p.f[t] >= 0) {
+        g.fillStyle = p.inf[t] ? c.tox : c.ok; g.beginPath(); g.arc(x(t), y(Math.min(...p.a[t])), 2.8, 0, 7); g.fill();
+      }
+    }
+    if (hasZ) {
+      const y0 = bot + 8, bw = (R - L) / W;
+      for (let t = Math.max(0, start); t <= cur; t++) {
+        g.fillStyle = p.z[t] === 1 ? c.tox : c.calm; g.globalAlpha = p.z[t] === 1 ? 0.9 : 0.35;
+        g.fillRect(x(t) - bw / 2, y0, bw + 0.5, 12);
+      }
+      g.globalAlpha = 1;
+      if (hasB) {                                    // the entrant's belief that the flow is toxic, 0..1
+        const yb = v => y0 + 44 - 28 * v;
+        g.strokeStyle = c.grid; g.strokeRect(L, yb(1), R - L, 28);
+        g.strokeStyle = c.ent; g.lineWidth = 1.8; g.beginPath(); let on = false;
+        for (let t = Math.max(0, start); t <= cur; t++) if (p.b[t] != null) {
+          if (!on) { g.moveTo(x(t), yb(p.b[t])); on = true; } else g.lineTo(x(t), yb(p.b[t]));
+        }
+        g.stroke();
+        g.fillStyle = c.muted; g.textAlign = "left"; g.fillText("belief", 0, yb(0.5));
+      }
+    }
+  }
+  drawPnl(c, k) {
+    const [g, w, h] = this.ctx(this.cv.pnl), L = 38, R = w - 6, top = 8, bot = h - 18, n = this.n;
+    let lo = 0, hi = 1e-9;
+    for (let a = 0; a < this.nA; a++) for (let t = 0; t <= n; t += 4) {
+      const v = this.cp[a][t] / this.unit; if (v < lo) lo = v; if (v > hi) hi = v;
+    }
+    const x = t => L + (R - L) * t / n, y = v => bot - (bot - top) * (v - lo) / (hi - lo);
+    g.strokeStyle = c.grid; g.fillStyle = c.muted; g.textAlign = "right"; g.lineWidth = 1;
+    const stepV = Math.pow(10, Math.floor(Math.log10(hi - lo))) * ((hi - lo) / Math.pow(10, Math.floor(Math.log10(hi - lo))) > 4 ? 2 : 1);
+    for (let v = Math.ceil(lo / stepV) * stepV; v <= hi; v += stepV) {
+      g.beginPath(); g.moveTo(L, y(v)); g.lineTo(R, y(v)); g.stroke(); g.fillText(Math.round(v * 100) / 100, L - 5, y(v));
+    }
+    g.textAlign = "center"; for (let t = 0; t <= n; t += 100) g.fillText(t, x(t), h - 7);
+    for (let a = 0; a < this.nA; a++) {
+      g.strokeStyle = this.colour(c, a); g.lineWidth = 2; g.beginPath(); g.moveTo(x(0), y(0));
+      for (let t = 1; t <= k; t++) g.lineTo(x(t), y(this.cp[a][t] / this.unit));
+      g.stroke();
+    }
+  }
+  drawStats(c, k) {
+    const q = this.queue, cur = k - 1;
+    let html = `<tr><th>maker</th><th>${q ? "now" : "quote now"}</th><th>profit / period</th><th>share of fills</th><th>fills from informed</th></tr>`;
+    let tot = 0; for (let a = 0; a < this.nA; a++) tot += this.cf[a][k];
+    for (let a = 0; a < this.nA; a++) {
+      const act = cur >= 0 ? this.p.a[cur][a] : null;
+      const now = act == null ? "" : q ? (act === 0 ? "out" : "resting") : act + " ticks";
+      const f = this.cf[a][k];
+      html += `<tr><td><span class="dot" style="background:${this.colour(c, a)}"></span>${this.m.agents[a].name}</td>
+        <td class="num">${now}</td><td class="num">${k ? (this.cp[a][k] / k / this.unit).toFixed(2) : ""}</td>
+        <td class="num">${tot ? Math.round(100 * f / tot) + "%" : ""}</td><td class="num">${f ? Math.round(100 * this.ci[a][k] / f) + "%" : ""}</td></tr>`;
+    }
+    this.el.querySelector(".stats").innerHTML = html;
+  }
+  drawTape(cur) {
+    const p = this.p, m = this.m, lag = m.mark_lag, hasW = m.config.n_wallets > 0;
+    let html = `<tr><th>period</th>${hasW ? "<th>wallet</th>" : ""}<th>taker</th><th>at</th><th>filled</th><th>maker's result</th></tr>`;
+    let rows = 0;
+    for (let t = cur; t >= 0 && rows < 9 && t > cur - 400; t--) {
+      if (p.f[t] < 0) continue;
+      const h = this.queue ? m.benchmarks.half_spread : Math.min(...p.a[t]);
+      const known = cur - t >= lag, r = p.r[t][p.f[t]];
+      const res = known ? `<td class="${r > 0 ? "gain" : "loss"} num">${r > 0 ? "+" : ""}${r.toFixed(2)}</td>`
+                        : `<td class="pend">mark in ${lag - (cur - t)}</td>`;
+      html += `<tr><td class="num">${t}</td>${hasW ? `<td class="num">#${p.w[t]}</td>` : ""}<td>${EVN[p.ev[t]]}</td>
+        <td class="num">${h} ticks</td><td>${m.agents[p.f[t]].name}</td>${res}</tr>`;
+      rows++;
+    }
+    this.el.querySelector(".tape").innerHTML = html;
+  }
+  drawChips(k) {
+    const m = this.m, p = this.p, b = m.benchmarks, cur = k - 1, out = [];
+    if (!this.queue && k) out.push(`<span class="chip" title="0 = Nash, 1 = joint monopoly">market rent index <b class="num">${((this.cx[k] / k - b.PiC) / b.rent).toFixed(2)}</b></span>`);
+    if (cur >= 0 && p.ph && p.ph[cur]) out.push(`<span class="chip">entrant: <b>${p.ph[cur]}</b></span>`);
+    if (cur >= 0 && p.cov) out.push(`<span class="chip">reaction table identified <b class="num">${Math.round(100 * p.cov[cur])}%</b></span>`);
+    if (cur >= 0 && m.config.regime_persistence > 0) out.push(p.z[cur] === 1 ? `<span class="chip tox">regime: <b>toxic</b></span>` : `<span class="chip">regime: <b>calm</b></span>`);
+    if (cur >= 0) out.push(`<span class="chip">episode <b class="num">${p.ep[cur] + 1}</b>, period <b class="num">${p.t[cur] + 1}</b> of ${m.horizon}</span>`);
+    this.el.querySelector(".chips").innerHTML = out.join("");
+  }
+}
+
+/* The ordinary trader (experiments/retail_trader.py): one bet a day on the price's direction, with no
+   information.  Everything shown is in the recording; the player only draws it. */
+class SpecRun {
+  constructor(tr, host) {
+    this.tr = tr; this.m = tr.meta; this.p = tr.p; this.n = this.p.t.length; this.P = this.m.params;
+    this.line = this.m.quitting_line;                       // wrong calls at which she stops, after n bets
+    let lo = 0, hi = this.P.savings * 1.25;
+    for (const v of this.p.w) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    this.wlo = lo; this.whi = hi;
+    this.build(host);
+  }
+  build(host) {
+    const m = this.m, el = document.createElement("section");
+    el.className = "run";
+    el.innerHTML = `<h2>${m.title}</h2><p class="text">${m.text}</p>
+      <div class="grid">
+        <div><p class="cap">Her belief that she is right</p><canvas class="gauge" height="330"></canvas></div>
+        <div><p class="cap">Right and wrong calls, and where she stops (Lecture 15's quitting line)</p><canvas class="plane" height="330"></canvas>
+          <div class="legend"><span><i class="d" style="background:var(--ok)"></i>right call: one step right</span>
+            <span><i class="d" style="background:var(--tox)"></i>wrong call: one step right and one up</span>
+            <span><i class="d" style="background:var(--tox);opacity:.25;border-radius:2px"></i>stop for good</span>
+            <span><i></i>wrong calls if she has no edge</span></div></div>
+      </div>
+      <div class="chips"></div>
+      <div class="lower">
+        <div><p class="cap">Savings set aside (average price moves)</p><canvas class="sav" height="190"></canvas>
+          <table class="stats"></table></div>
+        <div><p class="cap">Her bets (most recent first)</p><div class="tapewrap"><table class="tape"></table></div></div>
+      </div>`;
+    host.appendChild(el);
+    this.el = el;
+    this.cv = { gauge: el.querySelector(".gauge"), plane: el.querySelector(".plane"), sav: el.querySelector(".sav") };
+  }
+  ctx(cv) { return Run.prototype.ctx.call(this, cv); }
+  status(k) {
+    const m = this.m;
+    if (m.ended != null && k > m.ended) return m.ended_why;
+    return k ? "betting" : "about to start";
+  }
+  draw(i) {
+    const c = colours(), k = Math.max(0, Math.min(this.n, i)), cur = k - 1;
+    this.drawGauge(c, cur, k); this.drawPlane(c, cur); this.drawSavings(c, k);
+    this.drawStats(c, cur, k); this.drawTape(cur); this.drawChips(k);
+  }
+  drawGauge(c, cur, k) {
+    const [g, w, h] = this.ctx(this.cv.gauge), P = this.P, p = this.p;
+    const lo = 0.35, hi = 0.75, top = 16, bot = h - 70, y = v => bot - (bot - top) * (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo);
+    const x0 = 40, x1 = w - 8;
+    g.strokeStyle = c.grid; g.fillStyle = c.muted; g.textAlign = "right"; g.lineWidth = 1;
+    for (let v = 0.4; v <= 0.75; v += 0.1) { g.beginPath(); g.moveTo(x0, y(v)); g.lineTo(x1, y(v)); g.stroke(); g.fillText(v.toFixed(1), x0 - 5, y(v)); }
+    const ph = cur >= 0 ? p.ph[cur] : P.prior[0] / (P.prior[0] + P.prior[1]);
+    const bx = x0 + 10, bw = Math.max(18, (x1 - x0) * 0.32);
+    g.fillStyle = c.ent; g.globalAlpha = 0.85; g.beginPath(); g.roundRect(bx, y(ph), bw, bot - y(ph), [4, 4, 0, 0]); g.fill(); g.globalAlpha = 1;
+    g.fillStyle = c.ink; g.textAlign = "center"; g.font = 'bold 12px "Segoe UI", sans-serif'; g.fillText(ph.toFixed(2), bx + bw / 2, y(ph) - 9);
+    g.font = '12px "Segoe UI", system-ui, sans-serif';
+    const rec = cur >= 0 && p.rec ? p.rec[cur] : ph;
+    if (Math.abs(rec - ph) > 1e-9) {                 // she never updates: show what her record says beside her belief
+      g.strokeStyle = c.ink; g.lineWidth = 2; g.beginPath(); g.moveTo(bx - 4, y(rec)); g.lineTo(bx + bw + 4, y(rec)); g.stroke();
+      g.fillStyle = c.ink; g.textAlign = "center"; g.fillText("her record: " + rec.toFixed(2), bx + bw / 2, bot + 6);
+    }
+    g.setLineDash([5, 4]); g.lineWidth = 1.5;
+    g.strokeStyle = c.tox; g.beginPath(); g.moveTo(x0, y(P.hurdle)); g.lineTo(x1, y(P.hurdle)); g.stroke();
+    g.strokeStyle = c.ref; g.beginPath(); g.moveTo(x0, y(P.p_true)); g.lineTo(x1, y(P.p_true)); g.stroke(); g.setLineDash([]);
+    const up = P.p_true >= P.hurdle;                 // keep the two labels on the outer sides of their lines
+    g.textAlign = "left"; g.fillStyle = c.tox; g.fillText("break-even " + P.hurdle.toFixed(2), bx + bw + 6, y(P.hurdle) + (up ? 10 : -8));
+    g.fillStyle = c.muted; g.fillText("truth " + P.p_true.toFixed(2), bx + bw + 6, y(P.p_true) + (up ? -8 : 10));
+    // today, under the gauge
+    g.textAlign = "left"; g.fillStyle = c.muted; let ty = bot + 26;
+    if (cur >= 0 && p.bet[cur]) {
+      const right = p.right[cur] === 1, r = p.r[cur];
+      g.fillStyle = right ? c.ok : c.tox; g.fillText(`day ${cur + 1}: ${right ? "right" : "wrong"} call`, 4, ty);
+      g.fillStyle = c.ink; g.fillText(`price moved ${p.move[cur].toFixed(2)}; result ${r > 0 ? "+" : ""}${r.toFixed(2)}`, 4, ty + 18);
+    } else {
+      g.fillText(cur >= 0 ? `day ${cur + 1}: no bet` : "before the first bet", 4, ty);
+    }
+    const st = this.status(k);
+    g.fillStyle = st === "savings gone" ? c.tox : st === "stopped for good" ? c.ink : c.muted;
+    g.font = 'bold 12px "Segoe UI", sans-serif'; g.fillText(st, 4, ty + 38); g.font = '12px "Segoe UI", system-ui, sans-serif';
+  }
+  drawPlane(c, cur) {
+    const [g, w, h] = this.ctx(this.cv.plane), p = this.p, line = this.line;
+    const nNow = cur >= 0 ? p.n[cur] : 0;
+    const X = [40, 80, 160, 250].find(v => nNow <= v - 6) || 250, Y = Math.ceil(X * 0.62);
+    const L = 34, R = w - 10, top = 10, bot = h - 22;
+    const x = v => L + (R - L) * v / X, y = v => bot - (bot - top) * v / Y;
+    g.strokeStyle = c.grid; g.fillStyle = c.muted; g.lineWidth = 1;
+    const sx = X <= 40 ? 10 : X <= 80 ? 20 : 50, sy = Y <= 25 ? 5 : Y <= 50 ? 10 : 25;
+    g.textAlign = "center";
+    for (let v = 0; v <= X; v += sx) { g.beginPath(); g.moveTo(x(v), top); g.lineTo(x(v), bot); g.stroke(); g.fillText(v, x(v), h - 9); }
+    g.textAlign = "right";
+    for (let v = 0; v <= Y; v += sy) { g.beginPath(); g.moveTo(L, y(v)); g.lineTo(R, y(v)); g.stroke(); g.fillText(v, L - 5, y(v)); }
+    g.textAlign = "right"; g.fillText("bets made", R - 4, bot - 10);
+    g.save(); g.translate(10, (top + bot) / 2); g.rotate(-Math.PI / 2); g.textAlign = "center"; g.fillText("wrong calls", 0, 0); g.restore();
+    if (line) {                                     // the stop region and its edge, the quitting line
+      g.fillStyle = c.tox; g.globalAlpha = 0.13; g.beginPath(); g.moveTo(x(0), y(Y));
+      for (let n = 0; n < X; n++) { const v = Math.min(Y, line[n]); g.lineTo(x(n), y(v)); g.lineTo(x(n + 1), y(v)); }
+      g.lineTo(x(X), y(Y)); g.closePath(); g.fill(); g.globalAlpha = 1;
+      g.strokeStyle = c.tox; g.lineWidth = 2; g.beginPath();
+      for (let n = 0; n < X; n++) { const v = Math.min(Y, line[n]); if (n === 0) g.moveTo(x(0), y(v)); else g.lineTo(x(n), y(v)); g.lineTo(x(n + 1), y(v)); }
+      g.stroke();
+      g.fillStyle = c.tox; g.textAlign = "left"; g.font = 'bold 12px "Segoe UI", sans-serif'; g.fillText("stop for good", L + 10, top + 12); g.font = '12px "Segoe UI", system-ui, sans-serif';
+    } else {
+      g.fillStyle = c.muted; g.textAlign = "left"; g.fillText("never updates: there is no quitting line", L + 8, top + 10);
+    }
+    g.setLineDash([5, 4]); g.strokeStyle = c.ref; g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(x(0), y(0)); g.lineTo(x(X), y(X / 2)); g.stroke(); g.setLineDash([]);
+    // her path: (bets made, wrong calls), one segment per bet, coloured by the call
+    let px = 0, py = 0;
+    for (let t = 0; t <= cur; t++) if (p.bet[t]) {
+      const nx = p.n[t], ny = p.n[t] - p.k[t];
+      if (nx > X) break;
+      g.strokeStyle = p.right[t] ? c.ok : c.tox; g.lineWidth = 2.2;
+      g.beginPath(); g.moveTo(x(px), y(py)); g.lineTo(x(nx), y(ny)); g.stroke();
+      px = nx; py = ny;
+    }
+    g.fillStyle = c.ent; g.strokeStyle = c.panel; g.lineWidth = 2;
+    g.beginPath(); g.arc(x(px), y(py), 6, 0, 7); g.fill(); g.stroke();
+    const st = this.status(cur + 1);
+    if (st !== "betting" && st !== "about to start") {
+      g.fillStyle = c.ink; g.textAlign = px > X * 0.6 ? "right" : "left";
+      g.fillText(`${st} after ${px} bets`, x(px) + (px > X * 0.6 ? -10 : 10), y(py) - 12);
+    }
+  }
+  drawSavings(c, k) {
+    const [g, w, h] = this.ctx(this.cv.sav), p = this.p, n = this.n, S = this.P.savings;
+    const L = 38, R = w - 6, top = 8, bot = h - 18, lo = this.wlo, hi = this.whi;
+    const x = t => L + (R - L) * t / n, y = v => bot - (bot - top) * (v - lo) / (hi - lo);
+    g.strokeStyle = c.grid; g.fillStyle = c.muted; g.textAlign = "right"; g.lineWidth = 1;
+    const step = hi - lo > 60 ? 20 : 10;
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) { g.beginPath(); g.moveTo(L, y(v)); g.lineTo(R, y(v)); g.stroke(); g.fillText(v, L - 5, y(v)); }
+    g.textAlign = "center"; for (let t = 0; t <= n; t += 50) g.fillText(t, x(t), h - 7);
+    g.strokeStyle = c.tox; g.lineWidth = 1.2; g.beginPath(); g.moveTo(L, y(0)); g.lineTo(R, y(0)); g.stroke();
+    g.fillStyle = c.tox; g.textAlign = "left"; g.fillText("savings gone", L + 4, y(0) - 8);
+    g.setLineDash([5, 4]); g.strokeStyle = c.ref; g.beginPath(); g.moveTo(L, y(S)); g.lineTo(R, y(S)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = c.ref; g.fillText("what she set aside", L + 4, y(S) - 8);
+    g.strokeStyle = c.ent; g.lineWidth = 2; g.beginPath(); g.moveTo(x(0), y(S));
+    for (let t = 0; t < k; t++) g.lineTo(x(t + 1), y(p.w[t]));
+    g.stroke();
+  }
+  drawStats(c, cur, k) {
+    const p = this.p, P = this.P, nb = cur >= 0 ? p.n[cur] : 0, kr = cur >= 0 ? p.k[cur] : 0;
+    const wNow = cur >= 0 ? p.w[cur] : P.savings, ph = cur >= 0 ? p.ph[cur] : P.prior[0] / (P.prior[0] + P.prior[1]);
+    const rows = [["bets made", nb], ["right calls", nb ? `${kr} (${Math.round(100 * kr / nb)}%)` : "0"],
+      ["her belief she is right", ph.toFixed(2)], ...(p.rec && cur >= 0 && Math.abs(p.rec[cur] - ph) > 1e-9 ? [["what her record says", p.rec[cur].toFixed(2)]] : []), ["needed to break even", P.hurdle.toFixed(2)],
+      ["savings now", wNow.toFixed(1) + " of " + P.savings], ["result so far", (wNow - P.savings >= 0 ? "+" : "") + (wNow - P.savings).toFixed(1)]];
+    this.el.querySelector(".stats").innerHTML = rows.map(([a, b]) => `<tr><td>${a}</td><td class="num">${b}</td></tr>`).join("");
+  }
+  drawTape(cur) {
+    const p = this.p;
+    let html = "<tr><th>day</th><th>call</th><th>price move</th><th>result</th><th>belief after</th></tr>", rows = 0;
+    for (let t = cur; t >= 0 && rows < 9; t--) {
+      if (!p.bet[t]) continue;
+      const r = p.r[t];
+      html += `<tr><td class="num">${t + 1}</td><td class="${p.right[t] ? "gain" : "loss"}">${p.right[t] ? "right" : "wrong"}</td>
+        <td class="num">${p.move[t].toFixed(2)}</td><td class="${r > 0 ? "gain" : "loss"} num">${r > 0 ? "+" : ""}${r.toFixed(2)}</td>
+        <td class="num">${p.ph[t].toFixed(2)}</td></tr>`;
+      rows++;
+    }
+    this.el.querySelector(".tape").innerHTML = html;
+  }
+  drawChips(k) {
+    const P = this.P, st = this.status(k), out = [];
+    out.push(`<span class="chip">rule: <b>${P.policy}</b></span>`);
+    out.push(`<span class="chip">one-tick book: each bet costs <b class="num">${(P.x / P.mu).toFixed(2)}</b> of an average move</span>`);
+    out.push(`<span class="chip">truth: right <b class="num">${Math.round(100 * P.p_true)}%</b> of the time (she cannot see this)</span>`);
+    out.push(`<span class="chip${st === "savings gone" ? " tox" : ""}">${k ? "day <b class=\"num\">" + k + "</b>: " : ""}<b>${st}</b></span>`);
+    this.el.querySelector(".chips").innerHTML = out.join("");
+  }
+}
+
+/* ---- transport ---- */
+let runs = [], pos = 0, playing = false, last = 0, acc = 0;
+const rateOf = v => Math.round(Math.pow(200, v / 100));          // slider 0..100 -> 1..200 periods per second
+const maxN = () => Math.max(1, ...runs.map(r => r.n));
+function render() {
+  const i = Math.floor(pos);
+  runs.forEach(r => r.draw(i));
+  $("seek").value = i;
+  const m0 = runs[0] ? runs[0].m : {}, ps = m0.period_seconds || 0.6;
+  $("clock").textContent = m0.unit_label ? `${m0.unit_label} ${i} / ${maxN()}`
+                                         : `period ${i} / ${maxN()}  ·  about ${(i * ps).toFixed(0)} s of market time`;
+  $("play").textContent = playing ? "Pause" : (i >= maxN() ? "Replay" : "Play");
+}
+function load() {
+  const host = $("main"); host.innerHTML = ""; runs = [];
+  const names = [$("scen").value, $("cmp").value].filter(s => s && T[s]);
+  host.className = names.length > 1 ? "two" : "";
+  names.forEach(s => runs.push(T[s].meta.mode === "speculator" ? new SpecRun(T[s], host) : new Run(T[s], host)));
+  pos = 0; acc = 0; playing = false; $("seek").max = maxN();
+  try { localStorage.setItem("wg.scen", $("scen").value); localStorage.setItem("wg.cmp", $("cmp").value); } catch (e) {}
+  render();
+}
+function frame(ts) {
+  if (playing) {
+    acc += (ts - last) / 1000 * rateOf(+$("rate").value);
+    const adv = Math.floor(acc); acc -= adv;
+    if (adv) { pos = Math.min(maxN(), pos + adv); if (pos >= maxN()) playing = false; render(); }
+  }
+  last = ts; requestAnimationFrame(frame);
+}
+function toggle() { if (!playing && pos >= maxN()) pos = 0; playing = !playing; acc = 0; render(); }
+function setRate() { $("rateLbl").textContent = rateOf(+$("rate").value) + " periods/s"; }
+
+const PAIRS = { identity_anon: "identity_id", queue_anon: "queue_id", myopic: "best_response",
+                savings_gambler: "savings_myopic", savings_myopic: "savings_patient", savings_edge_myopic: "savings_edge_patient" };
+(function init() {
+  const keys = Object.keys(T);
+  if (!keys.length) { $("main").innerHTML = '<section class="run">No recordings found. Run <code>python experiments/trace.py --all</code> first.</section>'; return; }
+  $("scen").innerHTML = keys.map(k => `<option value="${k}">${T[k].meta.title}</option>`).join("");
+  $("cmp").innerHTML = '<option value="">nothing</option>' + keys.map(k => `<option value="${k}">${T[k].meta.title}</option>`).join("");
+  let s = null, c2 = "";
+  try { s = localStorage.getItem("wg.scen"); c2 = localStorage.getItem("wg.cmp") || ""; } catch (e) {}
+  const q = new URLSearchParams(location.search);
+  if (q.get("s")) { s = q.get("s"); c2 = q.get("c") || ""; }
+  $("scen").value = T[s] ? s : (T.best_response ? "best_response" : keys[0]);
+  $("cmp").value = T[c2] ? c2 : "";
+  $("scen").onchange = () => { $("cmp").value = PAIRS[$("scen").value] || ""; load(); };
+  $("cmp").onchange = load;
+  $("play").onclick = toggle;
+  $("step").onclick = () => { playing = false; pos = Math.min(maxN(), Math.floor(pos) + 1); render(); };
+  $("restart").onclick = () => { playing = false; pos = 0; render(); };
+  $("seek").oninput = () => { playing = false; pos = +$("seek").value; render(); };
+  $("rate").oninput = setRate;
+  document.addEventListener("keydown", e => {
+    if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+    if (e.code === "Space") { e.preventDefault(); toggle(); }
+    if (e.code === "ArrowRight") $("step").onclick();
+    if (e.code === "ArrowLeft") { playing = false; pos = Math.max(0, Math.floor(pos) - 1); render(); }
+  });
+  window.addEventListener("resize", render);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  setRate(); load(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

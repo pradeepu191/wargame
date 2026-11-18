@@ -22,15 +22,15 @@
 \newcommand{\Prob}{\mathbb{P}}
 
 \title{\textbf{A From-Scratch Guide to\\ ``Rent or Toxicity? Exploiting and Defending Learning Market Makers on Hyperliquid''}\\[4pt]
-\large Companion to 6.S974 Wargame Deliverable 1}
+\large Companion to the 6.S974 Wargame Deliverables 1--3}
 \author{Prepared for the project team}
-\date{September 2026}
+\date{September 2026; extended November 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-\noindent This document explains, from zero, every idea that appears in our three-page proposal. It assumes you have never seen an order book, never heard of a market maker, and have not taken a course in game theory or reinforcement learning. Each concept is introduced with a small numerical example before any notation is used, and every symbol in the proposal is decoded in a table. Read it front to back once; afterwards use the glossary (Section~\ref{sec:glossary}) as a lookup.
+\noindent This document explains, from zero, every idea that appears in our three-page proposal. It assumes you have never seen an order book, never heard of a market maker, and have not taken a course in game theory or reinforcement learning. Each concept is introduced with a small numerical example before any notation is used, and every symbol in the proposal is decoded in a table. Read it front to back once; afterwards use the glossary (Section~\ref{sec:glossary}) as a lookup. Parts X--XIII were added later. Parts X and XI explain, in the same way, what the simulator and the data showed through Workshop~2 (Part~XI starts on page~\pageref{sec:ws12}); Part~XII retells our attacker in the words of the course's Lecture~15, and Part~XIII asks what is optimal for an ordinary trader with no information.
 \end{abstract}
 
 \tableofcontents
@@ -667,6 +667,402 @@ feed agree, the quoted spread is a tick, and adverse selection at ten seconds is
 every coin once bid--ask bounce is removed.
 
 %==================================================================
+\section{Part XI: Workshops 1 and 2, From Scratch (added November 18)}\label{sec:ws12}
+%==================================================================
+Part~X ended in early October with a plan: model the attacker properly, rebuild identity around
+spells of informed trading, and model the queue on one-tick books. This part explains, in the same
+plain language, what we built after that and what it showed, up to the Workshop~2 drafts. Every number
+here is in \texttt{results/REPLICATION\_NOTES.md}, which says how it was produced; the paper draft is
+\texttt{paper/arxiv\_draft.tex}.
+
+\subsection{Three ideas you need to read every number below}
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=3pt]
+\item[Rent units] Profits in different markets are not comparable, so we divide every profit by the
+size of the prize: the monopoly profit minus the competitive profit. One rent unit is the whole rent.
+\item[Rent index $C$] Where a group of makers sits between competitive ($0$) and monopoly ($1$). It is
+the collusion index $\Delta$ of Part~III, measured on makers whose learning has been switched off.
+\item[Frozen cartel, reaction function] Once learning is switched off, a Q-learner is just a lookup
+table: for every (my last quote, best rival's last quote) it gives my next quote. That table is the
+cartel's \emph{reaction function}. It is what an attacker exploits.
+\end{description}
+\begin{example}[{: reading rent units}]
+Suppose two makers would earn $0.2$ per period together at the competitive quote and $2.1$ as a
+monopoly. The rent available is $2.1-0.2=1.9$ per period, so one rent unit is $1.9$. If an attacker earns
+$0.95$ per period, that is $0.5$ rent units: half the prize. If the cartel's profit drops by $2.4$
+because of the attacker, its loss is $2.4/1.9\approx1.26$ rent units: more than its whole rent, which is
+possible because the cartel can be pushed below the competitive profit.
+\end{example}
+
+\subsection{The exact best response: solving the cartel like a puzzle}
+Part~IV said an exact best response is ``usually impossible''. For a \emph{frozen} cartel it is not:
+the cartel's next quote is fully determined by last period's quotes, including the attacker's own. So
+the attacker faces a puzzle with known rules, and a puzzle can be solved by working backwards from the
+last move.
+
+\begin{example}[{: why the greedy move is not the best move}]
+The cartel's learned table says: ``if the newcomer quoted $5$ last period, quote $3$; if it quoted $4$,
+stay at $6$''. Suppose the newcomer earns its quote whenever it has the best price. The cartel is at $6$,
+and there are two periods left.
+\begin{itemize}
+\item \emph{Greedy:} quote $5$ now (earn $5$). The cartel answers $3$, so next period the best the newcomer
+can do is quote $2$ (earn $2$). Total $7$.
+\item \emph{Planned:} quote $4$ now (earn $4$, one less). The cartel stays at $6$, so next period quote
+$5$ (earn $5$). Total $9$.
+\end{itemize}
+Giving up $1$ today buys $3$ tomorrow. Learned tables are full of such quirks, because the learners
+only ever explored a small part of them.
+\end{example}
+Our cartels have 24 possible quotes per maker, so with two incumbents and the attacker there are
+$24^3=13{,}824$ situations, 24 choices in each, over 100 periods. A computer works backwards through all
+of them in seconds (\texttt{experiments/best\_response.py}). What it found, on 60 cartels:
+\begin{itemize}
+\item The attacker takes \textbf{all} of the rent in 60 of 60 cartels: it earns $1.08$--$1.20$ rent units,
+about what a monopolist would earn. The simple rules we used before (undercut by one tick, and so on)
+reach $55$--$70\%$ of that.
+\item It does this by keeping the cartel \emph{wide}: it undercuts what the cartel is about to quote, in
+situations the cartel never visited while it was learning, and the cartel's untested reaction there is
+to quote even wider ($10.8\to15.9$ ticks at the lowest toxicity).
+\item Against rational competitors (instead of learned tables) the same attacker could earn only $0.06$
+rent units. Almost all of its take comes from the quirks of the learned table.
+\item An attacker that wants to hurt the cartel rather than earn can steer it into quoting below
+break-even. The cartel then loses $1.3$ to $2.8$ times its whole rent (more in more toxic markets), while the attacker takes no fills and risks nothing.
+\end{itemize}
+\begin{warning}
+\textbf{Exploitability is the defenders' loss, not the attacker's gain.} The market is not a zero-sum
+game: takers are also paid or charged. So we report how much the incumbents lose ($L_{\mathrm{BR}}$),
+and the fraction of their rent that is destroyed ($\kappa_A$). $\kappa_A$ above $1$ means they end up
+below the competitive profit.
+\end{warning}
+
+\subsection{Can a real attacker do this with public information only?}
+The exact best response reads the cartel's table directly, which no real attacker can. But on
+Hyperliquid every quote is public. So every answer the cartel gives is on the book, right next to the
+quotes it was answering. An attacker can fill in the table itself: quote at random for a while (the
+\emph{probing budget}), write down each answer, and then solve its own copy of the table.
+\begin{intuition}
+A learned reaction function on a public book is like a vending machine with a glass front. You do not
+need the manual: press each button once and watch what comes out.
+\end{intuition}
+After 200 probing periods the attacker already earns $1.06$--$1.15$ rent units; after 1000 it matches
+the exact best response to the second decimal, for two and for three incumbents. Probing costs money
+(random quotes earn little), so the best budget is two to ten episodes of 100 periods.
+
+\subsection{Identity, second attempt: spells and a reporting delay}
+Part~X explained why ``the same toxic wallet comes back'' failed: on Hyperliquid the wallet that just
+traded trades again next only $2$--$5\%$ of the time. The rebuilt model has two ingredients.
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=3pt]
+\item[Regime] The market switches between \emph{calm} spells and \emph{toxic} spells, in which informed
+wallets are active. Nobody is told which spell it is.
+\item[Mark lag $L$] Whether a trade was informed only becomes clear later, when the price has moved. The
+number of trades before that happens is the mark lag.
+\end{description}
+\begin{example}[{: why identity helps only when the truth arrives late}]
+Say $L=20$. A toxic spell starts. A maker without identities learns about it from trade outcomes,
+which show up 20 trades late; for 20 trades it keeps quoting as if all is calm and loses. A maker that
+sees wallet names notices at the first trade that a known toxic wallet is active, and steps back at
+once. If outcomes were visible immediately ($L=0$), the anonymous maker would be just as fast, and the
+names would add almost nothing.
+\end{example}
+That is exactly what the simulator shows. If wallets came back with probability $0.9$--$0.99$, identity
+would be worth $0.15$--$0.30$ rent units, but at the persistence the data show it is worth nothing that
+way. Through spells it is worth $0.03$--$0.06$ when outcomes are immediate, and up to $0.16$ when the
+mark lag is as long as a spell lasts.
+
+\subsection{When the price cannot move: the queue game}
+On BTC, ETH and SOL the spread is one tick, so nobody can undercut. Makers can only choose to keep an
+order standing at that one price (\textsc{rest}) or not (\textsc{out}), and orders at the same price are
+filled first-come-first-served. We call this the \emph{queue game}.
+\begin{example}[{: what one fill is worth}]
+With the spread pinned at break-even, a fill is worth $+0.15$ on average, but $+1.10$ in a calm spell
+and $-2.26$ in a toxic one. A maker that rests only when its forecast says ``calm'' keeps the good fills
+and skips the bad ones. This is \emph{selection}, and on a one-tick book it is the only way to earn.
+\end{example}
+\begin{itemize}
+\item An identity-aware selector earns $0.14$--$0.16$ per period against makers that always rest; $16\%$
+of its fills are informed, against $29$--$31\%$ of theirs.
+\item Someone pays for that: the \emph{fringe}, makers that always rest and cannot see who they trade
+with. In the model their payoff falls from about zero to $-0.02$ to $-0.10$ per period.
+\item Rules of the venue move that cost around. \textbf{Anonymity}: without identities makers keep
+resting in toxic spells and ordinary takers still get filled ($71$--$75\%$ of the time); with identities
+makers withdraw (fills $23$--$30\%$). \textbf{Priority fee}: paying to jump the queue turns resting into
+an auction that can absorb two to four times the makers' rent. \textbf{Request allowance} (Workshop~2):
+capping how many orders an address may place per 100 periods. At one placement per 100 periods the
+selector's edge over simply resting is gone ($+0.10\to-0.015$) and the fringe goes from $-0.025$ to
+$+0.030$; the cost is that selectors are locked out $38$--$48\%$ of the time they want to rest.
+\item Steering the queue's learners (behave one way while they learn, switch later) gained nothing:
+$0.084$ per period against $0.083$. In the queue the attacker's profit comes from choosing takers, not
+from the other makers' reaction.
+\end{itemize}
+\begin{warning}
+\textbf{No rule we tested protects the makers' rent.} What the rules decide is \emph{who ends up
+holding the toxic flow}: the selectors, the fringe, or ordinary takers who cannot get filled.
+\end{warning}
+
+\subsection{What if the cartel keeps learning? (Workshop 2)}
+A frozen cartel is the easy case. We let the cartel resume learning while it is being attacked.
+\begin{enumerate}
+\item \textbf{Re-learning under attack} (15 cartels). While it learns, the cartel explores and quotes
+tighter, so an attacker that keeps re-solving earns $0.45$--$0.64$ rent units instead of $1.13$. But the
+cartel itself earns at or slightly below the competitive profit the whole time ($-0.09$ to $-0.01$ rent
+units): the rent is destroyed, not defended. The public-information attacker stays within $0.05$ of the
+one that reads the table. Forgetting old observations makes it \emph{worse}, by $0.01$--$0.06$, because
+the table drifts slowly. Only an attacker that never re-solves leaves the cartel some rent
+($0.05$--$0.13$).
+\item \textbf{Taking turns} (the \emph{double oracle}, a simple form of the PSRO of Part~IV; 12
+cartels). The cartel re-learns against the attacker, then the attacker re-solves, six times. Every
+round the cartel's loss to the fresh attacker is its whole rent plus $0.16$. Its rent drops from $0.86$
+to $0.78$ after the first round and then wanders between $0.67$ and $0.78$. Re-learning protects only
+against attackers it has already seen (the previous one falls from $1.14$ to $0.51$--$0.68$), and
+learning against a mix of all past attackers does no better.
+\end{enumerate}
+\begin{intuition}
+Learning makes the cartel a moving target, but it moves slowly, and every move is visible on the
+public book. In our runs that made it slightly less collusive and no less exploitable.
+\end{intuition}
+
+\subsection{Defences on one picture}
+Every defence becomes one point on a chart: across, the makers' profit when nobody attacks; up, their
+profit under the worst attacker. Up and to the right is better. Makers' own levers mostly fail:
+requoting less often costs everything against simple attackers, and randomising the quote costs profit
+and buys nothing. The one that helps both axes is refusing to quote inside the break-even of the
+identity-based toxicity forecast, and only where the toxic spells bite. The strongest attackers
+(exact best response, public-information attacker) are coded into this comparison; their full run is
+step 5 of \texttt{slurm/workshop2.sh}. The figure is \texttt{results/fig\_frontier.png}.
+
+\subsection{What the data said, four weeks later}
+\begin{enumerate}
+\item \textbf{One tick, always.} The quoted spread on BTC, ETH and SOL is one tick essentially all the
+time, and a fill at the best price loses $0.2$--$0.4$ basis points to the mid within ten seconds.
+\item \textbf{Some makers still earn.} The ten most active maker wallets earn $0.3$--$1.0$ basis points
+per fill more than everyone else at the same price, and largely the same wallets lead day after day.
+\item \textbf{They do it by who is on the other side.} We sorted taker wallets into thirds by the losses
+they caused on earlier days (benign, middle, toxic), and then looked at later fills. The top makers take
+$1.9$--$3.6$ times fewer fills from toxic wallets than from benign ones. The gap shows up on 33 of 35
+coin-days and in 94 of 96 coin-hours, also on fills after which the price did not move within a
+second (which speed alone cannot explain), and a wallet's label stays useful for at least ten days.
+\item \textbf{In stress, someone else pays.} During the selling of October 29 the gap disappeared for five
+hours on the asset being sold, because one wallet that ignored identities absorbed the flow: the
+queue model's fringe, on the real book.
+\end{enumerate}
+\begin{warning}
+\textbf{These are patterns, not proof of cause.} The top makers might also be reacting to a faster price
+feed from another exchange. The test on fills after which the price did not move is evidence against
+that, but not a proof. The December order-level archive (every order and cancellation, to the
+millisecond) is how we plan to test it properly.
+\end{warning}
+
+\subsection{The visual demo: how to read the screen}
+Double-click \texttt{demo/index.html}. Each run of the simulator is replayed one taker at a time.
+\begin{itemize}
+\item \textbf{The book now} (left): the mid in the middle, each maker's buy and sell price, and the
+Nash and monopoly quotes as dashed lines. An arrow shows the taker's order, coloured afterwards red
+(informed) or green (uninformed); nobody sees that colour at the time.
+\item \textbf{Quotes over time} (right): each maker's quote, period by period, with dots for fills.
+\item \textbf{Cumulative profit} in rent units, a small table per maker, and the public tape, where a
+trade's outcome (``mark'') appears only after the mark lag.
+\item \textbf{Controls}: play and pause (space bar), one step (arrow keys), and the playback rate,
+from 1 to 200 periods per second. One period is one taker arriving, about 0.6 seconds on Hyperliquid.
+Pick a second run under ``Compare with'' to see two side by side with the same luck.
+\end{itemize}
+
+\subsection{How much to trust each number}
+\begin{itemize}
+\item \textbf{Final}: the public-information attacker (60 cartels), the exact best response (60 cartels),
+the identity mechanism, the four-week data result.
+\item \textbf{Laptop size}: re-learning (15 cartels) and taking turns (12 cartels), two-maker cartels
+only. The full-size versions are scripted for the cluster (\texttt{slurm/workshop2.sh}).
+\item \textbf{Preliminary}: the queue attacks and the request allowance (3 seeds), the frontier with the
+strongest attackers (not yet run).
+\item \textbf{Stylised throughout}: the learners are small tables, the takers follow fixed rules, and
+there is one venue. The paper's limitations section lists all of this.
+\end{itemize}
+
+%==================================================================
+\section{Part XII: Planning with a Model --- Our Attacker in the Words of Lecture 15 (added November 18)}\label{sec:planning}
+%==================================================================
+Lecture~15 of the course (``Planning with a Model'', November~5) studies a decision maker whose
+action today changes the situation it faces tomorrow: a ship choosing between a cheap risky strait and a
+safe expensive cape, where taking the strait raises the next insurance quote. Our attacker is exactly
+such a decision maker, and the lecture's tools describe what it does. This part repeats the lecture's
+steps with our market in place of the ship.
+
+\subsection{The attacker's problem, written as the lecture writes it}
+A \textbf{Markov decision problem (MDP)} has five pieces. For an attacker facing a frozen cartel:
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=3pt]
+\item[State $x$] Last period's quotes: the two incumbents' and the attacker's own.
+\item[Action $a$] The attacker's quote this period: $1,\dots,24$ ticks.
+\item[Transitions $P$] The cartel answers the state with its reaction function, so the next state is
+(the cartel's answer, $a$). No randomness: the frozen cartel always answers the same way.
+\item[Reward $r(x,a)$] The attacker's expected profit this period.
+\item[Horizon] A turn limit of 100 periods (one episode); or a discount $\delta$, the weight on
+next period's profit.
+\end{description}
+\begin{intuition}
+The lecture's missile-defence example says: an opponent that follows a fixed course is part of $P$; an
+opponent that responds to your \emph{policy} must be modelled as a player, and then it is a game. A
+frozen cartel is the first kind. A cartel that keeps learning (Part~XI) is the second.
+\end{intuition}
+\textbf{Why this state is enough} (the lecture's ``what must the state contain?''). Each learner chooses
+from its own last quote and the best rival's last quote. So last period's quotes predict the cartel's
+answer and today's profit as well as the whole history would.
+
+\subsection{A two-state version you can solve by hand}
+\begin{example}[{: keep the cartel wide, or undercut now?}]
+Two states: the cartel is \textbf{W}ide or \textbf{N}arrow. Two actions: \textbf{U}ndercut it by one
+tick (the most profit today, but the cartel answers by going narrow), or \textbf{K}eep it wide (quote a
+little worse, earn a little less, and the cartel goes, or stays, wide). Profits per period:
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+& U (cartel goes narrow) & K (cartel goes wide) \\
+\midrule
+cartel wide (W) & $1.0$ & $0.9$ \\
+cartel narrow (N) & $0.6$ & $0.5$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+U pays more today in both states, so the \emph{myopic} attacker always undercuts. Value iteration with
+$\delta=\tfrac12$, as on the lecture's slides 19--20 ($V_k$ is the best total with $k$ periods left).
+With one period left there is no future, so $V_1(\mathrm W)=1.0$ and $V_1(\mathrm N)=0.6$, both by U.
+With two left, U leads to N and K leads to W:
+\begin{align*}
+V_2(\mathrm W)&=\max\{\underbrace{1.0+\tfrac12\cdot0.6}_{\text{U}},\ \underbrace{0.9+\tfrac12\cdot1.0}_{\text{K}}\}=\max\{1.3,\,1.4\}=1.4,\\
+V_2(\mathrm N)&=\max\{\underbrace{0.6+\tfrac12\cdot0.6}_{\text{U}},\ \underbrace{0.5+\tfrac12\cdot1.0}_{\text{K}}\}=\max\{0.9,\,1.0\}=1.0.
+\end{align*}
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+$k$ & $V_k(\mathrm W)$ & first action & $V_k(\mathrm N)$ & first action \\
+\midrule
+1 & $1.0$ & U & $0.6$ & U \\
+2 & $1.4$ & K & $1.0$ & K \\
+3 & $1.6$ & K & $1.2$ & K \\
+4 & $1.7$ & K & $1.3$ & K \\
+limit & $1.8$ & K & $1.4$ & K \\
+\bottomrule
+\end{tabular}
+\end{center}
+With two or more periods left, keeping the cartel wide wins in both states. The myopic attacker's value
+from W is only $1+\tfrac12\cdot 1.2=1.6$: it takes $1.0$ once and then $0.6$ a period for ever, against
+$0.9$ a period for ever. \textbf{The quote that earns more today gives the policy that earns less}: the
+lecture's ``a cheaper route can give a costlier policy'', with profit in place of cost.
+\end{example}
+\textbf{When is keeping it wide worth it?} Comparing the two policies from W, keeping wide is optimal
+exactly when $\delta>\tfrac14$: then $0.9$ for ever beats $1.0$ once followed by $0.6$ for ever. A patient
+attacker plans; an impatient one grabs.
+
+\subsection{What the real cartels show}
+On the 30 two-maker cartels, with the true 13{,}824-state problem (\texttt{experiments/planning\_view.py};
+profit per period in rent units, played in the simulator):
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+attacker & profit per period \\
+\midrule
+one-tick undercut rule (does not know the cartel's table) & $0.50$ \\
+myopic: knows the table, maximises today only & $0.94$ \\
+plans ahead with $\delta=0.5$ & $1.15$ \\
+optimal over the 100-period episode & $1.15$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Knowing the cartel's table doubles the take; looking even a little ahead adds the rest. On one cartel,
+in the second period the optimal attacker quotes 14 ticks and earns $1.20$, $0.01$ less than it could
+have taken; the cartel stays wide and every later period pays $1.20$--$1.21$. The myopic one takes
+$1.21$, the cartel drops to 9 and then 7 ticks, and its next profits are $1.05$ and $0.86$. Across the
+cartels the myopic attacker's take ranges from $0.10$ to $1.25$; the optimal one's from $1.02$ to $1.25$.
+Planning also makes the attack reliable.
+
+\subsection{Model-based and model-free}
+The lecture's two approaches both appear in our game. The cartel's Q-learners are \emph{model-free}:
+they learn how good each quote is from experience, without a model of the market. The exact best
+response is \emph{model-based} with the true model. The public-information attacker of Part~XI is
+model-based with a model it built itself from the public book: probing is its experimentation.
+
+\subsection{The belief state, and our identity question}
+The lecture's second half makes a \emph{belief} the state: the ship does not know the hit rate, so its
+state is what it has seen, $(n,h)$ = trips made and hits taken. For a maker deciding whether to trade with
+a wallet, a public wallet's record (fills and toxic fills) is exactly such a belief. The lecture adds a
+warning that becomes our next empirical question: feedback is \emph{selective}. A maker that stops trading
+with a wallet stops learning about it, so a wallet that has turned harmless can stay avoided for ever (the
+\emph{trap}, slide 37). The December order-level archive can test whether makers ever come back.
+
+%==================================================================
+\section{Part XIII: The Ordinary Trader --- What Is Optimal for Someone Who Knows Nothing? (added November 18)}\label{sec:retail}
+%==================================================================
+Everything above takes the side of the makers or the attacker. This part takes the side of the person
+with the least information: someone who trades rarely, sees no wallet names, and has no edge. Who pays
+for the cartel and for its attacker, and what should that person do? It uses the same model, and the
+lecture's belief problem with the trader in the ship's place (\texttt{experiments/retail\_trader.py}).
+It is a stylised model for research, not investment advice.
+
+\subsection{A customer who has to trade}
+\begin{example}[{: gains from trade}]
+Someone needs to move savings into the asset; to them it is worth $5$ more than the mid price. If the
+maker sells at the mid plus a half-spread of $2$, they buy and keep $5-2=3$: their \emph{gains from
+trade}. At a half-spread of $5.4$ they would not trade at all, and keep nothing.
+\end{example}
+Along the model's runs, as a share of what this customer keeps at the competitive quote: under the cartel
+alone they keep $35$--$47\%$. Under the attacker that is best for \emph{itself} they keep $36$--$39\%$, no
+more, because that attacker holds the cartel wide and sits just inside it. A myopic attacker, which pushes
+the cartel down, leaves them $50$--$60\%$. \textbf{What is best for the attacker is worst for the customer.}
+
+\subsection{A speculator betting savings}
+\begin{example}[{: the break-even bar}]
+Someone bets on the direction of the price with a market order. The average price move is $\mu=5$ and
+the half-spread on a one-tick book is $x=0.5$. If they are right with probability $p$, one bet earns on
+average $(2p-1)\mu-x$. With no information, $p=\tfrac12$: every bet loses $0.5$, a tenth of an average
+move. To break even they need $p^*=\tfrac12+x/(2\mu)=0.55$: right 55\% of the time. At the cartel's
+quotes $x\approx5.4$ and $p^*\approx1.04$: no call on direction can pay at all.
+\end{example}
+\textbf{Not knowing whether you have an edge.} This is the lecture's ship. Betting is the strait: it costs
+something and teaches you whether your calls are right. Stopping is the cape: safe, and you learn nothing
+more. The belief is $(n,k)$: bets made and right calls.
+\begin{example}[{: updating after one bet}]
+An optimistic beginner starts with the belief Beta$(6,4)$: ``I am right 60\% of the time'', held as firmly
+as ten bets' worth of evidence. After one wrong call the belief is $6/11\approx0.545$, below the $0.55$ bar,
+so the myopic rule stops for good. After one right call it is $7/11\approx0.64$, and they continue.
+\end{example}
+The optimal rule is a \emph{quitting line} (the lecture's slides 31--36): after $n$ bets, stop for good once
+the wrong calls reach a certain number. Over a year of one bet a day, with savings of 20 average price
+moves set aside:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+& \multicolumn{2}{c}{no edge ($p=0.5$)} & real edge ($p=0.6$) \\
+rule & expected result & lose all savings & still betting at year end \\
+\midrule
+never update, keep betting & $-25$ & $74\%$ & $100\%$ \\
+myopic Bayesian & $-1.2$ & $0.3\%$ & $23\%$ \\
+patient Bayesian ($\delta=0.9$) & $-2.9$ & $1.0\%$ & $47\%$ \\
+patient Bayesian ($\delta=0.99$) & $-5.6$ & $3.8\%$ & $71\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Three lessons. \textbf{Updating protects your savings}: never updating loses everything in three years
+out of four. \textbf{Patience costs if you have no edge}: valuing what each bet teaches makes you bet
+longer and lose two to five times more. \textbf{Caution has a price too}: with a real edge, the myopic rule
+gives it up in $77\%$ of years, the lecture's trap.
+
+\subsection{A limit order instead}
+Posting a limit order and waiting makes the ordinary person a maker, but an identity-blind one: the
+\emph{fringe} of the queue game (Part~XI). When professional makers choose their fills by wallet, that
+order is left with the toxic ones and earns $-0.025$ per period instead of $+0.020$ when nobody selects.
+A tight request allowance turns it to $+0.030$ (three seeds, preliminary).
+
+\subsection{In the demo}
+The five ``Betting savings'' runs in \texttt{demo/index.html} replay one year each, all with the same luck.
+The big chart is the lecture's quitting-line plot: each right call moves one step right, each wrong call
+one step right and one up, and the shaded area is ``stop for good''. The gauge on the left is the
+trader's belief against the $0.55$ bar, with the truth (which they cannot see) as a dashed line. Show
+``never updates'' next to ``myopic Bayesian'', then the two ``real edge'' runs.
+\begin{warning}
+\textbf{One year is one draw.} In the demo, the gambler happens to lose everything on day 86 and the
+patient trader with an edge ends the year up 70\%. Another year would look different; the text above each
+run gives the probabilities over many years.
+\end{warning}
+
+%==================================================================
 \section{Glossary}\label{sec:glossary}
 %==================================================================
 \begin{description}[style=sameline,leftmargin=0pt,itemsep=1pt]
@@ -710,4 +1106,38 @@ every coin once bid--ask bounce is removed.
 \item[Toxicity $\alpha$] Fraction of order flow that is informed.
 \end{description}
 
+\subsection*{Terms added in Part XI}
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=1pt]
+\item[Double oracle] Two sides take turns: one learns or solves against the other's latest strategy, then the other answers. A simple form of PSRO.
+\item[Entrant] The attacker: one more maker added to a group that has already learned.
+\item[Exact best response] The attacker's best plan against a frozen cartel, found by working backwards over all situations.
+\item[Fringe] Makers that always keep an order standing and cannot see who they trade with.
+\item[Frozen] With learning switched off: the learned table is used as it is.
+\item[Mark, mark lag $L$] Whether a trade turned out informed; the number of trades before that becomes visible.
+\item[Probing budget] Periods an attacker spends quoting at random to observe how the cartel answers.
+\item[Queue game] The market when the spread is pinned at one tick: makers only choose to rest or step out.
+\item[Reaction function] A frozen learner's table: its next quote for every (own last quote, best rival's last quote).
+\item[Regime, spell] A calm or toxic period of the market; nobody is told which one it is.
+\item[Rent index $C$] The collusion index $\Delta$ for frozen makers: $0$ competitive, $1$ monopoly.
+\item[Rent units] Any profit divided by (monopoly profit $-$ competitive profit); $1$ is the whole rent.
+\item[Request allowance] A cap on how many orders an address may place, earned back by trading.
+\item[Selection] Choosing which fills to take, by resting only when a fill is expected to be worth it.
+\end{description}
+
+\subsection*{Terms added in Parts XII and XIII}
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=1pt]
+\item[Backward induction, value iteration] Solving an MDP by working back from the last period (turn limit), or by repeating that step until the values stop changing (discount).
+\item[Belief state] What a decision maker has seen, used as its state when something is hidden, e.g.\ $(n,k)$: bets made and right calls.
+\item[Bellman equation] The best value from a state is the best, over actions, of today's reward plus the (discounted) best value of the state that follows.
+\item[Break-even bar $p^*$] The share of right calls a bet on direction needs to pay: $\tfrac12+x/(2\mu)$.
+\item[Gains from trade] What a customer keeps: their own reason to trade, minus the half-spread they pay.
+\item[Markov decision problem (MDP)] States, actions, transitions, rewards, and a discount or turn limit.
+\item[Model-based, model-free] Planning with a model of rewards and transitions, or learning action values from experience without one.
+\item[Myopic policy] Taking the action that pays most today, ignoring the state it leaves.
+\item[Quitting line] After $n$ bets, the number of wrong calls at which the optimal rule stops for good.
+\item[Ruin] Losing all the savings set aside.
+\item[Trap] Stopping for good on the worse option because stopping teaches nothing more (Rothschild, 1974).
+\end{description}
+
 \end{document}
+

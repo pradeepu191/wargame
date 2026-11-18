@@ -59,7 +59,7 @@ the uninformed taker's acceptance probability times the margin, minus the inform
 \item[Nominal payoff $\Pi_{\mathrm{nominal}}(\pi)$.] The incumbents' payoff alone. With an attacker $A$ in the game their payoff is $J(\pi;A)$.
 \item[Best-response loss $L_{\mathrm{BR}}$.] $L^A_{\mathrm{BR}}(\pi)=\Pi_{\mathrm{nominal}}(\pi)-J(\pi;A)$ and $L_{\mathrm{BR}}=\max_A L^A_{\mathrm{BR}}$: how much the adversary costs the defenders. The game is general-sum, so the defenders' loss---not the attacker's gain---is the exploitability statistic.
 \item[Fraction of rent destroyed $\kappa_A$.] $L^A_{\mathrm{BR}}/(\Pi_{\mathrm{nominal}}-\Pi^C)$. $\kappa_A=1$ means the attacker drives the defenders back to the Nash point.
-\item[Attacker types.] The \emph{one-tick undercutter} (quotes one tick inside the best incumbent); the \emph{markout entrant} (a profit-maximising best responder that learns from its own fills' realized payoffs); the \emph{damage-maximising attacker} (minimises $J$ rather than maximising its own payoff; the worst case); the \emph{steering attacker} (targets the incumbents' reaction function rather than their quote; planned). Held-out attackers: $\mathcal{A}_{\mathrm{train}}\cap\mathcal{A}_{\mathrm{test}}\approx\emptyset$.
+\item[Attacker types.] The \emph{one-tick undercutter} (quotes one tick inside the best incumbent); the \emph{markout entrant} (a profit-maximising best responder that learns from its own fills' realized payoffs); the \emph{damage-maximising attacker} (minimises $J$ rather than maximising its own payoff; the worst case); the \emph{steering attacker} (targets the incumbents' reaction function rather than their quote: the exact best response, which gives up a little profit today to keep the cartel wide tomorrow). Held-out attackers: $\mathcal{A}_{\mathrm{train}}\cap\mathcal{A}_{\mathrm{test}}\approx\emptyset$.
 \end{description}
 
 \subsection*{D. Information}
@@ -96,7 +96,22 @@ the uninformed taker's acceptance probability times the margin, minus the inform
 \item[Market-maker wallet.] A wallet with maker share $\ge0.7$ and both buys and sells (two-sidedness $\ge0.3$) over the window. The classification uses activity only, never the outcome being measured.
 \end{description}
 
-\subsection*{G. Rigour vocabulary}
+\subsection*{G. Planning vocabulary (Lecture 15, ``Planning with a Model'')}
+\begin{description}
+\item[Markov decision problem (MDP).] A state set $X$, an action set $A$, transition probabilities $P(x'\mid x,a)$, an expected one-period reward $r(x,a)$, and a discount factor or a turn limit. The decision maker sees the state, acts, is paid, and moves to the next state. Against a \emph{frozen} cartel the entrant faces an MDP: the state is last period's quotes, the action is its own quote, and $P$ is the cartel's reaction function (deterministic). The cartel is part of $P$, as a target that does not respond to the policy is.
+\item[Valid state.] A summary of the history that, with the chosen action, predicts the next reward and the next state as well as the whole history would. The cartel's learners condition on their own last quote and the best rival quote, so last period's quote vector is a valid state for the entrant.
+\item[Policy; myopic policy.] A rule that picks an action in each state. The \emph{myopic} policy picks the action with the highest reward today (discount $0$) and ignores the state it leaves.
+\item[Bellman equation; backward induction; value iteration.] The optimal value from a state is the best, over actions, of today's reward plus the value of the state that follows. With a turn limit it is solved exactly by working back from the last period (\emph{backward induction}); with a discount, by repeating that step until the values stop changing (\emph{value iteration}). Our exact best response is backward induction over a 100-period episode.
+\item[Model-based, model-free.] A model-based decision maker computes its policy from $r$ and $P$; a model-free one learns action values from experience without them. The exact best response is model-based with the true $P$; the public-information attacker is model-based with an estimate of $P$ built from the public book; the cartel's Q-learners are model-free.
+\item[Belief state.] When part of the state is hidden, the decision maker's posterior over it, here as counts of outcomes, used as the state. For an identity-aware maker, the per-wallet record of fills and toxic fills plays this role.
+\item[Selective feedback; trap.] Some actions reveal nothing about the unknown (a maker that stops trading with a wallet sees no more of that wallet's fills). A policy can then stop on the worse action for ever, even when it is optimal under the decision maker's own beliefs (Rothschild, 1974).
+\item[Ordinary trader.] The participant with the least information. A \emph{customer who has to trade} is the model's uninformed taker; her \emph{gains from trade} are her private reason to trade minus the half-spread, in closed form. A \emph{speculator} bets on the direction of the price without information; she does not know $p$, her probability of being right, and her belief after $n$ bets with $k$ right is the belief state $(n,k)$.
+\item[Hurdle $p^*$.] The probability of being right that a directional market order needs to break even: $p^*=\tfrac12+x/(2\mu)$, with $x$ the half-spread and $\mu$ the mean size of a price move. Above one, no directional bet can pay.
+\item[Quitting line; ruin.] The number of wrong calls after $n$ bets at which the speculator's optimal policy stops for good. \emph{Ruin} is losing all the savings she set aside.
+\item[Player, not part of $P$.] An opponent that responds to the policy (a cartel that keeps learning) cannot be folded into $P$. The problem is then a game.
+\end{description}
+
+\subsection*{H. Rigour vocabulary}
 \begin{description}
 \item[Seed intervals.] Every simulator number is a mean over independent training seeds with a 95\% interval; policies compared under common random numbers.
 \item[$\mathrm{CVaR}_{0.05}$.] The mean of the worst 5\% of outcomes; reported with the mean so ``robust'' cannot mean ``withdrew''.

@@ -97,6 +97,19 @@ def profit_curve(cfg: MarketConfig, alpha: float) -> np.ndarray:
     return (1 - alpha) * 2 * x * norm.sf(x / cfg.sigma_L) - alpha * cfg.edge_mean * np.exp(-x / cfg.edge_mean)
 
 
+def taker_surplus_curve(cfg: MarketConfig, alpha: float) -> np.ndarray:
+    """The uninformed taker's expected gain from trade per period when the best quote is
+    h = 1..K, closed form.  An uninformed arrival (probability 1 - alpha) has valuation m + L,
+    L ~ N(0, sigma_L^2), and trades iff |L| > x = h * tick, keeping |L| - x:
+        S(h; alpha) = (1 - alpha) * 2 * [sigma phi(x / sigma) - x Phibar(x / sigma)].
+    This is the customer-side outcome of a quote: it falls as the spread widens.  The informed
+    taker's gain is left out on purpose: it is a transfer from the maker, already in Pi."""
+    from scipy.stats import norm
+    x = np.arange(1, cfg.max_half_spread + 1) * cfg.tick
+    s = cfg.sigma_L
+    return (1 - alpha) * 2 * (s * norm.pdf(x / s) - x * norm.sf(x / s))
+
+
 def type_benchmarks(cfg: MarketConfig, alpha: float):
     """(h^C, Pi^C, h^M, Pi^M) -- market-wide, against a taker of type alpha."""
     Pi = profit_curve(cfg, alpha)
