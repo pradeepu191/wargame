@@ -30,7 +30,7 @@
 \maketitle
 
 \begin{abstract}
-\noindent This document explains, from zero, every idea that appears in our three-page proposal. It assumes you have never seen an order book, never heard of a market maker, and have not taken a course in game theory or reinforcement learning. Each concept is introduced with a small numerical example before any notation is used, and every symbol in the proposal is decoded in a table. Read it front to back once; afterwards use the glossary (Section~\ref{sec:glossary}) as a lookup. Parts X and XI were added later and explain, in the same way, what the simulator and the data showed through Workshop~2 (Part~XI starts on page~\pageref{sec:ws12}).
+\noindent This document explains, from zero, every idea that appears in our three-page proposal. It assumes you have never seen an order book, never heard of a market maker, and have not taken a course in game theory or reinforcement learning. Each concept is introduced with a small numerical example before any notation is used, and every symbol in the proposal is decoded in a table. Read it front to back once; afterwards use the glossary (Section~\ref{sec:glossary}) as a lookup. Parts X--XIII were added later. Parts X and XI explain, in the same way, what the simulator and the data showed through Workshop~2 (Part~XI starts on page~\pageref{sec:ws12}); Part~XII retells our attacker in the words of the course's Lecture~15, and Part~XIII asks what is optimal for an ordinary trader with no information.
 \end{abstract}
 
 \tableofcontents
@@ -878,6 +878,191 @@ there is one venue. The paper's limitations section lists all of this.
 \end{itemize}
 
 %==================================================================
+\section{Part XII: Planning with a Model --- Our Attacker in the Words of Lecture 15 (added November 18)}\label{sec:planning}
+%==================================================================
+Lecture~15 of the course (``Planning with a Model'', November~5) studies a decision maker whose
+action today changes the situation it faces tomorrow: a ship choosing between a cheap risky strait and a
+safe expensive cape, where taking the strait raises the next insurance quote. Our attacker is exactly
+such a decision maker, and the lecture's tools describe what it does. This part repeats the lecture's
+steps with our market in place of the ship.
+
+\subsection{The attacker's problem, written as the lecture writes it}
+A \textbf{Markov decision problem (MDP)} has five pieces. For an attacker facing a frozen cartel:
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=3pt]
+\item[State $x$] Last period's quotes: the two incumbents' and the attacker's own.
+\item[Action $a$] The attacker's quote this period: $1,\dots,24$ ticks.
+\item[Transitions $P$] The cartel answers the state with its reaction function, so the next state is
+(the cartel's answer, $a$). No randomness: the frozen cartel always answers the same way.
+\item[Reward $r(x,a)$] The attacker's expected profit this period.
+\item[Horizon] A turn limit of 100 periods (one episode); or a discount $\delta$, the weight on
+next period's profit.
+\end{description}
+\begin{intuition}
+The lecture's missile-defence example says: an opponent that follows a fixed course is part of $P$; an
+opponent that responds to your \emph{policy} must be modelled as a player, and then it is a game. A
+frozen cartel is the first kind. A cartel that keeps learning (Part~XI) is the second.
+\end{intuition}
+\textbf{Why this state is enough} (the lecture's ``what must the state contain?''). Each learner chooses
+from its own last quote and the best rival's last quote. So last period's quotes predict the cartel's
+answer and today's profit as well as the whole history would.
+
+\subsection{A two-state version you can solve by hand}
+\begin{example}[{: keep the cartel wide, or undercut now?}]
+Two states: the cartel is \textbf{W}ide or \textbf{N}arrow. Two actions: \textbf{U}ndercut it by one
+tick (the most profit today, but the cartel answers by going narrow), or \textbf{K}eep it wide (quote a
+little worse, earn a little less, and the cartel goes, or stays, wide). Profits per period:
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+& U (cartel goes narrow) & K (cartel goes wide) \\
+\midrule
+cartel wide (W) & $1.0$ & $0.9$ \\
+cartel narrow (N) & $0.6$ & $0.5$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+U pays more today in both states, so the \emph{myopic} attacker always undercuts. Value iteration with
+$\delta=\tfrac12$, as on the lecture's slides 19--20 ($V_k$ is the best total with $k$ periods left).
+With one period left there is no future, so $V_1(\mathrm W)=1.0$ and $V_1(\mathrm N)=0.6$, both by U.
+With two left, U leads to N and K leads to W:
+\begin{align*}
+V_2(\mathrm W)&=\max\{\underbrace{1.0+\tfrac12\cdot0.6}_{\text{U}},\ \underbrace{0.9+\tfrac12\cdot1.0}_{\text{K}}\}=\max\{1.3,\,1.4\}=1.4,\\
+V_2(\mathrm N)&=\max\{\underbrace{0.6+\tfrac12\cdot0.6}_{\text{U}},\ \underbrace{0.5+\tfrac12\cdot1.0}_{\text{K}}\}=\max\{0.9,\,1.0\}=1.0.
+\end{align*}
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+$k$ & $V_k(\mathrm W)$ & first action & $V_k(\mathrm N)$ & first action \\
+\midrule
+1 & $1.0$ & U & $0.6$ & U \\
+2 & $1.4$ & K & $1.0$ & K \\
+3 & $1.6$ & K & $1.2$ & K \\
+4 & $1.7$ & K & $1.3$ & K \\
+limit & $1.8$ & K & $1.4$ & K \\
+\bottomrule
+\end{tabular}
+\end{center}
+With two or more periods left, keeping the cartel wide wins in both states. The myopic attacker's value
+from W is only $1+\tfrac12\cdot 1.2=1.6$: it takes $1.0$ once and then $0.6$ a period for ever, against
+$0.9$ a period for ever. \textbf{The quote that earns more today gives the policy that earns less}: the
+lecture's ``a cheaper route can give a costlier policy'', with profit in place of cost.
+\end{example}
+\textbf{When is keeping it wide worth it?} Comparing the two policies from W, keeping wide is optimal
+exactly when $\delta>\tfrac14$: then $0.9$ for ever beats $1.0$ once followed by $0.6$ for ever. A patient
+attacker plans; an impatient one grabs.
+
+\subsection{What the real cartels show}
+On the 30 two-maker cartels, with the true 13{,}824-state problem (\texttt{experiments/planning\_view.py};
+profit per period in rent units, played in the simulator):
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+attacker & profit per period \\
+\midrule
+one-tick undercut rule (does not know the cartel's table) & $0.50$ \\
+myopic: knows the table, maximises today only & $0.94$ \\
+plans ahead with $\delta=0.5$ & $1.15$ \\
+optimal over the 100-period episode & $1.15$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Knowing the cartel's table doubles the take; looking even a little ahead adds the rest. On one cartel,
+in the second period the optimal attacker quotes 14 ticks and earns $1.20$, $0.01$ less than it could
+have taken; the cartel stays wide and every later period pays $1.20$--$1.21$. The myopic one takes
+$1.21$, the cartel drops to 9 and then 7 ticks, and its next profits are $1.05$ and $0.86$. Across the
+cartels the myopic attacker's take ranges from $0.10$ to $1.25$; the optimal one's from $1.02$ to $1.25$.
+Planning also makes the attack reliable.
+
+\subsection{Model-based and model-free}
+The lecture's two approaches both appear in our game. The cartel's Q-learners are \emph{model-free}:
+they learn how good each quote is from experience, without a model of the market. The exact best
+response is \emph{model-based} with the true model. The public-information attacker of Part~XI is
+model-based with a model it built itself from the public book: probing is its experimentation.
+
+\subsection{The belief state, and our identity question}
+The lecture's second half makes a \emph{belief} the state: the ship does not know the hit rate, so its
+state is what it has seen, $(n,h)$ = trips made and hits taken. For a maker deciding whether to trade with
+a wallet, a public wallet's record (fills and toxic fills) is exactly such a belief. The lecture adds a
+warning that becomes our next empirical question: feedback is \emph{selective}. A maker that stops trading
+with a wallet stops learning about it, so a wallet that has turned harmless can stay avoided for ever (the
+\emph{trap}, slide 37). The December order-level archive can test whether makers ever come back.
+
+%==================================================================
+\section{Part XIII: The Ordinary Trader --- What Is Optimal for Someone Who Knows Nothing? (added November 18)}\label{sec:retail}
+%==================================================================
+Everything above takes the side of the makers or the attacker. This part takes the side of the person
+with the least information: someone who trades rarely, sees no wallet names, and has no edge. Who pays
+for the cartel and for its attacker, and what should that person do? It uses the same model, and the
+lecture's belief problem with the trader in the ship's place (\texttt{experiments/retail\_trader.py}).
+It is a stylised model for research, not investment advice.
+
+\subsection{A customer who has to trade}
+\begin{example}[{: gains from trade}]
+Someone needs to move savings into the asset; to them it is worth $5$ more than the mid price. If the
+maker sells at the mid plus a half-spread of $2$, they buy and keep $5-2=3$: their \emph{gains from
+trade}. At a half-spread of $5.4$ they would not trade at all, and keep nothing.
+\end{example}
+Along the model's runs, as a share of what this customer keeps at the competitive quote: under the cartel
+alone they keep $35$--$47\%$. Under the attacker that is best for \emph{itself} they keep $36$--$39\%$, no
+more, because that attacker holds the cartel wide and sits just inside it. A myopic attacker, which pushes
+the cartel down, leaves them $50$--$60\%$. \textbf{What is best for the attacker is worst for the customer.}
+
+\subsection{A speculator betting savings}
+\begin{example}[{: the break-even bar}]
+Someone bets on the direction of the price with a market order. The average price move is $\mu=5$ and
+the half-spread on a one-tick book is $x=0.5$. If they are right with probability $p$, one bet earns on
+average $(2p-1)\mu-x$. With no information, $p=\tfrac12$: every bet loses $0.5$, a tenth of an average
+move. To break even they need $p^*=\tfrac12+x/(2\mu)=0.55$: right 55\% of the time. At the cartel's
+quotes $x\approx5.4$ and $p^*\approx1.04$: no call on direction can pay at all.
+\end{example}
+\textbf{Not knowing whether you have an edge.} This is the lecture's ship. Betting is the strait: it costs
+something and teaches you whether your calls are right. Stopping is the cape: safe, and you learn nothing
+more. The belief is $(n,k)$: bets made and right calls.
+\begin{example}[{: updating after one bet}]
+An optimistic beginner starts with the belief Beta$(6,4)$: ``I am right 60\% of the time'', held as firmly
+as ten bets' worth of evidence. After one wrong call the belief is $6/11\approx0.545$, below the $0.55$ bar,
+so the myopic rule stops for good. After one right call it is $7/11\approx0.64$, and they continue.
+\end{example}
+The optimal rule is a \emph{quitting line} (the lecture's slides 31--36): after $n$ bets, stop for good once
+the wrong calls reach a certain number. Over a year of one bet a day, with savings of 20 average price
+moves set aside:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+& \multicolumn{2}{c}{no edge ($p=0.5$)} & real edge ($p=0.6$) \\
+rule & expected result & lose all savings & still betting at year end \\
+\midrule
+never update, keep betting & $-25$ & $74\%$ & $100\%$ \\
+myopic Bayesian & $-1.2$ & $0.3\%$ & $23\%$ \\
+patient Bayesian ($\delta=0.9$) & $-2.9$ & $1.0\%$ & $47\%$ \\
+patient Bayesian ($\delta=0.99$) & $-5.6$ & $3.8\%$ & $71\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Three lessons. \textbf{Updating protects your savings}: never updating loses everything in three years
+out of four. \textbf{Patience costs if you have no edge}: valuing what each bet teaches makes you bet
+longer and lose two to five times more. \textbf{Caution has a price too}: with a real edge, the myopic rule
+gives it up in $77\%$ of years, the lecture's trap.
+
+\subsection{A limit order instead}
+Posting a limit order and waiting makes the ordinary person a maker, but an identity-blind one: the
+\emph{fringe} of the queue game (Part~XI). When professional makers choose their fills by wallet, that
+order is left with the toxic ones and earns $-0.025$ per period instead of $+0.020$ when nobody selects.
+A tight request allowance turns it to $+0.030$ (three seeds, preliminary).
+
+\subsection{In the demo}
+The five ``Betting savings'' runs in \texttt{demo/index.html} replay one year each, all with the same luck.
+The big chart is the lecture's quitting-line plot: each right call moves one step right, each wrong call
+one step right and one up, and the shaded area is ``stop for good''. The gauge on the left is the
+trader's belief against the $0.55$ bar, with the truth (which they cannot see) as a dashed line. Show
+``never updates'' next to ``myopic Bayesian'', then the two ``real edge'' runs.
+\begin{warning}
+\textbf{One year is one draw.} In the demo, the gambler happens to lose everything on day 86 and the
+patient trader with an edge ends the year up 70\%. Another year would look different; the text above each
+run gives the probabilities over many years.
+\end{warning}
+
+%==================================================================
 \section{Glossary}\label{sec:glossary}
 %==================================================================
 \begin{description}[style=sameline,leftmargin=0pt,itemsep=1pt]
@@ -937,6 +1122,21 @@ there is one venue. The paper's limitations section lists all of this.
 \item[Rent units] Any profit divided by (monopoly profit $-$ competitive profit); $1$ is the whole rent.
 \item[Request allowance] A cap on how many orders an address may place, earned back by trading.
 \item[Selection] Choosing which fills to take, by resting only when a fill is expected to be worth it.
+\end{description}
+
+\subsection*{Terms added in Parts XII and XIII}
+\begin{description}[style=sameline,leftmargin=0pt,itemsep=1pt]
+\item[Backward induction, value iteration] Solving an MDP by working back from the last period (turn limit), or by repeating that step until the values stop changing (discount).
+\item[Belief state] What a decision maker has seen, used as its state when something is hidden, e.g.\ $(n,k)$: bets made and right calls.
+\item[Bellman equation] The best value from a state is the best, over actions, of today's reward plus the (discounted) best value of the state that follows.
+\item[Break-even bar $p^*$] The share of right calls a bet on direction needs to pay: $\tfrac12+x/(2\mu)$.
+\item[Gains from trade] What a customer keeps: their own reason to trade, minus the half-spread they pay.
+\item[Markov decision problem (MDP)] States, actions, transitions, rewards, and a discount or turn limit.
+\item[Model-based, model-free] Planning with a model of rewards and transitions, or learning action values from experience without one.
+\item[Myopic policy] Taking the action that pays most today, ignoring the state it leaves.
+\item[Quitting line] After $n$ bets, the number of wrong calls at which the optimal rule stops for good.
+\item[Ruin] Losing all the savings set aside.
+\item[Trap] Stopping for good on the worse option because stopping teaches nothing more (Rothschild, 1974).
 \end{description}
 
 \end{document}
