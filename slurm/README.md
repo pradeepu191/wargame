@@ -48,8 +48,16 @@ sbatch slurm/identity.sh                   # -> results/cfl_exp2_identity_10seed
 python analysis/identity_fig.py            # figures (point --run / file name as needed)
 ```
 
-## Watching
+## Workshop 2 grids (attackers vs learning cartels, PSRO, queue attacks, defences)
 ```bash
+sbatch slurm/workshop2.sh        # all five steps, ~12 h budget on 48 cores
+sbatch slurm/workshop2.sh 5      # one step only (1..5; see the header of the script)
+```
+Writes `results/public_attacker_relearn.csv`, `psro.csv`, `queue_steer.csv`, `queue_budget.csv`
+and `defences.csv` (now with the exact best response and the public-information attacker as
+adversaries). Then `python analysis/workshop2_figs.py` regenerates the figures.
+
+## Watching```bash
 squeue -u $USER                  # queue state
 tail -f slurm-<jobid>.out        # live log
 ```

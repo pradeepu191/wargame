@@ -121,3 +121,18 @@ def test_exponential_benchmarks_match_monte_carlo():
 def test_exponential_requires_iid_v():
     with pytest.raises(ValueError):
         make_env(edge_dist="exponential", redraw_v_each_period=False)
+
+
+def test_taker_surplus_curve_matches_simulation():
+    """Closed-form uninformed gain from trade against a Monte Carlo draw of valuations."""
+    import numpy as np
+    from sim import MarketConfig
+    from sim.benchmarks import taker_surplus_curve
+    cfg = MarketConfig(alpha=0.3, sigma_L=8.0, tick=0.5, max_half_spread=24, redraw_v_each_period=True, edge_dist="exponential")
+    S = taker_surplus_curve(cfg, cfg.alpha)
+    L = np.abs(np.random.default_rng(0).normal(0.0, cfg.sigma_L, 2_000_000))
+    for h in (1, 4, 14, 24):
+        x = h * cfg.tick
+        mc = (1 - cfg.alpha) * np.maximum(L - x, 0.0).mean()
+        assert abs(S[h - 1] - mc) < 0.01
+    assert np.all(np.diff(S) < 0)                       # wider quotes always cost the taker

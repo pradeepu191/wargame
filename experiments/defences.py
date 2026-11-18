@@ -18,7 +18,11 @@ anon / id / oracle (the wallet entrant's regime filter with each information set
 a tabular Q-learner (the incumbents' own algorithm, state = own and best rival quote) trained
 against the defended, frozen incumbents for --n-train episodes and then frozen -- the learned best
 response, which is the adversary that can exploit a reaction function and the one randomisation
-and hysteresis are meant to blunt.
+and hysteresis are meant to blunt.  Two model-based attackers close the list: `dp`, the exact best
+response to the UNDEFENDED cartel's reaction function (it knows the Q-tables but not the defence), and
+`public`, the public-information attacker: it probes the DEFENDED cartel for 1000 periods before the
+evaluation, estimates each reaction-table cell as the answer seen most often (so a randomised
+defence is averaged out), solves the estimate and keeps updating it during the evaluation.
 
 Per (population, defence, adversary): the defenders' profit alone (Pi_nominal), under attack
 (E and the 5% CVaR over episodes of the defenders' per-episode profit), L_BR and kappa_A, the
@@ -44,9 +48,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sim import BenchmarkTable, GlostenMilgromEnv, MarketConfig
 from sim.agents import Agent, QConfig, QLearningAgent
 from sim.entrants import CompetitiveEntrant, MarkoutEntrant, UndercutEntrant, WalletEntrant, hC_function
+from sim.benchmarks import taker_surplus_curve
 from experiments.entry import FrozenQ
+from experiments.best_response import CartelMDP, DPEntrant
+from experiments.public_attacker_relearn import WindowedIdentifyingEntrant
 
-ADVERSARIES = ("competitive", "undercut", "markout", "anon", "id", "oracle", "learned")
+ADVERSARIES = ("competitive", "undercut", "markout", "anon", "id", "oracle", "learned", "dp", "public")
+PUBLIC_PROBE = 1000          # probing periods of the public-information attacker (before the evaluation)
 DEFENCES = ("none", "random:0.1", "random:0.3", "hold:2", "hold:5", "floor:anon", "floor:id")
 HET = dict(n_wallets=50, wallet_concentration=1.0, wallet_persistence=0.0, regime_persistence=0.9, mark_lag=5)
 
@@ -112,6 +120,22 @@ def train_learned(env_factory, inc_factory, K, N, n_train, seed):
     return ent
 
 
+def warm_public(env_factory, inc_factory, N, hC, cfg, seed):
+    """The public-information attacker after PUBLIC_PROBE probing periods against the defended incumbents."""
+    ent = WindowedIdentifyingEntrant(cfg, N, PUBLIC_PROBE, 500, "competitive", hC, window=10 ** 9, seed=seed)
+    env = env_factory()
+    inc = inc_factory(env)
+    while ent.t_global < PUBLIC_PROBE:
+        obs = env.reset()
+        for ag in inc:
+            ag.reset()
+        ent.reset()
+        done = False
+        while not done:
+            obs, _, done, _ = env.step([ag.act(obs, i) for i, ag in enumerate(inc)] + [ent.act(obs, N)])
+    return ent
+
+
 def make_adversary(name, hC, hC_fn, alpha, cfg, env):
     if name == "competitive":
         return CompetitiveEntrant(hC)
@@ -127,7 +151,8 @@ def play(env, agents, n_episodes, N, E=None):
     half-spread quoted; fill rate; informed share of the defenders' and the adversary's fills."""
     n = env.cfg.n_mm
     pnl = np.zeros(n); fills = np.zeros(n); inf = np.zeros(n); periods = 0
-    ep_inc = []; best_h = 0.0
+    ep_inc = []; best_h = 0.0; surplus = 0.0
+    S = taker_surplus_curve(env.cfg, env.alpha_eff)          # uninformed taker's expected gain from trade, by best quote
     ent = agents[E] if E is not None else None
     for _ in range(n_episodes):
         obs = env.reset()
@@ -136,7 +161,7 @@ def play(env, agents, n_episodes, N, E=None):
         done = False; ep = 0.0
         while not done:
             actions = [ag.act(obs, i) for i, ag in enumerate(agents)]
-            best_h += min(actions)
+            best_h += min(actions); surplus += S[min(actions) - 1]
             obs, r, done, info = env.step(actions)
             pnl += r; periods += 1; ep += float(r[:N].sum())
             f = info["filled"]
@@ -149,7 +174,7 @@ def play(env, agents, n_episodes, N, E=None):
     k = max(1, int(np.ceil(0.05 * len(ep_inc))))
     cvar = float(np.sort(ep_inc)[:k].mean())
     return dict(pnl=pnl / periods, fills=fills, inf=inf, periods=periods, cvar=cvar, ep_sd=float(ep_inc.std()),
-                best_h=best_h / periods, fill_rate=float(fills.sum() / periods))
+                best_h=best_h / periods, fill_rate=float(fills.sum() / periods), taker_surplus=surplus / periods)
 
 
 def one_population(args):
@@ -175,6 +200,7 @@ def one_population(args):
                 "hC": hC, "hM": hM, "PiC": PiC, "PiM": PiM,
                 "Pi_nominal": Pi_nom, "Pi_nominal_norm": Pi_nom / (PiM - PiC), "C": (Pi_nom - PiC) / (PiM - PiC),
                 "nominal_cvar": r0["cvar"], "nominal_best_h": r0["best_h"], "nominal_fill_rate": r0["fill_rate"],
+                "nominal_taker_surplus": r0["taker_surplus"],
                 "nominal_informed_share": float(r0["inf"].sum() / max(r0["fills"].sum(), 1)),
                 "nominal_requotes": float(np.mean([a.changes for a in inc0]) / r0["periods"])}
         for aname in adversaries:
@@ -184,6 +210,12 @@ def one_population(args):
             if aname == "learned":
                 adv = train_learned(lambda: GlostenMilgromEnv(MarketConfig(**{**m_entry.__dict__, "seed": 20_000 + seed})),
                                     inc_factory, K, N, n_train, seed=30_000 + seed)
+            elif aname == "public":
+                adv = warm_public(lambda: GlostenMilgromEnv(MarketConfig(**{**m_entry.__dict__, "seed": 20_000 + seed})),
+                                  inc_factory, N, hC, m_entry, seed=30_000 + seed)
+            elif aname == "dp":
+                mdp = CartelMDP(Q, m_entry, m_entry.horizon)
+                adv = DPEntrant(mdp, mdp.solve(1.0)[0])
             else:
                 adv = make_adversary(aname, hC, hC_fn, alpha, m_entry, env)
             r = play(env, inc + [adv], n_episodes, N, E=N)
@@ -194,7 +226,7 @@ def one_population(args):
                          "attack_cvar": r["cvar"], "attack_cvar_norm": r["cvar"] / (PiM - PiC), "attack_ep_sd": r["ep_sd"],
                          "adversary_pnl": float(r["pnl"][N]), "adversary_pnl_norm": float(r["pnl"][N]) / (PiM - PiC),
                          "adversary_fill_share": float(r["fills"][N] / max(r["fills"].sum(), 1)),
-                         "attack_best_h": r["best_h"], "attack_fill_rate": r["fill_rate"],
+                         "attack_best_h": r["best_h"], "attack_fill_rate": r["fill_rate"], "attack_taker_surplus": r["taker_surplus"],
                          "defender_informed_share": float(r["inf"][:N].sum() / max(r["fills"][:N].sum(), 1)),
                          "adversary_informed_share": float(r["inf"][N] / max(r["fills"][N], 1))})
     return rows

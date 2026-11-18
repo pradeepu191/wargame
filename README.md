@@ -60,6 +60,19 @@ python experiments/identity.py --kappas 1 --rhos 0 --rhos-z 0.9,0.99 --mark-lags
 ```
 Cluster scripts for all of the above are in `slurm/` (SuperCloud; see `slurm/README.md`).
 
+## Visual demonstration
+
+```bash
+python experiments/trace.py --all          # records nine scenarios from the real simulator -> demo/traces.js
+```
+Then open `demo/index.html` in a browser (no server needed). It replays a run period by period:
+the makers' quotes against the Nash and monopoly quotes, each taker's order, the hidden regime,
+the public tape with wallet ids and delayed marks, and running profit per maker. Controls:
+play/pause (space), step (arrow keys), a playback-rate slider (1 to 200 periods per second), a
+seek bar, and a side-by-side mode (for example the anonymous against the identity entrant).
+The player holds no model logic; `tests/test_trace.py` pins the recorded profits to
+`experiments/entry.py`'s on the same seed. `python analysis/trace_video.py --all` writes a GIF of
+each scenario to `results/demo/` for slides (`--out clip.mp4` if ffmpeg is installed).
 ## Data
 
 ```bash
@@ -151,8 +164,12 @@ tests/          pytest (38)
       steering the cartel off its training path; the damage-maximiser imposes 2–3× the rent at no
       cost; re-learning (double oracle, 3 rounds) buys back half of a stale attacker's take and
       nothing against one that re-solves. κ_A ≈ 0.7 was a property of the undercut rules.
-- [ ] The realistic version: a model-based attacker on F^anon that identifies the reaction function
-      from public quotes and solves it; its gap to the exact best response
+- [x] The realistic version: a public-information attacker on F^anon that identifies the reaction
+      function from public quotes and solves it; it reaches the exact best response after ~1000
+      probing periods (60 cartels, N = 2 and 3)
+- [ ] Workshop 2 / preprint plan, item by item: `paper/WORKSHOP2_PLAN.md`
+- [ ] Visual demonstration: trace exporter + browser player with playback-rate control (talk, paper)
+- [ ] Public attacker vs re-learning cartels (forgetting window); PSRO to convergence with a learned entrant
 - [ ] Re-learning / identity-aware incumbents; steering attacker; inventory from `start_pos`
 - [ ] December L4 lifecycles: reaction functions, cancellation before toxic flow
 - [ ] Defences and the profit–resilience frontier (RQ4); preprint by mid-December
