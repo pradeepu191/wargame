@@ -70,6 +70,17 @@ transitions: the cartel's reaction). The script compares the one-tick undercut r
 policy, discounted planners and the exact best response on every local cartel, on the model and
 in the simulator. See `paper/WORKSHOP2_PLAN.md` §00.
 
+## The ordinary trader
+
+```bash
+python experiments/retail_trader.py      # -> results/retail_{prices,speculator,quitting_lines,limit_orders}.csv
+python analysis/retail_fig.py            # -> results/fig_retail.{png,pdf}
+```
+What is optimal for the participant with the least information: the price a customer who has to
+trade pays under each market structure; a speculator betting savings without information, as a belief
+MDP with a quitting line; and a retail limit order as the identity-blind fringe of the queue game.
+Stylised model, not investment advice.
+
 ## Visual demonstration
 
 ```bash

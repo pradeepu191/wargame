@@ -100,8 +100,9 @@
 \item Should the entrant always take the quote that earns most today?
 \item What does it need to know, and can it learn that from public information?
 \item What changes when the cartel keeps learning?
+\item And for the least-informed participant: what is optimal, and who pays?
 \end{itemize}
-\takeaway{Three questions for Workshop 2, one per part of the lecture.}
+\takeaway{Three questions about the attacker, one per part of the lecture, and one about the ordinary trader.}
 \note{Same picture as slide 2 of Lecture 15, with the ship replaced by the entrant and the insurance quote by the cartel's quote.}
 \end{frame}
 
@@ -246,16 +247,62 @@ With public wallets, a maker's state can include each wallet's record, its fills
 \note{Figure for questions: fig\_longwindow. Oct 29 stress episode: one identity-blind wallet absorbed the toxic flow.}
 \end{frame}
 
+\begin{frame}{The ordinary trader: who pays?}
+\partlabel{The least-informed participant, same model}
+\vspace{4pt}
+\begin{columns}[T]
+\begin{column}{0.58\textwidth}\centering\includegraphics[width=\textwidth]{fig_retail_customer.pdf}\end{column}
+\begin{column}{0.42\textwidth}\small
+A customer who \textbf{has to trade} (moving savings in or out) is the model's uninformed taker. Her gains from trade fall as the quote widens.\\[5pt]
+\stat{orange}{36--39\%}{of the Nash quote's gains left by the attack that is best for the attacker: no more than the cartel alone (35--47\%)}
+\end{column}
+\end{columns}
+\takeaway{The attacker keeps the cartel wide and sits just inside it. The customer pays for both.}
+\note{The myopic entrant, which pushes the cartel down, leaves her 50--60\%. 30 two-maker cartels, model paths.}
+\end{frame}
+
+\begin{frame}{Betting your savings without information: the ship again}
+\partlabel{Lecture 15 part 2, with the trader as the ship}
+\small
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{itemize}\setlength{\itemsep}{4pt}
+\item A bet that is right with probability $p$ earns $(2p-1)\mu - x$: $\mu$ the mean price move, $x$ the half-spread.
+\item Break-even: $p^* = \tfrac12 + x/(2\mu)$. One-tick book: $0.55$. Cartel's quotes: above 1.
+\item She does not know $p$. Belief $(n,k)$: trades made, right calls. Trade = the strait (teaches), stop = the Cape (teaches nothing).
+\end{itemize}
+\end{column}
+\begin{column}{0.52\textwidth}\centering
+\footnotesize
+\begin{tabular}{lccc}
+\toprule
+one year, optimistic prior & \multicolumn{2}{c}{no edge} & real edge \\
+policy & profit & ruin & still trading \\
+\midrule
+never updates & $-25.0$ & 74\% & 100\% \\
+myopic Bayesian & $-1.2$ & 0.3\% & 23\% \\
+patient, $\delta=0.9$ & $-2.9$ & 1.0\% & 47\% \\
+patient, $\delta=0.99$ & $-5.6$ & 3.8\% & 71\% \\
+\bottomrule
+\end{tabular}\\[3pt]
+\raggedright profit in average price moves; savings 20 moves; real edge $p=0.6$.
+\end{column}
+\end{columns}
+\takeaway{Without an edge, patience costs: information is only worth buying if an edge is plausible. With one, the myopic rule quits it 77\% of the time: the trap.}
+\note{Stylised model, not investment advice. Rothschild (1974), as in the lecture.}
+\end{frame}
+
 \begin{frame}{Summary}
 \partlabel{And what comes next}
 \vspace{4pt}
 \begin{columns}[T]
-\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Planning is the attack}{Against a frozen cartel the entrant solves an MDP. Looking ahead is worth 0.13--0.30 rent units.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{blue}{2~~The model is public}{The cartel's reaction can be read off the public book.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~A learning cartel is a player}{That makes it a game. In our runs learning did not bring the rent back.}\end{column}
+\begin{column}{0.25\textwidth}\rqbox{orange}{1~~Planning attacks}{The entrant solves an MDP. Looking ahead adds 0.13--0.30.}\end{column}
+\begin{column}{0.25\textwidth}\rqbox{blue}{2~~The model is public}{The cartel's reaction is on the public book.}\end{column}
+\begin{column}{0.25\textwidth}\rqbox{aqua}{3~~Learners are players}{A game. Learning did not bring the rent back.}\end{column}
+\begin{column}{0.25\textwidth}\rqbox{navy}{4~~The customer pays}{The best attack leaves her no better off. Updating protects savings.}\end{column}
 \end{columns}
 \vspace{8pt}
-\small\textbf{Next:} full-size runs of these three; the trap question on order-level data; preprint in mid-December.\\[3pt]
+\small\textbf{Next:} full-size runs; the trap question on order-level data; preprint in mid-December.\\[3pt]
 \centering\texttt{github.com/pradeepu191/wargame}
 \note{Close.}
 \end{frame}

@@ -20,7 +20,7 @@ demo-clips:      ## GIF of every recorded scenario in results/demo/ (for slides 
 figures:         ## every figure of the paper and reports, from the committed CSVs (no run directories or raw data needed)
 	for f in report_figs best_response_fig defences_fig entry_fig relearn_fig identity_fig marklag_fig liquidity_fig \
 	         fee_fig queue_fig no_regret_fig public_attacker_fig workshop2_figs frontier_fig \
-	         makers_fig stress_fig identity_selection_fig longwindow_fig events_fig; do \
+	         makers_fig stress_fig identity_selection_fig longwindow_fig events_fig retail_fig; do \
 	    python analysis/$$f.py || exit 1; done
 clean:
 	rm -rf results/*_seed* results/_configs

@@ -20,6 +20,16 @@ talk on this branch are narrowed to that frame. Nothing is deleted: the wider re
 | Belief state (n, h); selective feedback; trap (Rothschild) | Per-wallet record of fills and toxic fills; avoiding a wallet stops the feedback; is avoidance a trap? | report b4 (open question) |
 | More information can hurt in a game (Akerlof) | Public wallet identity | report b4 (open question) |
 
+**The ordinary trader (Nov 17).** The paper now also takes the side of the participant with the least
+information (`experiments/retail_trader.py`, `analysis/retail_fig.py`, report b5, arXiv §"The ordinary
+trader", an ethics paragraph in both). Three parts, each built on what the model already had: (A) the
+price an ordinary customer pays under each market structure, from the planning paths and the
+closed-form taker surplus; (B) a speculator betting savings without information as the lecture's belief
+MDP (Beta prior on her hit rate, quitting line, ruin), solved by backward induction and checked against
+the simulator; (C) a retail limit order as the identity-blind fringe of the queue game. The attack that
+is best for the attacker leaves the customer 36–39% of her Nash-quote gains, no more than the cartel;
+the speculator who never updates is ruined in 74% of years, the Bayesian quitting rule in 0.3–3.8%.
+
 Moved out of the talk and report (kept in the repository, marked preliminary): the queue-game
 steering and request-allowance experiments, the one frontier for all levers, and the double oracle
 as a headline (it is one sentence in b3). Claims are worded more carefully ("in our runs", "we do not
