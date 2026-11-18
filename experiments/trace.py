@@ -24,6 +24,10 @@ scenarios the entrant has watched the tape for 3000 periods before the recording
   identity_id      same market and seed; entrant also sees which wallet printed
   queue_anon       one-tick book (spread fixed, makers choose rest / out); anonymous selector
   queue_id         same book and seed; identity-aware selector
+  savings_*        the ordinary trader (experiments/retail_trader.py): someone betting savings on the direction
+                   of the price with no information, on a one-tick book, one bet a day for a year.  Five runs
+                   share one draw of outcomes (common random numbers): gambler, myopic and patient Bayesian
+                   with no edge; myopic and patient Bayesian with a real edge
 
 Trace format (JSON, columnar; one entry per period in every array of "p"):
   meta   scenario, title, text, mode ("spread" | "queue"), agents [{name, role}], K, tick, horizon,
@@ -64,6 +68,7 @@ from sim.queue_env import QueueEnv, selection_benchmarks
 from experiments.best_response import CartelMDP, DPEntrant
 from experiments.entry import FrozenQ
 from experiments.public_attacker import IdentifyingEntrant, path_cells_of
+from experiments import retail_trader as rt
 
 DEMO = ROOT / "results" / "demo_cartel"
 DEMO_TOXIC = ROOT / "results" / "demo_cartel_a05"     # alpha = 0.5: where identity has value (REPLICATION_NOTES)
@@ -265,10 +270,79 @@ def queue_scenario(name: str, n_periods: int, seed: int = 0) -> dict:
     return {"meta": meta, "p": cols}
 
 
+# ---------------------------------------------------------------------------------- the ordinary trader
+SPEC = {    # name: (policy discount, None = never updates; true probability of a right call; title; text)
+    "savings_gambler": (None, 0.5, "Betting savings: never updates (no edge)",
+                        "One bet a day on the direction of the price, with no information, and no change of mind however it goes."),
+    "savings_myopic": (0.0, 0.5, "Betting savings: myopic Bayesian (no edge)",
+                       "Same luck, same optimistic start. She updates her belief after every bet and stops for good once "
+                       "today's bet is no longer worth it on her own belief."),
+    "savings_patient": (0.99, 0.5, "Betting savings: patient Bayesian (no edge)",
+                        "Same luck. She also values what each bet teaches her, so she keeps experimenting longer."),
+    "savings_edge_myopic": (0.0, 0.6, "Real edge: myopic Bayesian",
+                            "This time she really is right 60% of the time. The myopic rule can still give up after an early "
+                            "run of bad luck: the trap of Lecture 15."),
+    "savings_edge_patient": (0.99, 0.6, "Real edge: patient Bayesian",
+                             "Same edge, same luck. Valuing information keeps her betting through early losses."),
+}
+TEXT.update({k: (v[2], v[3]) for k, v in SPEC.items()})
+
+
+def speculator_scenario(name: str, n_periods: int | None = None, seed: int = 0) -> dict:
+    """One year of the savings bettor of experiments/retail_trader.py on a one-tick book.  The day's
+    outcome draws are shared by every policy (common random numbers), so two runs side by side see the
+    same luck; the text quotes the many-run probabilities, because one year is one draw."""
+    mk, _, _ = load_cartel(DEMO)
+    cfg = MarketConfig(**mk)
+    mu, tick, N = float(cfg.edge_mean), float(cfg.tick), rt.N_DAYS
+    x = 1 * tick                                                # one-tick book: the half-spread is one tick
+    a, b = rt.PRIORS["overconfident Beta(6,4)"]
+    delta, p_true, title, text = SPEC[name]
+    trade = None if delta is None else rt.solve_speculator(a, b, x, mu, delta)[0]
+    rng = np.random.default_rng(20_000 + seed)
+    U, D = rng.random(N), rng.exponential(mu, N)
+    w, n, k, ended, why = rt.SAVINGS * mu, 0, 0, None, ""
+    cols = {c: [] for c in ("t", "bet", "right", "move", "r", "w", "n", "k", "ph", "rec")}
+    for t in range(n_periods or N):
+        go = ended is None and w > 0 and (trade is None or bool(trade[n, k]))
+        if not go and ended is None:
+            ended, why = t, ("savings gone" if w <= 0 else "stopped for good")
+        right, pnl = -1, 0.0
+        if go:
+            right = int(U[t] < p_true)
+            pnl = (D[t] if right else -D[t]) - x
+            w += pnl; n += 1; k += right
+        cols["t"].append(t); cols["bet"].append(int(go)); cols["right"].append(right)
+        cols["move"].append(round(float(D[t] / mu), 3) if go else 0.0)
+        cols["r"].append(round(float(pnl / mu), 4)); cols["w"].append(round(float(w / mu), 4))
+        rec = round((a + k) / (a + b + n), 4)                  # what her record says (the Bayesian posterior mean)
+        cols["n"].append(n); cols["k"].append(k); cols["rec"].append(rec)
+        cols["ph"].append(round(a / (a + b), 4) if delta is None else rec)   # her belief: the gambler never updates
+    line = rt.quitting_line(trade) if trade is not None else None
+    many = {**rt.evaluate_exact(trade, p_true, x, mu), **rt.evaluate_mc(trade, p_true, x, mu)}
+    days = len(cols["t"])
+    ruin = f"{many['p_ruin']:.0%}" if many["p_ruin"] >= 0.1 else f"{many['p_ruin']:.1%}"
+    meta = dict(scenario=name, title=title, mode="speculator", agents=[{"name": "trader", "role": "entrant"}],
+                text=text + f" Over many years with these rules: ruin {ruin}, expected result "
+                            f"{many['exp_profit_mu']:+.1f} average price moves, {many['exp_trades']:.0f} bets.",
+                horizon=N, period_seconds=None, unit_label="trading day", seed=seed, git=git_hash(),
+                params=dict(mu=mu, tick=tick, x=x, hurdle=rt.hurdle(x, mu), prior=[a, b], p_true=p_true,
+                            delta=delta, savings=rt.SAVINGS, policy="never updates" if delta is None else
+                            ("myopic Bayesian" if delta == 0 else f"patient Bayesian (delta {delta:g})")),
+                quitting_line=None if line is None else [int(v) for v in line],
+                many_runs={k_: round(float(v), 4) for k_, v in many.items()},
+                ended=ended, ended_why=why,
+                summary={"periods": days, "unit": "average price move", "profit_per_period": {"trader": round(float(np.mean(cols["r"])), 4)},
+                         "bets": n, "right": k, "final_savings": cols["w"][-1]})
+    return {"meta": meta, "p": cols}
+
+
 SCENARIOS = list(TEXT)
 
 
 def make(name: str, cartel: Path = DEMO, n_periods: int | None = None) -> dict:
+    if name in SPEC:
+        return speculator_scenario(name, n_periods)
     if name.startswith("queue"):
         return queue_scenario(name, n_periods or 400)
     if name.startswith("identity") and cartel == DEMO and DEMO_TOXIC.exists():

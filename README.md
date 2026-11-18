@@ -79,12 +79,14 @@ python analysis/retail_fig.py            # -> results/fig_retail.{png,pdf}
 What is optimal for the participant with the least information: the price a customer who has to
 trade pays under each market structure; a speculator betting savings without information, as a belief
 MDP with a quitting line; and a retail limit order as the identity-blind fringe of the queue game.
+The demo replays five of these traders (`savings_*` scenarios): the belief path on the quitting-line
+chart, the belief against the break-even bar, and the savings over the year, all with the same luck.
 Stylised model, not investment advice.
 
 ## Visual demonstration
 
 ```bash
-python experiments/trace.py --all          # records ten scenarios from the real simulator -> demo/traces.js
+python experiments/trace.py --all          # records fifteen scenarios (ten market runs, five savings bettors) -> demo/traces.js
 ```
 Then open `demo/index.html` in a browser (no server needed). It replays a run period by period:
 the makers' quotes against the Nash and monopoly quotes, each taker's order, the hidden regime,
