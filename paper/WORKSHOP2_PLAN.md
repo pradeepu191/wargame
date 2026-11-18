@@ -1,6 +1,63 @@
 # Workshop 2 and the preprint: feedback, status, next steps (Nov 15 2026)
 
-## 0. Status on Nov 16 (what was done after this plan was written)
+## READ THIS FIRST (Nov 18): what this branch is, and what you need to do
+
+### Which branch is this?
+
+You are reading `workshop2-next-steps` (pull request #1). There are two branches:
+
+| | `workshop2-next-steps` (PR #1, this one) | `workshop2-lecture15` (PR #2) |
+|---|---|---|
+| History | the base | every commit of this branch **plus more**; no file deleted |
+| Code, experiments, results, figures, tests | everything up to Nov 16 (72 tests) | the same, plus the planning view, the ordinary trader, 7 more tests (79) |
+| arXiv draft | 17 pages | the same text plus a planning paragraph, "The ordinary trader" section and an ethics paragraph (20 pages) |
+| Workshop 2 report and slides | **the full version** (this branch): seven results (public attacker, re-learning cartel, double oracle, queue steering, request allowance, frontier, data) | rewritten shorter in the frame of the supervisor's Lecture 15: myopic vs optimal attacker, public attacker, re-learning cartel, identity as state, the ordinary trader |
+| Demo | nine market scenarios | the same, plus the myopic entrant, five "betting savings" runs, and a fix for screens with display scaling |
+
+**Suggested:** present and submit Workshop 2 from `workshop2-lecture15`, which is the version in line
+with what the supervisor showed in Lecture 15, and merge PR #2 into `main` (PR #2 contains everything
+here, so PR #1 can then be closed). The rest of this section is for working on this branch.
+
+### Your to-do list, in order
+
+1. **Read the drafts** (all in `paper/`): `deliverable3.pdf` (report), `slides_workshop2.pdf`
+   (12 slides), `arxiv_draft.pdf` (17 pages). Every term is defined in `paper/glossary.tex`. Note that the
+   PDFs on this branch were built before the final laptop numbers went in; the `.tex` files are current.
+2. **Rehearse the live demo.** Double-click `demo/index.html`. Space = play/pause, arrow keys = step.
+   Order on the slides: "The cartel alone"; "Exact best response" (step through 10 periods); the public
+   attacker; "Anonymous entrant" next to "Identity entrant". **Known bug on this branch:** on a screen with
+   display scaling above 100% (Windows Settings > Display > Scale), the charts grow taller on every frame.
+   Set scaling to 100% for the talk, or use the demo on `workshop2-lecture15`, where it is fixed.
+3. **Run the full-size experiments on SuperCloud** (Claude cannot log in to the cluster):
+   ```bash
+   ssh <your-username>@txe1-login.mit.edu
+   cd ~/wargame        # first time only: git clone https://github.com/pradeepu191/wargame.git ~/wargame && cd ~/wargame && bash slurm/setup.sh
+   git fetch && git checkout workshop2-next-steps && git pull     # or workshop2-lecture15: same script
+   ls results | grep -c cfl_exp2_    # the trained cartels; if 0, first: sbatch slurm/sweep.sh experiments/configs/replicate_cfl_exp.yaml --set market.alpha=0.1,0.3,0.5 --set market.n_mm=2,3 --seeds 0-9
+   sbatch slurm/workshop2.sh         # five experiments, up to 12 hours on one 48-core node
+   squeue -u $USER                   # is it still running?
+   ```
+   When it has finished: `python analysis/workshop2_figs.py`, then
+   `git add results/*.csv results/fig_*.png results/fig_*.pdf && git commit -m "Workshop 2 grids at full size" && git push`,
+   and tell Claude "refresh the numbers". Step 5 replaces the strong-attacker defence run that died on the laptop.
+4. **December order-level archive** (whoever has the raw data). Download steps: `data/README.md`
+   section B. No analysis script exists yet for the order-status stream.
+5. **Decide, with Deepu, before the repository goes public:** licence, `CITATION.cff`, Zenodo archive.
+6. **Send Claude the Workshop 2 report template** if the course published one.
+7. Optional: install `microtype` in MiKTeX so the Workshop 1 report builds on this laptop.
+
+### Running things on the laptop
+
+Nothing is running now. Claude Code sessions and anything they start stop when the laptop sleeps or
+shuts down. Tests: `.\.venv\Scripts\python -m pytest -q`. Figures: `make figures`. Demo recordings:
+`.\.venv\Scripts\python experiments\trace.py --all`. PDFs: `pdflatex <file>.tex` twice inside `paper\`.
+
+### Where to read more
+
+* What each experiment found: `results/REPLICATION_NOTES.md` (newest sections at the end).
+* The status of each plan item: section 0 below.
+
+## 0. Status on Nov 18 (what was done after this plan was written)
 
 | Step of §3 | Status | Where |
 |---|---|---|
@@ -10,8 +67,8 @@
 | 4 Double oracle to convergence | **Done at laptop size** (12 two-maker cartels, two modes, six rounds; no convergence to a defence) | `experiments/psro.py`, `fig_psro` |
 | 5 Queue-mode attacks | **Preliminary** (3 seeds): steering is a null; the request allowance removes the selection rent | `experiments/queue_attacks.py`, `fig_queue_steer`, `fig_queue_budget` |
 | 6 Data: full recording, December archive | Full-recording analysis was already in the repo (Nov 2). **December archive not started**: raw data is not on the laptop. | `slurm/data_pipeline.sh` |
-| 7 One frontier figure | **Draft** from existing results; strong attackers (exact best response, public attacker) coded into `experiments/defences.py`, run pending | `analysis/frontier_fig.py`, `fig_frontier` |
-| 8 Workshop 2 report and talk | **Drafts** with interim numbers | `paper/deliverable3.tex`, `paper/slides_workshop2.tex` |
+| 7 One frontier figure | **Draft** from existing results; strong attackers (exact best response, public attacker) coded into `experiments/defences.py`. The laptop run died; it is step 5 of the cluster script | `analysis/frontier_fig.py`, `fig_frontier` |
+| 8 Workshop 2 report and talk | **Drafts** with the final laptop numbers in the `.tex` files (PDFs not rebuilt on this branch) | `paper/deliverable3.tex`, `paper/slides_workshop2.tex` |
 | 9 Reproducibility pass, arXiv draft | **Draft** (17 pages); `make figures` added. Licence, citation file and Zenodo archive need the authors' decision. | `paper/arxiv_draft.tex` |
 
 Findings are logged in `results/REPLICATION_NOTES.md` (two sections dated Nov 15). Two things in
