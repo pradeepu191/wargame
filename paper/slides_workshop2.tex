@@ -53,8 +53,8 @@
 \newcommand{\partlabel}[1]{\vspace{-10pt}\par\noindent\hfill{\scriptsize\textcolor{muted}{\textsc{#1}}}\par\vspace{-4pt}}
 \newcommand{\subline}[1]{\par\vspace{3pt}{\small #1}\par}
 
-\title{\huge Can learning market makers defend their profits?}
-\subtitle{What an attacker needs, what learning buys, and which exchange rules move the losses\\ {\small\textcolor{white!70!navy}{Rent or toxicity: strategic exploitability of learning market makers with public wallet information}}}
+\title{\huge Can an attacker plan against learning market makers?}
+\subtitle{The entrant's problem as a Markov decision problem\\ {\small\textcolor{white!70!navy}{Rent or toxicity: strategic exploitability of learning market makers with public wallet information}}}
 \author{Deepu Pradeep \quad Miguel Betran Menz}
 \institute{6.S974 Games, Learning, and Security, Workshop 2 (draft)\\ Example 4: an algorithmic market with adaptive agents}
 \date{November 2026}
@@ -64,43 +64,123 @@
 \maketitle}
 
 \begin{frame}{The words we use today}
-\partlabel{Recap: definitions}
+\partlabel{Recap from Workshop 1}
 \small
 \begin{columns}[T]
 \begin{column}{0.5\textwidth}
 \begin{itemize}\setlength{\itemsep}{4pt}
 \item \textbf{Maker}: posts standing offers to buy and sell. \textbf{Taker}: accepts one.
 \item \textbf{Half-spread} $h$: how far a maker's prices sit from the mid, in \textbf{ticks} (smallest price step).
-\item \textbf{Informed taker}: trades only when the maker loses. \textbf{Toxicity}: the informed share of the flow.
 \item \textbf{Nash quote} $h^C$: break-even. \textbf{Monopoly quote} $h^M$: what a single maker would choose.
 \end{itemize}
 \end{column}
 \begin{column}{0.5\textwidth}
 \begin{itemize}\setlength{\itemsep}{4pt}
 \item \textbf{Cartel}: learning makers that settle above Nash without communicating. \textbf{Rent}: their profit above Nash.
-\item \textbf{Reaction function}: how the cartel answers last period's quotes.
-\item \textbf{Entrant}: the attacker, one more maker. \textbf{Rent units}: profit divided by (monopoly $-$ Nash).
-\item \textbf{Period}: one taker arriving.
+\item \textbf{Entrant}: the attacker, one more maker.
+\item \textbf{Rent units}: profit divided by (monopoly $-$ Nash) profit. 1 is the whole rent.
 \end{itemize}
 \end{column}
 \end{columns}
-\takeaway{Workshop 1: the rent exists, and an attacker who knows the reaction function takes all of it.}
-\note{One slide to recall the vocabulary. Every word on later slides is defined here.}
+\takeaway{Workshop 1: the rent exists, and an entrant that knows how the cartel reacts takes all of it.}
+\note{One slide to recall the vocabulary. The planning words come from Lecture 15 and are defined as we go.}
 \end{frame}
 
-\begin{frame}{What Workshop 2 set out to answer}
-\partlabel{The plan the feedback endorsed}
-\vspace{4pt}
+\begin{frame}{The entrant's quote changes the cartel it faces tomorrow}
+\partlabel{The frame of Lecture 15}
+\centering
+\begin{tikzpicture}[node distance=5.2cm, >={Stealth[length=2.2mm]}]
+\node[draw=navy,fill=paleblue,rounded corners=4pt,minimum width=3.2cm,minimum height=1.6cm,align=center] (E) {\textbf{Entrant}\\[2pt]\small chooses its quote};
+\node[draw=aqua,fill=aqua!10,rounded corners=4pt,minimum width=4.2cm,minimum height=1.6cm,align=center,right=of E] (M) {\textbf{Market with a frozen cartel}\\[2pt]\small the cartel answers the last quotes\\ \small with its learned reaction};
+\draw[->,navy,thick] ([yshift=4mm]E.east) -- node[above]{\small quote $a$} ([yshift=4mm]M.west);
+\draw[->,aqua!80!black,thick] ([yshift=-4mm]M.west) -- node[below]{\small profit, and the cartel's new quotes} ([yshift=-4mm]E.east);
+\end{tikzpicture}
+\vspace{6pt}
+\begin{itemize}\small\setlength{\itemsep}{3pt}
+\item Should the entrant always take the quote that earns most today?
+\item What does it need to know, and can it learn that from public information?
+\item What changes when the cartel keeps learning?
+\end{itemize}
+\takeaway{Three questions for Workshop 2, one per part of the lecture.}
+\note{Same picture as slide 2 of Lecture 15, with the ship replaced by the entrant and the insurance quote by the cartel's quote.}
+\end{frame}
+
+\begin{frame}{Against a frozen cartel, the entrant faces an MDP}
+\partlabel{Lecture 15: finite MDP; the opponent as part of P}
+\small
 \begin{columns}[T]
-\begin{column}{0.5\textwidth}\rqbox{orange}{1~~Public information}{Can the attacker learn the reaction function from the public book alone?}\end{column}
-\begin{column}{0.5\textwidth}\rqbox{blue}{2~~Both sides learning}{If the cartel keeps learning, does it defend its rent?}\end{column}
+\begin{column}{0.56\textwidth}
+\begin{itemize}\setlength{\itemsep}{4pt}
+\item \textbf{State} $x$: last period's quotes $(h_1,h_2,h_e)$, $24^3$ states.
+\item \textbf{Action} $a$: the entrant's half-spread, $1,\dots,24$.
+\item \textbf{Transitions} $P$: the cartel answers $x$ with its reaction $g(x)$; next state $(g(x),a)$. Deterministic.
+\item \textbf{Reward} $r(x,a)$: expected profit this period, closed form.
+\item \textbf{Turn limit}: 100 periods per episode.
+\end{itemize}
+\end{column}
+\begin{column}{0.44\textwidth}
+\textbf{Why this state is valid.} Each learner chooses from its own last quote and the best rival quote. Last period's quotes predict the cartel's answer and the profit.\\[6pt]
+\textbf{Why the cartel is part of $P$.} Frozen, it does not respond to the entrant's \emph{policy}, only to its last quote, like the missiles of the lecture's example.
+\end{column}
 \end{columns}
-\vspace{4pt}
+\takeaway{The exact best response of Workshop 1 is backward induction on this MDP: value iteration with k = periods left.}
+\note{Lecture 15 slides 7, 9, 12. The state must make the rest of the history irrelevant; here it does, because the learners' own state is the last quotes.}
+\end{frame}
+
+\begin{frame}{A quote that earns more today gives a policy that earns less}
+\partlabel{Lecture 15 slide 15, on one of our cartels}
+\small
 \begin{columns}[T]
-\begin{column}{0.5\textwidth}\rqbox{aqua}{3~~One-tick books}{When the spread cannot move, what can an attacker do?}\end{column}
-\begin{column}{0.5\textwidth}\rqbox{navy}{4~~Defences}{Which maker and exchange rules hold up against the worst attacker?}\end{column}
+\begin{column}{0.5\textwidth}\centering
+\textbf{Myopic: best profit today}\\[3pt]
+\begin{tabular}{cccc}
+\toprule
+period & cartel & entrant & profit \\
+\midrule
+0 & 15, 17 & 13 & 1.21 \\
+1 & 16, 13 & 12 & 1.21 \\
+2 & 18, \textcolor{red}{9} & 8 & \textcolor{red}{1.05} \\
+3 & \textcolor{red}{7}, 11 & 6 & \textcolor{red}{0.86} \\
+\bottomrule
+\end{tabular}
+\end{column}
+\begin{column}{0.5\textwidth}\centering
+\textbf{Optimal: best total}\\[3pt]
+\begin{tabular}{cccc}
+\toprule
+period & cartel & entrant & profit \\
+\midrule
+0 & 15, 17 & 12 & 1.21 \\
+1 & 21, 23 & 14 & \textcolor{orange}{1.20} \\
+2 & 24, 14 & 12 & 1.21 \\
+3 & 14, 22 & 13 & 1.21 \\
+\bottomrule
+\end{tabular}
+\end{column}
 \end{columns}
-\note{The four items of our Workshop 1 plan, in the order of the talk.}
+\vspace{6pt}
+Quotes in ticks; profit in rent units. In period 1 the optimal entrant gives up $0.01$ today, and the cartel stays wide.
+\takeaway{The myopic entrant pushes the cartel down to 7--9 ticks. The optimal one keeps it wide and stays just inside it.}
+\note{Cartel cfl\_exp2 alpha 0.1 seed 0, from python experiments/planning\_view.py. Read it like the value-iteration table of the lecture.}
+\end{frame}
+
+\begin{frame}{How much is looking ahead worth?}
+\partlabel{30 two-maker cartels, ten per toxicity level}
+\centering\small
+\begin{tabular}{lcccc}
+\toprule
+policy & $\bar\alpha=0.1$ & $0.3$ & $0.5$ & simulator \\
+\midrule
+one-tick undercut (no model) & 0.53 & 0.48 & 0.46 & 0.50 \\
+myopic (knows $P$, $\delta=0$) & 0.91 & 0.94 & 0.95 & 0.94 \\
+$\delta=0.5$ & 1.20 & 1.08 & 1.16 & 1.15 \\
+$\delta=0.9$ & 1.21 & 1.08 & 1.17 & 1.15 \\
+optimal (100-period total) & 1.21 & 1.08 & 1.17 & 1.15 \\
+\bottomrule
+\end{tabular}\\[4pt]
+\raggedright\footnotesize Entrant's profit per period, rent units. Columns 2--4: on the model from the starting state. Simulator: the same policies in the real simulator, toxicity levels pooled.
+\takeaway{Knowing the cartel doubles the take. Looking ahead adds the rest, and a discount of 0.5 is already enough.}
+\note{Lecture 15 slides 34--36: patience moves the decision. Here most of the gain comes with the first step of looking ahead.}
 \end{frame}
 
 \begin{frame}{Live: the model, period by period}
@@ -111,8 +191,6 @@
 \begin{itemize}\setlength{\itemsep}{3pt}
 \item makers' quotes against the Nash and monopoly quotes
 \item each taker's order, coloured after the fact
-\item the hidden toxic regime and the entrant's belief
-\item the public tape, with outcomes arriving late
 \item running profit per maker
 \end{itemize}
 Controls: play, step, seek, \textbf{playback rate} 1--200 periods per second, two runs side by side.
@@ -120,10 +198,9 @@ Controls: play, step, seek, \textbf{playback rate} 1--200 periods per second, tw
 \begin{column}{0.45\textwidth}\small
 \textbf{Show, in this order}
 \begin{enumerate}\setlength{\itemsep}{3pt}
-\item The cartel alone (slow: 5 periods/s)
-\item The exact best response (step through the first 10 periods)
-\item The public attacker: probing, then exploiting
-\item Anonymous against identity entrant, side by side
+\item The cartel alone (5 periods/s)
+\item Myopic and optimal entrant side by side (step through 10 periods)
+\item The public attacker: probing, then planning
 \end{enumerate}
 \end{column}
 \end{columns}
@@ -131,73 +208,68 @@ Controls: play, step, seek, \textbf{playback rate} 1--200 periods per second, tw
 \note{Switch to the browser. Backup if there is no browser: the GIFs in results/demo.}
 \end{frame}
 
-\begin{frame}{Result 1: the attack needs only the public book}
-\partlabel{Item 1, final: 60 cartels}
-\begin{columns}[c]
+\begin{frame}{Without the model: build it from the public book}
+\partlabel{Model-based with a learned model; 60 cartels}
+\vspace{6pt}
+\begin{columns}[T]
 \begin{column}{0.58\textwidth}\centering\includegraphics[width=\textwidth]{fig_public_attacker.pdf}\end{column}
 \begin{column}{0.42\textwidth}\small
-\stat{orange}{1000 periods}{of random quotes are enough to match the attacker who knows the cartel's tables}
-\vspace{4pt}
-Two episodes already take the rent. Three incumbents are no harder than two.
+Every value of $P$ is on the public book: the cartel's answer appears next to the quotes it answered.\\[4pt]
+Quote at random for a \textbf{probing budget}, record the answers, plan on the estimate.\\[4pt]
+\stat{orange}{1000 periods}{of probing match planning with the true $P$}
 \end{column}
 \end{columns}
-\takeaway{A learned reaction function on a public book is identifiable, and what is identifiable is solvable.}
-\note{Every answer of the cartel is on the book next to the state it answered. The attacker fills in the table and solves it.}
+\takeaway{Probing costs profit, so the best budget is two to ten episodes. Feedback is selective: only visited states are learned.}
+\note{Lecture 15: model-based planning. Next lecture is model-free; the cartel's own learners are model-free Q-learners.}
 \end{frame}
 
-\begin{frame}{Result 2: a cartel that keeps learning destroys its rent, and keeps none of it}
-\partlabel{Item 2: 15 two-maker cartels}
-\centering\includegraphics[width=0.95\textwidth]{fig_relearn_attack.pdf}
-\takeaway{Learning halves the attacker's take. The cartel sits at or below the Nash profit throughout. Forgetting old observations makes the attacker worse.}
-\note{Left: attacker's profit. Middle: the cartel's profit above Nash, zero against any attacker that re-solves. Right: how much of the moving reaction table the attacker knows.}
+\begin{frame}{When the cartel keeps learning, it is a player}
+\partlabel{The game; 15 two-maker cartels, laptop size}
+\centering\includegraphics[width=0.9\textwidth]{fig_relearn_attack.pdf}
+\takeaway{Learning lowers what the attacker can take (about 0.5 instead of 1.1), but the cartel earns about the Nash profit while it learns. We have run only the simplest version of the game.}
+\note{A cartel that responds to the entrant's policy cannot be folded into P (Lecture 15 slide 9). Alternating the two sides for six rounds gave the same picture.}
 \end{frame}
 
-\begin{frame}{Result 3: repeated adversarial training does not help either}
-\partlabel{Item 2: 12 two-maker cartels, two modes}
-\centering\includegraphics[width=0.95\textwidth]{fig_psro.pdf}
-\takeaway{After six rounds the loss to a fresh best response is still the whole rent. Re-learning protects only against attackers already seen.}
-\note{Two modes: re-learn against the last attacker, or against all of them. Slightly less collusive, no less exploitable.}
+\begin{frame}{Identity as part of the state}
+\partlabel{Data, Oct 6 -- Nov 1; RQ1}
+\small
+With public wallets, a maker's state can include each wallet's record, its fills and toxic fills: the lecture's belief $(n,h)$ for that wallet. On Hyperliquid, the makers who earn act on it.
+\vspace{6pt}
+\begin{columns}[T]
+\begin{column}{0.32\textwidth}\stat{orange}{1.9--3.6$\times$}{fewer fills from previously toxic wallets for the top-10 makers}\end{column}
+\begin{column}{0.32\textwidth}\stat{blue}{33 of 35}{coin-days on which the gap holds (four weeks)}\end{column}
+\begin{column}{0.32\textwidth}\stat{aqua}{10 days}{for which a wallet's label stays useful}\end{column}
+\end{columns}
+\vspace{6pt}
+\textbf{Open questions from the lecture.} Avoiding a wallet stops the feedback on it: is avoidance a trap (slide 37)? More information can lower the gains from trade in a game (slides 41--42): who bears it when wallets are public?
+\takeaway{Public identity changes what the makers' state contains. Whether avoidance traps them is the next question.}
+\note{Figure for questions: fig\_longwindow. Oct 29 stress episode: one identity-blind wallet absorbed the toxic flow.}
 \end{frame}
 
-\begin{frame}{Result 4: on a one-tick book there is nothing to steer}
-\partlabel{Item 3, preliminary: 3 seeds}
-\centering\includegraphics[width=0.78\textwidth]{fig_queue_steer.pdf}
-\takeaway{The attacker changes what the incumbents learn, not what it earns. Its profit comes from choosing takers, not from the incumbents' reaction.}
-\note{Queue game: the spread is pinned, makers rest or step out. Lure-then-switch earns 0.084 against 0.083.}
-\end{frame}
-
-\begin{frame}{Result 5: a tight request allowance removes the selection rent}
-\partlabel{Items 3 and 4, preliminary: 3 seeds}
-\centering\includegraphics[width=0.9\textwidth]{fig_queue_budget.pdf}
-\takeaway{Selecting fills means cancelling and re-placing. Cap that, and the losses move back from identity-blind liquidity to the selectors. The cost is depth.}
-\note{Request allowance: the exchange's cap on order placements, earned back by trading. Top row: short toxic spells. Bottom: long spells, where it barely binds.}
-\end{frame}
-
-\begin{frame}{Result 6: every lever on one frontier}
-\partlabel{Item 4, strong attackers being added}
-\centering\includegraphics[width=0.95\textwidth]{fig_frontier.pdf}
-\takeaway{No lever protects the rent. The levers decide who holds the toxic flow.}
-\note{Each point: profit with no attack against profit under the worst attacker. Up and right is better.}
-\end{frame}
-
-\begin{frame}{The same mechanism on Hyperliquid, four weeks}
-\partlabel{Data, final for Oct 6 -- Nov 1}
-\centering\includegraphics[width=0.9\textwidth]{fig_longwindow.pdf}
-\takeaway{The makers who earn take 2 to 3.6 times fewer fills from previously toxic wallets: 33 of 35 coin-days, labels valid for ten days.}
-\note{Fourteen times the Workshop 1 sample. In the Oct 29 stress episode one identity-blind wallet absorbed the toxic flow.}
-\end{frame}
-
-\begin{frame}{If you remember three things}
-\partlabel{Summary and next steps}
+\begin{frame}{Summary}
+\partlabel{And what comes next}
 \vspace{4pt}
 \begin{columns}[T]
-\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Memory is the attack surface}{What lets learners hold a rent is a reaction function, and it is public.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{blue}{2~~Learning is not a defence}{Re-learning and adversarial training destroy the rent or leave it exposed.}\end{column}
-\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~Rules move the losses}{Identity, priority and the request allowance decide who holds the toxic flow.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{orange}{1~~Planning is the attack}{Against a frozen cartel the entrant solves an MDP. Looking ahead is worth 0.13--0.30 rent units.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{blue}{2~~The model is public}{The cartel's reaction can be read off the public book.}\end{column}
+\begin{column}{0.33\textwidth}\rqbox{aqua}{3~~A learning cartel is a player}{That makes it a game. In our runs learning did not bring the rent back.}\end{column}
 \end{columns}
 \vspace{8pt}
-\small\textbf{Next:} full-size runs on the cluster; customer outcomes under each rule; preprint in mid-December.\\[3pt]
+\small\textbf{Next:} full-size runs of these three; the trap question on order-level data; preprint in mid-December.\\[3pt]
 \centering\texttt{github.com/pradeepu191/wargame}
-\note{Close. Interim numbers are from laptop runs and will be replaced.}
+\note{Close.}
+\end{frame}
+
+\begin{frame}{Backup: also explored, not claimed here}
+\partlabel{Preliminary; in the repository}
+\small
+\begin{itemize}\setlength{\itemsep}{5pt}
+\item \textbf{One-tick books (queue game).} When the spread cannot move, makers only choose to keep an order standing or not. Steering the incumbents gained nothing (3 seeds).
+\item \textbf{Request allowance.} A cap on order placements removed the identity selector's edge (3 seeds).
+\item \textbf{Defences on one frontier.} Maker and exchange rules against the strongest attackers; run in progress.
+\end{itemize}
+\vspace{4pt}
+Details: \texttt{results/REPLICATION\_NOTES.md}, sections dated Nov 15--16.
+\note{Only if asked.}
 \end{frame}
 \end{document}

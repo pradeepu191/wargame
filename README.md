@@ -60,16 +60,27 @@ python experiments/identity.py --kappas 1 --rhos 0 --rhos-z 0.9,0.99 --mark-lags
 ```
 Cluster scripts for all of the above are in `slurm/` (SuperCloud; see `slurm/README.md`).
 
+## The entrant's problem as an MDP (Lecture 15 view)
+
+```bash
+python experiments/planning_view.py --simulate 100 --jobs 6   # -> results/planning_view.csv
+```
+Against a frozen cartel the entrant faces a finite MDP (state: last quotes; action: own quote;
+transitions: the cartel's reaction). The script compares the one-tick undercut rule, the myopic
+policy, discounted planners and the exact best response on every local cartel, on the model and
+in the simulator. See `paper/WORKSHOP2_PLAN.md` §00.
+
 ## Visual demonstration
 
 ```bash
-python experiments/trace.py --all          # records nine scenarios from the real simulator -> demo/traces.js
+python experiments/trace.py --all          # records ten scenarios from the real simulator -> demo/traces.js
 ```
 Then open `demo/index.html` in a browser (no server needed). It replays a run period by period:
 the makers' quotes against the Nash and monopoly quotes, each taker's order, the hidden regime,
 the public tape with wallet ids and delayed marks, and running profit per maker. Controls:
 play/pause (space), step (arrow keys), a playback-rate slider (1 to 200 periods per second), a
-seek bar, and a side-by-side mode (for example the anonymous against the identity entrant).
+seek bar, and a side-by-side mode (for example the myopic against the optimal entrant, or the
+anonymous against the identity entrant).
 The player holds no model logic; `tests/test_trace.py` pins the recorded profits to
 `experiments/entry.py`'s on the same seed. `python analysis/trace_video.py --all` writes a GIF of
 each scenario to `results/demo/` for slides (`--out clip.mp4` if ffmpeg is installed).

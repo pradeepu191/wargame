@@ -1,8 +1,10 @@
 \documentclass[10pt]{article}
-% Workshop 2 report, DRAFT.  Section letters follow Deliverable 2; adapt to the Workshop 2
-% template once it is announced.  Numbers marked (interim) come from laptop runs still in
-% progress on Nov 16 and are to be replaced by slurm/workshop2.sh.
-\usepackage[margin=0.7in]{geometry}
+% Workshop 2 report, DRAFT (branch workshop2-lecture15).  Section letters follow Deliverable 2.
+% This version narrows Workshop 2 to the frame of Lecture 15 ("Planning with a Model"): the
+% entrant's problem as a Markov decision problem.  The wider set of experiments (queue game,
+% request allowance, one frontier for all levers) is on branch workshop2-next-steps and in
+% results/REPLICATION_NOTES.md; it is not claimed here.
+\usepackage[margin=0.75in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{enumitem}
@@ -14,9 +16,6 @@
 \setlist{nosep,leftmargin=1.2em}
 \graphicspath{{../results/}{../results/live_2026_10/}}
 \setlength{\parskip}{2pt}
-\newcommand{\Fanon}{\mathcal{F}^{\mathrm{anon}}}
-\newcommand{\Fid}{\mathcal{F}^{\mathrm{id}}}
-\newcommand{\LBR}{L_{\mathrm{BR}}}
 \newcommand{\sect}[1]{\par\vspace{6pt}\noindent\textbf{#1}\par\vspace{1.5pt}\noindent}
 
 \title{\vspace{-1.6em}{\Large\textbf{Rent or Toxicity? Strategic Exploitability of Learning Market Makers\\ with Public Wallet Information}}\\[0.15em]\large Wargame Deliverable 3: Workshop 2 report (draft)}
@@ -28,47 +27,54 @@
 \maketitle
 \vspace{-2em}
 
-\sect{a) Where we stood, and what Workshop 2 was for}
-\textbf{The setting in four sentences.} \emph{Market makers} post standing offers to buy and sell around a reference price (the \emph{mid}); the gap between their prices is the \emph{spread}, measured here as a \emph{half-spread} $h$ in \emph{ticks} (the smallest price step). \emph{Takers} accept those offers; some are \emph{informed} (they trade only when the maker loses), and the informed share of a flow is its \emph{toxicity}. Learning makers settle on a spread wider than the \emph{break-even} (Nash) quote $h^C$ without communicating; such a set is a \emph{cartel}, what it earns above the Nash profit is its \emph{rent}, and the \emph{rent index} $C$ places it between Nash (0) and joint monopoly (1). An \emph{entrant} is an adversarial maker added to a trained cartel; \emph{rent units} divide any profit by the gap between monopoly and Nash profit.
+\sect{a) The question, in the course's terms}
+\textbf{The setting.} \emph{Market makers} post standing offers to buy and sell around a reference price; the gap between their prices is the \emph{spread}, measured as a \emph{half-spread} $h$ in \emph{ticks} (the smallest price step). \emph{Takers} accept those offers; some are \emph{informed} and trade only when the maker loses. Learning makers settle on a spread wider than the break-even (Nash) quote $h^C$ without communicating; such a set is a \emph{cartel}, and what it earns above the Nash profit is its \emph{rent}. An \emph{entrant} is one more maker added to a trained cartel. \emph{Rent units} divide any profit by the gap between the monopoly and the Nash profit, so $1$ is the whole rent.
 
-\textbf{Workshop 1} showed that the rent exists ($C=0.78$--$0.86$), that the \emph{exact best response} of an entrant who knows the cartel's \emph{reaction function} (its map from last period's quotes to its next quotes) takes all of it, that public wallet identity has value through spells of informed trading rather than through wallet persistence, and that on Hyperliquid the makers who earn are the ones who avoid previously toxic wallets. The feedback on that report asked for no changes and endorsed the plan, which had four items: (1) an attacker with public information only; (2) both sides learning; (3) attacks when the spread is pinned at one tick (the \emph{queue game}); (4) all defences on one frontier. This report answers them in that order. The new terms are: \emph{probing budget} (periods the attacker spends quoting at random to observe reactions), \emph{double oracle} (each side in turn best-responds to the other), \emph{request allowance} (the venue's cap on how many orders an address may place, earned back by trading), and \emph{fringe} (makers that always keep an order standing and cannot see who they trade with).
+\textbf{The frame.} Lecture~15 studies a decision maker whose action today changes the situation it faces tomorrow. The entrant is such a decision maker. Against a \emph{frozen} cartel (learning switched off) its problem is a finite \emph{Markov decision problem}:
+\begin{itemize}
+\item \textbf{state} $x$: last period's quotes $(h_1,h_2,h_e)$. The cartel's learners condition on their own last quote and the best rival quote, so this summary predicts the next reward and the next state (a valid state, slide 12);
+\item \textbf{action} $a$: the entrant's half-spread, $1,\dots,24$;
+\item \textbf{transitions} $P$: deterministic. The cartel answers $x$ with its learned reaction $g(x)$, and the next state is $(g(x),a)$. The frozen cartel is part of $P$, as the missiles are in the lecture's missile-defence example;
+\item \textbf{reward} $r(x,a)$: the entrant's expected profit this period, in closed form; \textbf{turn limit}: 100 periods per episode.
+\end{itemize}
+The exact best response of Workshop~1 is backward induction on this problem: value iteration with $k$ = periods left. The frame gives Workshop~2 three questions, and this report is limited to them. (1)~How much of the attacker's take comes from \emph{looking ahead}, rather than from knowing the cartel? (2)~Can the attacker build the model $P$ from public information? (3)~What changes when the cartel keeps learning, so that it is a \emph{player} and not part of $P$? A fourth part connects the lecture's \emph{belief state} to our identity question (RQ1). New terms are defined in \texttt{paper/glossary.tex} \S G.
 
 \sect{b) Results}
-\textbf{b1. The attack needs only public information} (60 cartels, two and three makers; final). Every value of the reaction function is visible on the public book, and the entrant can set the rival quote the cartel reacts to. An entrant that records the function cell by cell and solves its estimate earns $1.06$--$1.15$ rent units after 200 probing periods and matches the exact best response ($1.08$--$1.21$) to the second decimal after 1000, for two and for three incumbents. Probing costs profit, so the best budget is two to ten episodes.
+\textbf{b1. A quote that earns more today gives a policy that earns less} (30 two-maker cartels, ten at each toxicity level; Table~\ref{tab:planning}). On each frozen cartel we compare policies that differ only in how far they look ahead. The \emph{one-tick undercut rule} has no model: it quotes one tick inside the incumbents' last quote. The \emph{myopic} policy knows $P$ and takes the quote that pays most today. The discounted policies maximise $\sum_t\delta^t r_t$. The \emph{optimal} policy maximises the episode's total.
+\begin{table}[h]\centering\small
+\caption{Entrant's profit per period, rent units, mean over ten cartels per toxicity level $\bar\alpha$; evaluated on the model from the episode's starting state. The simulator column plays the same policies in the real simulator (random tie-breaking in the cartel, real takers), $\bar\alpha$ pooled.}\label{tab:planning}
+\begin{tabular}{lcccc}
+\toprule
+policy & $\bar\alpha=0.1$ & $0.3$ & $0.5$ & simulator \\
+\midrule
+one-tick undercut (no model) & 0.53 & 0.48 & 0.46 & 0.50 \\
+myopic (knows $P$, $\delta=0$) & 0.91 & 0.94 & 0.95 & 0.94 \\
+$\delta=0.5$ & 1.20 & 1.08 & 1.16 & 1.15 \\
+$\delta=0.9$ & 1.21 & 1.08 & 1.17 & 1.15 \\
+optimal (100-period total) & 1.21 & 1.08 & 1.17 & 1.15 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\textbf{b2. A cartel that keeps learning destroys its rent and does not defend it} (15 two-maker cartels; Figure~\ref{fig:relearn}). The cartel resumes learning under attack for 3000 episodes. While it learns, an oracle that re-solves from the cartel's current tables earns $0.45$--$0.64$ rent units instead of $1.1$, because the exploring cartel quotes tighter; the public attacker stays within $0.05$ of the oracle throughout and returns to $1.12$ (oracle $1.13$) once the cartel stops. The cartel's own profit is at or slightly below the Nash level the whole time ($-0.09$ to $-0.01$). Forgetting old observations, the design we proposed for a drifting target, makes the attacker \emph{worse} by $0.01$--$0.06$. Only a stale attacker that never re-solves leaves the cartel anything ($0.05$--$0.13$).
+Knowing the cartel's reaction roughly doubles the take (undercut to myopic). Looking ahead adds the rest, $0.13$--$0.30$ rent units, and a discount of $0.5$ already gets almost all of it. Looking ahead also makes the take reliable: across cartels the myopic entrant earns between $0.10$ and $1.25$ in the simulator, the optimal one between $1.02$ and $1.25$. The simulator agrees with the model to $0.03$ for every policy. On the first cartel, both entrants earn $1.21$ in the first period, but the myopic one quotes 13 ticks and the cartel answers at 13, while the optimal one quotes 12 and the cartel widens to 21. The myopic entrant keeps taking the best quote of the day, and the cartel tightens to 9 and then 7 ticks (profits $1.05$, $0.86$). The optimal entrant quotes 14 ticks in the second period for $1.20$, $0.01$ below the best it could take that day, and the cartel stays wide: later periods pay $1.20$--$1.21$. This is the lecture's ``a cheaper route can give a costlier policy'' (slide 15), with profit in place of cost. On average along the optimal path the incumbents quote $16$--$22$ ticks, against $9$--$17$ along the myopic one: the attacker keeps the cartel wide and stays just inside it.
+
+\textbf{b2. The model can be built from public information} (60 cartels, two and three makers). In our market every value of $P$ is visible on the public book: the cartel's answer appears next to the quotes it answered. An entrant that first quotes at random for a \emph{probing budget}, records the answers, and plans on its estimate is model-based with a learned model. After 1000 probing periods it matches the policy planned with the true $P$ to the second decimal ($1.08$--$1.21$ rent units). Probing costs profit, so the best budget is two to ten episodes. As in the lecture's belief problem, feedback is selective: the entrant learns $P$ only in the states it visits. Probing at random visits enough of them here.
+
+\textbf{b3. A cartel that keeps learning is a player} (15 two-maker cartels; laptop size; Figure~\ref{fig:relearn}). If the cartel resumes learning under attack, it responds to the entrant's policy and can no longer be folded into $P$: the problem becomes a game. We ran the simplest version: the cartel re-learns for 3000 episodes against the attacker, then stops. While it learns, an entrant that re-plans on the cartel's current reaction earns $0.45$--$0.64$ rent units instead of $1.1$, because the exploring cartel quotes tighter; the public attacker stays within $0.05$ of it. The cartel itself earns about the Nash profit throughout. An entrant that never re-plans leaves the cartel $0.05$--$0.13$ of its rent. Alternating the two sides for six rounds (12 cartels) gave the same picture in every round. We read this as: in our model, learning lowers what the attacker can take but does not bring the rent back. We do not claim an equilibrium of the game.
 
 \begin{figure}[h]\centering
-\includegraphics[width=0.98\textwidth]{fig_relearn_attack.pdf}
-\caption{Attackers against a cartel that re-learns until the dotted line and is then frozen.}\label{fig:relearn}
+\includegraphics[width=0.95\textwidth]{fig_relearn_attack.pdf}
+\caption{Entrants against a cartel that re-learns until the dotted line and is then frozen. 15 two-maker cartels.}\label{fig:relearn}
 \end{figure}
 
-\textbf{b3. Running the double oracle long changes nothing} (12 two-maker cartels, two modes, six rounds; Figure~\ref{fig:psro}). The cartel re-learns either against the latest best response or against a mixture of all past ones (an adversarially trained cartel). In every round and both modes its loss to the re-solved best response is its rent plus $0.16$, the best response earns $1.13$--$1.14$, and the rent falls from $0.86$ to $0.78$ in the first round and then stays in $0.67$--$0.78$ without trend. Re-learning protects only against attackers already seen (the previous attacker falls from $1.14$ to $0.51$--$0.68$), and the mixture does no better than the latest attacker alone. The public attacker equals the oracle in every round. The plan's question was whether adversarially trained cartels are less exploitable or just less collusive; the answer is slightly less collusive and no less exploitable.
-
-\begin{figure}[h]\centering
-\includegraphics[width=0.98\textwidth]{fig_psro.pdf}
-\caption{The double oracle by round and mode; right, the path of (rent, loss to the exact best response) .}\label{fig:psro}
-\end{figure}
-
-\textbf{b4. In the queue game there is nothing to steer} (three seeds, preliminary). When the spread is pinned, makers only choose to keep an order standing or step out, and the incumbents are no-regret learners over complete policies. An entrant that behaves one way while they learn and switches afterwards gains nothing: $0.084$ per period against $0.083$ had it been absent. Its presence changes what the incumbents learn (the weight on selecting rises from $0.38$ to $0.68$) but not what it earns ($+0.009$, inside the noise). In the spread game the attacker's take comes from the cartel's reaction; in the queue it comes from selecting takers, and there is no reaction function.
-
-\textbf{b5. A tight request allowance removes the selection rent} (three seeds, preliminary). A maker that selects its fills cancels and re-places orders. With an allowance of placements per 100 periods, plus one per fill: unconstrained, the identity selector earns $+0.10$ per period more than a maker that simply rests and the fringe earns $-0.025$; at an allowance of 2 the edge is $+0.03$; at 1 it is gone ($-0.015$) and the fringe earns $+0.030$. This is the first lever that moves the toxic flow back from identity-blind liquidity to the makers who were avoiding it. Its cost is depth: selectors are locked out in 38--48\% of the periods in which they want to rest. One maker cannot drain another's allowance in this model; the allowance is a tax on selection, not an attack surface.
-
-\textbf{b6. One frontier} (Figure~\ref{fig:frontier}; the strong attackers are being added). Each lever is a point: profit with no attack against profit under the worst attacker. The makers' own levers barely move against the rule attackers, and on the first cartel tested the exact best response and the public attacker leave a defended cartel nothing under every defence. The venue's levers move incumbents along the diagonal. We also now report the customer side: the uninformed taker's expected gain from trade is closed-form in the best quote and is recorded for every defence, alone and under attack.
-
-\begin{figure}[h]\centering
-\includegraphics[width=0.98\textwidth]{fig_frontier.pdf}
-\caption{Profit alone against profit under the worst attacker. Left: makers' levers, spread mode. Right: venue levers, queue mode.}\label{fig:frontier}
-\end{figure}
-
-\textbf{b7. Data} (final for the window Oct 6 -- Nov 1). On fourteen times the Workshop 1 sample the identity-selection gap holds on 33 of 35 coin-days and 94 of 96 coin-hours (the top-10 makers take $1.9$--$3.6\times$ fewer fills from previously toxic wallets), and labels stay valid for at least ten days. In the stress episode of Oct 29 the gap failed on the asset being sold for five hours because one identity-blind wallet absorbed the flow, the queue model's prediction.
+\textbf{b4. Identity as part of the state} (data, Oct 6 -- Nov 1). For a maker deciding whether to keep an order standing, the lecture's question ``what must the state contain?'' has two answers. Without identities, the state is the public tape. With public wallets it also contains each wallet's record, the number of fills and toxic fills, which is the lecture's belief state $(n,h)$ for that wallet. On Hyperliquid the makers who earn act on that record: across four weeks the top-10 makers take $1.9$--$3.6\times$ fewer fills from previously toxic wallets, on 33 of 35 coin-days, and a wallet's label stays useful for at least ten days. Lecture~15 points to two questions we have not answered. First, avoiding a wallet gives selective feedback: a maker that stops trading with a wallet no longer sees whether it has turned benign, so avoidance could be a trap (slide 37). Second, more information can lower the gains from trade in a game (slides 41--42). Public wallets are such information, and in the stress episode of Oct 29 one identity-blind wallet absorbed the toxic flow the others avoided.
 
 \sect{c) Prototype: a visual replay}
-\texttt{python experiments/trace.py --all} records nine scenarios from the real simulator and \texttt{demo/index.html} replays them period by period in a browser: the makers' quotes against the Nash and monopoly quotes, each taker's order, the hidden regime, the public tape with delayed marks, and running profit, with play, step, seek, a playback rate from 1 to 200 periods per second, and two runs side by side. The player contains no model logic and a test pins the recording to the experiment code. The repository has 72 tests and one command per figure (\texttt{make figures}).
+\texttt{python experiments/trace.py --all} records the scenarios from the real simulator, and \texttt{demo/index.html} replays them period by period in a browser. It shows the makers' quotes against the Nash and monopoly quotes, each taker's order, and running profit, with a playback rate of 1--200 periods per second. Two runs play side by side; for this talk, the myopic entrant next to the optimal one, which shows b1 period by period. The player contains no model logic, and a test pins each recording to the experiment code. Table~\ref{tab:planning} is \texttt{python experiments/planning\_view.py}.
 
 \sect{d) Limitations}
-The results in b2--b6 are from laptop runs on two-maker cartels with few seeds (b2: five per toxicity level); the full grids are scripted (\texttt{slurm/workshop2.sh}). Incumbents are tabular learners; a function-approximation learner may be harder to identify. The queue-game steering result is a null on three seeds. The allowance model charges only placements. Takers are stylised and depth beyond the best price is not modelled.
+Each result above rests on a modelling choice. The cartel's learners are tabular and, in b1--b2, frozen; the MDP view depends on that. The numbers in b1 come from the model's deterministic path; the simulator column checks them. b3 uses few two-maker cartels on a laptop, and we have run only the simplest form of the game. b4 is observational. The trap and the cost of information are open questions, not findings.
 
-\sect{e) Plan to the preprint}
-(1) Run the five grids at full size and replace the interim numbers. (2) The customer-outcome comparison promised at Workshop 1: taker surplus and fringe profit under each rule, with loss-making participants allowed to leave. (3) December order-level archive: which action carries the selection. (4) Preprint mid-December; the draft is \texttt{paper/arxiv\_draft.tex}.
+\sect{e) Plan to the end of term}
+(1)~Run b1--b3 at full size (all 60 cartels, ten seeds; \texttt{slurm/workshop2.sh}). (2)~Test the trap question on the order-level archive: do makers that avoid a wallet return to it when it turns benign? (3)~Write up b1--b4 for the preprint in mid-December, with the queue-game and venue-rule experiments as preliminary material in an appendix.
 \end{document}

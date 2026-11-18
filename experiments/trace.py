@@ -15,6 +15,8 @@ scenarios the entrant has watched the tape for 3000 periods before the recording
   cartel_alone     the frozen cartel by itself: quotes settle near the monopoly quote h^M
   undercut         an entrant one tick inside the best incumbent quote
   markout          an entrant that undercuts only when its own fills say the spread is rent
+  myopic           knows the cartel's reaction function but maximises only today's profit (Lecture 15's
+                   myopic policy, discount 0)
   best_response    the exact best response (backward induction over the cartel's reaction function)
   public_attacker  the attacker with public information only: it probes at random, fills in the
                    cartel's reaction table from the public quotes, then plays the solved policy
@@ -80,6 +82,9 @@ TEXT = {
     "markout": ("Markout entrant",
                 "The entrant reads its own fills: if they are not toxic, the wide spread is rent, and it undercuts. "
                 "Otherwise it quotes the competitive spread."),
+    "myopic": ("Myopic entrant (knows the cartel, plans one period)",
+               "The entrant knows how the cartel will answer and picks the quote that earns most today. "
+               "The cartel answers by tightening, and the next periods earn less."),
     "best_response": ("Exact best response",
                       "The entrant knows the cartel's reaction function and solves the game by backward induction. "
                       "It steers the incumbents to states they never visited while learning, then sits one tick inside."),
@@ -195,6 +200,10 @@ def spread_scenario(name: str, cartel: Path, n_periods: int, seed_offset: int = 
     elif name == "markout":
         ent = MarkoutEntrant(hC_function(MarketConfig(**mk)), alpha_prior=0.3, k_min=20, margin=2)
         extra = lambda e: {"ph": e.last_decision or ""}
+    elif name == "myopic":
+        mdp = CartelMDP(Q, MarketConfig(**{**mk, "n_mm": n}), T)
+        today = (mdp.r_own.argmax(axis=1) + 1).astype(np.int8)
+        ent = DPEntrant(mdp, np.tile(today, (T, 1)))
     elif name == "best_response":
         mdp = CartelMDP(Q, MarketConfig(**{**mk, "n_mm": n}), T)
         policy, _, _ = mdp.solve(1.0)

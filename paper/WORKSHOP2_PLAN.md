@@ -1,5 +1,30 @@
 # Workshop 2 and the preprint: feedback, status, next steps (Nov 15 2026)
 
+## 00. Realignment with Lecture 15 (Nov 17, branch `workshop2-lecture15`)
+
+The supervisor's Lecture 15 ("Planning with a Model", Nov 5) shows the form he wants: one small
+model stated as (states, actions, transitions, rewards, horizon), solved by the Bellman equation,
+read through a worked table, and a myopic policy against an optimal one. The Workshop 2 report and
+talk on this branch are narrowed to that frame. Nothing is deleted: the wider results stay on
+`workshop2-next-steps` and in `results/REPLICATION_NOTES.md`.
+
+| Lecture 15 | Our model | Where |
+|---|---|---|
+| Finite MDP (X, A, P, c, δ); turn limits | The entrant against a frozen cartel: state = last quotes, action = own quote, P = the cartel's reaction (deterministic), 100-period episode | `experiments/best_response.py` (`CartelMDP`) |
+| An opponent that does not respond is part of P (missile defence) | A frozen cartel is part of P | report §a |
+| What must the state contain? | The learners condition on own last quote and best rival quote, so the last quote vector is valid | report §a |
+| Myopic vs optimal ("a cheaper route can give a costlier policy") | Myopic entrant 0.91–0.95 rent units, optimal 1.08–1.21, undercut rule 0.46–0.53; δ = 0.5 is already enough | `experiments/planning_view.py`, report b1 |
+| Value iteration table | First four periods, myopic vs optimal, on one cartel | slides, "A quote that earns more today…" |
+| Model-based vs model-free | Public attacker = model-based with a model learned from the book; the cartel = model-free Q-learners | report b2 |
+| An opponent who responds is a player: a game | A cartel that keeps learning; re-learning and alternating best responses | report b3 |
+| Belief state (n, h); selective feedback; trap (Rothschild) | Per-wallet record of fills and toxic fills; avoiding a wallet stops the feedback; is avoidance a trap? | report b4 (open question) |
+| More information can hurt in a game (Akerlof) | Public wallet identity | report b4 (open question) |
+
+Moved out of the talk and report (kept in the repository, marked preliminary): the queue-game
+steering and request-allowance experiments, the one frontier for all levers, and the double oracle
+as a headline (it is one sentence in b3). Claims are worded more carefully ("in our runs", "we do not
+claim an equilibrium"), and new planning words are in `paper/glossary.tex` §G.
+
 ## 0. Status on Nov 16 (what was done after this plan was written)
 
 | Step of §3 | Status | Where |
